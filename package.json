@@ -1,0 +1,11 @@
+{
+  "name": "agentic-cms",
+  "private": true,
+  "packageManager": "pnpm@10.28.0",
+  "scripts": {
+    "dev": "pnpm --filter @studio/cms dev",
+    "build": "pnpm --filter @studio/cms build",
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

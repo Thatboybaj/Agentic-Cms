@@ -1,0 +1,171 @@
+@import url("https://api.fontshare.com/v2/css?f[]=general-sans@500,600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap");
+
+/* Same palette as src/ds/tokens.css, so the briefs read as part of the product. */
+:root {
+	--c-page: #eef0f3;
+	--c-surface: #ffffff;
+	--c-sunken: #f3f4f6;
+	--c-ink: #111317;
+	--c-ink-2: #44484f;
+	--c-ink-3: #5f6470;
+	--c-line: #e6e7ea;
+	--c-agent: #3e6fd8;
+	--c-agent-ink: #2f58b5;
+	--c-agent-soft: #e8effc;
+	--c-human: #b7791f;
+	--c-human-ink: #8a5a12;
+	--c-human-soft: #fbf1df;
+	--c-block-ink: #b8392f;
+	--c-block-soft: #fce9e7;
+	--c-pass-ink: #237a52;
+	--c-pass-soft: #e7f5ee;
+	--c-wash-blue: #cde1f1;
+	--c-wash-peach: #f3e0d4;
+	--c-wash-green: #d6ecdf;
+	--display: "General Sans", "Segoe UI", system-ui, sans-serif;
+	--body: "Poppins", "Segoe UI", system-ui, sans-serif;
+	--mono: ui-monospace, Consolas, monospace;
+}
+
+@page {
+	size: A4;
+	margin: 16mm 15mm 18mm;
+	@bottom-left {
+		content: "Agentic CMS · Handover · November 2026";
+		font: 7.5pt "Poppins", sans-serif;
+		color: #5f6470;
+	}
+	@bottom-right {
+		content: counter(page) " / " counter(pages);
+		font: 7.5pt "Poppins", sans-serif;
+		color: #5f6470;
+	}
+}
+@page cover {
+	margin: 0;
+	@bottom-left { content: none; }
+	@bottom-right { content: none; }
+}
+
+* { box-sizing: border-box; }
+html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body {
+	margin: 0;
+	font: 9pt/1.55 var(--body);
+	color: var(--c-ink-2);
+	background: var(--c-surface);
+}
+h1, h2, h3, h4 { font-family: var(--display); font-weight: 600; color: var(--c-ink); letter-spacing: -0.01em; margin: 0; }
+.doctitle { string-set: doctitle content(); display: none; }
+
+/* ---- Cover ---------------------------------------------------------- */
+.cover {
+	page: cover;
+	position: relative;
+	height: 297mm;
+	padding: 24mm 20mm;
+	overflow: hidden;
+	background: var(--c-page);
+	display: flex;
+	flex-direction: column;
+	break-after: page;
+}
+.cover .orb { position: absolute; border-radius: 50%; filter: blur(40px); opacity: 0.95; }
+.cover .o1 { width: 120mm; height: 120mm; background: var(--c-wash-blue); inset-block-start: -30mm; inset-inline-end: -30mm; }
+.cover .o2 { width: 100mm; height: 100mm; background: var(--c-wash-peach); inset-block-end: 20mm; inset-inline-start: -30mm; }
+.cover .o3 { width: 80mm; height: 80mm; background: var(--c-wash-green); inset-block-end: -20mm; inset-inline-end: 20mm; }
+.cover .shell {
+	position: relative;
+	margin-block-start: auto;
+	background: rgba(255, 255, 255, 0.55);
+	border: 1px solid rgba(255, 255, 255, 0.9);
+	border-radius: 10mm;
+	padding: 14mm 12mm;
+}
+.cover .mark { width: 12mm; height: 12mm; border-radius: 50%; background: var(--c-ink); color: #fff; display: grid; place-items: center; font: 600 14pt var(--display); }
+.cover .kicker { position: relative; font: 500 9pt var(--display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-ink-3); }
+.cover h1 { font-size: 34pt; line-height: 1.08; margin-block: 6mm 4mm; letter-spacing: -0.02em; }
+.cover .lede { font-size: 11pt; color: var(--c-ink-2); max-width: 140mm; }
+.cover .meta { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4mm; margin-block-start: 10mm; }
+.cover .meta div { background: #fff; border-radius: 4mm; padding: 3mm 4mm; }
+.cover .meta b { display: block; font: 500 7pt var(--display); text-transform: uppercase; letter-spacing: 0.08em; color: var(--c-ink-3); }
+.cover .meta span { font: 500 9.5pt var(--display); color: var(--c-ink); }
+
+/* ---- Body ----------------------------------------------------------- */
+section { margin-block-end: 7mm; }
+section.page { break-before: page; }
+.eyebrow { font: 500 7.5pt var(--display); text-transform: uppercase; letter-spacing: 0.12em; color: var(--c-agent-ink); margin-block-end: 1.5mm; }
+h2 { font-size: 17pt; margin-block-end: 3mm; }
+h3 { font-size: 11pt; margin-block: 4mm 1.5mm; }
+p { margin: 0 0 2.5mm; }
+.lead { font-size: 10pt; color: var(--c-ink-2); }
+strong { color: var(--c-ink); font-weight: 500; }
+code { font: 8pt var(--mono); background: var(--c-sunken); border-radius: 1.2mm; padding: 0.2mm 1mm; color: var(--c-ink); }
+ul, ol { margin: 0 0 2.5mm; padding-inline-start: 4.5mm; }
+li { margin-block-end: 0.8mm; }
+
+.grid { display: grid; gap: 3.5mm; }
+.g2 { grid-template-columns: 1fr 1fr; }
+.g3 { grid-template-columns: repeat(3, 1fr); }
+.g4 { grid-template-columns: repeat(4, 1fr); }
+.card {
+	background: var(--c-surface);
+	border: 1px solid var(--c-line);
+	border-radius: 4mm;
+	padding: 3.5mm 4mm;
+	break-inside: avoid;
+}
+.card h4 { font-size: 9.5pt; margin-block-end: 1mm; }
+.card p:last-child, .card ul:last-child { margin-block-end: 0; }
+.card.sunken { background: var(--c-sunken); border-color: transparent; }
+.card.agent { background: var(--c-agent-soft); border-color: transparent; }
+.card.human { background: var(--c-human-soft); border-color: transparent; }
+.card.pass { background: var(--c-pass-soft); border-color: transparent; }
+.card.block { background: var(--c-block-soft); border-color: transparent; }
+.card.ink { background: var(--c-ink); color: #d9dbdf; border-color: transparent; }
+.card.ink h4, .card.ink strong { color: #fff; }
+
+.stat b { display: block; font: 600 20pt/1.1 var(--display); color: var(--c-ink); letter-spacing: -0.02em; }
+.stat span { font-size: 7.5pt; color: var(--c-ink-3); }
+
+.chip { display: inline-block; font: 500 7pt var(--display); padding: 0.4mm 2mm; border-radius: 99mm; background: var(--c-sunken); color: var(--c-ink-2); white-space: nowrap; }
+.chip.agent { background: var(--c-agent-soft); color: var(--c-agent-ink); }
+.chip.human { background: var(--c-human-soft); color: var(--c-human-ink); }
+.chip.pass { background: var(--c-pass-soft); color: var(--c-pass-ink); }
+.chip.block { background: var(--c-block-soft); color: var(--c-block-ink); }
+
+table { width: 100%; border-collapse: collapse; font-size: 8pt; margin-block-end: 3mm; break-inside: auto; }
+thead { display: table-header-group; }
+tr { break-inside: avoid; }
+th { font: 500 7pt var(--display); text-transform: uppercase; letter-spacing: 0.06em; color: var(--c-ink-3); text-align: start; background: var(--c-sunken); padding: 1.6mm 2.2mm; }
+th:first-child { border-start-start-radius: 2mm; border-end-start-radius: 2mm; }
+th:last-child { border-start-end-radius: 2mm; border-end-end-radius: 2mm; }
+td { padding: 1.6mm 2.2mm; border-block-end: 1px solid var(--c-line); vertical-align: top; }
+td:first-child { color: var(--c-ink); font-weight: 500; }
+
+/* Flow: a row of steps joined by arrows */
+.flow { display: flex; flex-wrap: wrap; align-items: stretch; gap: 1.5mm; margin-block: 2mm 3mm; }
+.flow .step { flex: 1 1 0; min-width: 17mm; background: var(--c-sunken); border-radius: 3mm; padding: 2.2mm 2.5mm; font-size: 7.5pt; line-height: 1.35; break-inside: avoid; }
+.flow .step b { display: block; font: 500 8pt var(--display); color: var(--c-ink); margin-block-end: 0.5mm; }
+.flow .step.agent { background: var(--c-agent-soft); }
+.flow .step.human { background: var(--c-human-soft); }
+.flow .step.pass { background: var(--c-pass-soft); }
+.flow .arrow { align-self: center; color: var(--c-ink-3); font-size: 9pt; }
+
+/* Layer stack */
+.stack { display: grid; gap: 1.5mm; }
+.stack .layer { display: grid; grid-template-columns: 34mm 1fr; gap: 3mm; border-radius: 3mm; padding: 2.5mm 3.5mm; background: var(--c-sunken); font-size: 8pt; }
+.stack .layer b { font: 500 8.5pt var(--display); color: var(--c-ink); }
+.stack .layer.agent { background: var(--c-agent-soft); }
+.stack .layer.ink { background: var(--c-ink); color: #d9dbdf; }
+.stack .layer.ink b { color: #fff; }
+
+.callout { border-inline-start: 1mm solid var(--c-human); background: var(--c-human-soft); border-radius: 2mm; padding: 2.5mm 3.5mm; margin-block: 2mm 3mm; color: var(--c-human-ink); break-inside: avoid; }
+.callout.agent { border-color: var(--c-agent); background: var(--c-agent-soft); color: var(--c-agent-ink); }
+.callout strong { color: inherit; }
+.small { font-size: 7.5pt; color: var(--c-ink-3); }
+.nobreak { break-inside: avoid; }
+
+.eyebrow, h2, h3 { break-after: avoid; }
+table.compact td { padding-block: 1mm; }

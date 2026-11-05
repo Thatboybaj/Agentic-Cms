@@ -1,0 +1,155 @@
+/*
+ * Agentic CMS design tokens — the ONLY file in apps/cms allowed to contain raw color literals.
+ * Everything else consumes var(--c-*) or the Tailwind aliases mapped in globals.css.
+ *
+ * Source of truth: docs/design-system.md (Nawa structure, built from docs/uxer/*).
+ * Values sampled from docs/reference/*.dc.html; hierarchy from docs/visual-aid.png.
+ */
+
+:root {
+	/* ---- Canvas & glass hierarchy (visual aid) ------------------------ */
+	--c-page: #e4e6ea; /* behind the app frame (desktop gutters) */
+	--c-canvas: #eef0f3; /* app frame background, under the washes */
+	--c-glass: rgba(255, 255, 255, 0.45); /* the frosted shell */
+	--c-glass-strong: rgba(255, 255, 255, 0.72); /* glass cards, mobile tab bar */
+	--c-glass-edge: rgba(255, 255, 255, 0.9); /* 1px shell edge */
+	--c-surface: #ffffff; /* cards, pills, inputs */
+	--c-sunken: #f3f4f6; /* chips, active stat tile, kbd */
+	--c-sunken-2: #f6f7f8; /* table header, code frame */
+	--c-scrim: rgba(17, 19, 23, 0.28);
+
+	/* ---- Washes (blurred orbs behind the shell) ---------------------- */
+	--c-wash-blue: #cde1f1;
+	--c-wash-peach: #f3e0d4;
+	--c-wash-green: #d6ecdf;
+	--c-wash-neutral: #dfe2e7;
+	--c-tenant: #eaf0f7; /* tenant icon bubble */
+	--c-avatar: #dce3ea;
+
+	/* ---- Ink ---------------------------------------------------------- */
+	--c-ink: #111317; /* primary text AND the only action fill */
+	--c-ink-2: #44484f; /* long-form body in the editor */
+	--c-ink-3: #5f6470; /* secondary text — ≥ 5:1 on canvas/surface/sunken (refs' #6B7079 fails AA on canvas) */
+	--c-ink-4: #8a8f98; /* graphics, dividers-with-text, decorative meta only — 3.25:1 on white; never carries text a user must read */
+	--c-ink-5: #a0a4ab; /* placeholders, disabled — never body text */
+	--c-on-ink: #ffffff;
+	--c-ink-hover: #2a2d33;
+
+	/* ---- Lines -------------------------------------------------------- */
+	--c-line: #edeef0; /* card edges, circular arrow buttons */
+	--c-line-2: #e6e7ea; /* dividers, table rows */
+	--c-line-3: #d9dbdf; /* dashed drop zones, strong outlines */
+
+	/* ---- Agent-blue rule: the machine did / is doing this ------------- */
+	--c-agent: #3e6fd8; /* dots, icons, progress — graphics */
+	--c-agent-ink: #2f58b5; /* agent text — AA on white and agent-soft */
+	--c-agent-soft: #e8effc; /* agent chips, rings, diff header */
+	--c-agent-line: #9db6e6;
+
+	/* ---- Human-amber rule: waiting on a person ------------------------ */
+	--c-human: #b7791f; /* icons */
+	--c-human-ink: #8a5a12; /* text — AA on human-soft */
+	--c-human-soft: #fbf1df; /* tiles, callouts */
+	--c-human-line: #e0b563; /* dashed human-only slot outline */
+
+	/* ---- Block (hard block, decaying, destructive) -------------------- */
+	--c-block: #e5483c; /* badges, dots */
+	--c-block-ink: #b8392f; /* text — AA on white / block-soft */
+	--c-block-soft: #fce9e7;
+
+	/* ---- Pass (passing check, live, gains) ---------------------------- */
+	--c-pass: #2f9e6b;
+	--c-pass-ink: #237a52;
+	--c-pass-soft: #e7f5ee;
+
+	/* ---- Info (neutral informational) --------------------------------- */
+	--c-info-soft: #f1f2f4;
+
+	/* ---- Placeholder art hues for generated candidates ---------------- */
+	--c-art-1: #f4d5a0;
+	--c-art-2: #c9e4fb;
+	--c-art-3: #e3e0f0;
+	--c-art-4: #f1ede9;
+
+	/* ---- Focus -------------------------------------------------------- */
+	--c-focus: rgba(62, 111, 216, 0.45);
+
+	/* ---- Typography: General Sans (UI/display, 500) + Poppins (body/meta, 400) */
+	--c-font-display: "General Sans", ui-sans-serif, system-ui, sans-serif;
+	--c-font-body: "Poppins", ui-sans-serif, system-ui, sans-serif;
+	--c-font-mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+	--c-text-2xs: 10px;
+	--c-text-xs: 11px; /* meta labels (stat labels, column meta) */
+	--c-text-sm: 12px; /* chips, card meta */
+	--c-text-md: 13px; /* buttons sm, body in cards, subtitles */
+	--c-text-base: 14px; /* default UI text, pills */
+	--c-text-lg: 15px; /* card titles */
+	--c-text-xl: 17px; /* stat values, pane titles */
+	--c-text-2xl: 22px; /* section heroes, stat tile */
+	--c-text-3xl: 26px; /* page title */
+	--c-text-4xl: 34px; /* big numbers (gap to projection) */
+	--c-text-5xl: 44px; /* visual-aid clock numerals */
+
+	--c-leading-tight: 1.15;
+	--c-leading-snug: 1.3;
+	--c-leading-body: 1.55;
+	--c-leading-prose: 1.7; /* editor draft */
+	--c-tracking-tight: -0.01em;
+	--c-tracking-tighter: -0.02em;
+
+	/* ---- Radii (glass hierarchy — much rounder than Nawa) ------------- */
+	--c-radius-xs: 6px; /* kbd, code chips */
+	--c-radius-sm: 12px; /* mini tiles, inputs inside cards */
+	--c-radius-md: 16px; /* stat tiles, list rows */
+	--c-radius-lg: 18px; /* menus, inner cards */
+	--c-radius-xl: 22px; /* cards, pills track */
+	--c-radius-2xl: 24px; /* panes */
+	--c-radius-3xl: 28px; /* sheets */
+	--c-radius-shell: 32px; /* the frosted shell */
+	--c-radius-pill: 999px;
+
+	/* ---- Elevation (cards are flat white on glass; shadows are rare) -- */
+	--c-shadow-card: 0 1px 2px rgba(17, 19, 23, 0.04);
+	--c-shadow-raised: 0 6px 20px rgba(17, 19, 23, 0.07);
+	--c-shadow-float: 0 12px 32px rgba(17, 19, 23, 0.12);
+	--c-shadow-sheet: 0 24px 64px rgba(17, 19, 23, 0.18);
+
+	/* ---- Space (4px base) --------------------------------------------- */
+	--c-space-1: 4px;
+	--c-space-2: 8px;
+	--c-space-3: 12px;
+	--c-space-4: 16px;
+	--c-space-5: 20px;
+	--c-space-6: 24px;
+	--c-space-8: 32px;
+	--c-space-10: 40px;
+	--c-shell-inset: 16px;
+	--c-control-h: 44px; /* pills, icon buttons, rail buttons */
+	--c-control-h-sm: 34px;
+	--c-rail-w: 48px;
+
+	/* ---- Z-scale ------------------------------------------------------ */
+	--c-z-sticky: 150;
+	--c-z-nav: 200;
+	--c-z-dropdown: 300;
+	--c-z-overlay: 400;
+	--c-z-modal: 500;
+	--c-z-toast: 600;
+
+	/* ---- Motion ------------------------------------------------------- */
+	--c-dur-1: 120ms; /* press */
+	--c-dur-2: 200ms; /* hover, color */
+	--c-dur-3: 320ms; /* sheets, reorder */
+	--c-dur-4: 600ms; /* chart draw */
+	--c-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+	--c-ease-spring: cubic-bezier(0.34, 1.4, 0.64, 1);
+}
+
+/* ---- Site avatar (multi-site workspace) ------------------------------
+ * Per-site hue from ISite.accent, set as --site-hue (a bare number) by <SiteAvatar>. Soft fill + AA ink at that hue,
+ * so 8+ client sites stay distinguishable without adding meaning-bearing tones (agent/human/block/pass stay reserved). */
+.site-avatar {
+	background-color: hsl(var(--site-hue, 212) 52% 91%);
+	color: hsl(var(--site-hue, 212) 48% 25%);
+}

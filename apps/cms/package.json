@@ -1,0 +1,39 @@
+{
+  "name": "@studio/cms",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "clean": "rm -rf .next",
+    "build:prod": "node -e \"process.env.NEXT_DIST_DIR='.next-prod';require('child_process').execSync('npx next build',{stdio:'inherit',env:process.env})\"",
+    "start:prod": "node scripts/start-prod.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@modelcontextprotocol/sdk": "^1.30.1",
+    "@phosphor-icons/react": "^2.1.10",
+    "@studio/seo-harness": "workspace:*",
+    "clsx": "^2.1.1",
+    "fflate": "^0.8.3",
+    "motion": "^12.23.12",
+    "next": "15.3.8",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "server-only": "^0.0.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.4",
+    "@types/node": "^20",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "linkedom": "^0.18.13",
+    "tailwindcss": "^4.1.4",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.11"
+  }
+}

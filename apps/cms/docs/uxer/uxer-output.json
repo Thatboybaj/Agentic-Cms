@@ -1,0 +1,2351 @@
+{
+ "venture": "agentic-cms",
+ "version": 1,
+ "generated": "2026-09-25",
+ "fixture": {
+  "clock": "2026-09-25T10:42:00+01:00",
+  "site": "Lumen Dental",
+  "domain": "lumendental.co",
+  "city": "Lagos",
+  "week": "W39"
+ },
+ "principles": [
+  {
+   "id": "P1",
+   "name": "Stuck is louder than busy",
+   "rule": "Human-blocked counts render in human tone in StatStrip and cards; agent-busy never outranks them; any blocker is in the first viewport."
+  },
+  {
+   "id": "P2",
+   "name": "The machine is always labelled",
+   "rule": "Anything an agent produced, is producing or suggested carries AgentBadge or agent tone; blue is never decoration."
+  },
+  {
+   "id": "P3",
+   "name": "Diffs, not overwrites",
+   "rule": "No agent action mutates content without an AgentDiff accept/reject; undo toast for every human mutation."
+  },
+  {
+   "id": "P4",
+   "name": "Blocks explain themselves",
+   "rule": "Every disabled primary shows why inline (LockedAction) and links to the fix; hard = block tone, soft = human tone with logged reason."
+  },
+  {
+   "id": "P5",
+   "name": "One black button",
+   "rule": "Exactly one Button variant=primary (or LockedAction) per view region."
+  },
+  {
+   "id": "P6",
+   "name": "Numbers carry their source",
+   "rule": "Every metric shows SourceNote with source/lag; missing data = DataGap, never 0."
+  },
+  {
+   "id": "P7",
+   "name": "Setup is twice, then invisible",
+   "rule": "Developer surfaces are wizards ending in a versioned summary; nothing developer-ish on the specialist's daily screens."
+  }
+ ],
+ "routes": [
+  {
+   "path": "/",
+   "screen": null,
+   "ref": null,
+   "primaryRole": null,
+   "prd": [],
+   "kind": "redirect",
+   "gate": "redirect: site with repo -> /plan; developer/admin without repo -> /onboarding"
+  },
+  {
+   "path": "/onboarding",
+   "screen": "S01",
+   "ref": null,
+   "primaryRole": "developer",
+   "prd": [
+    "M5 setup",
+    "Integrations"
+   ],
+   "kind": "page",
+   "gate": "roles: developer, admin"
+  },
+  {
+   "path": "/plan",
+   "screen": "S02",
+   "ref": "01",
+   "primaryRole": "specialist",
+   "prd": [
+    "M1",
+    "Goal 4"
+   ],
+   "kind": "page",
+   "gate": "all roles; write: specialist, admin"
+  },
+  {
+   "path": "/plan/new",
+   "screen": "S03",
+   "ref": null,
+   "primaryRole": "specialist",
+   "prd": [
+    "M1 manual entry"
+   ],
+   "kind": "sheet",
+   "gate": "roles: specialist, admin"
+  },
+  {
+   "path": "/posts",
+   "screen": "S04",
+   "ref": null,
+   "primaryRole": "specialist",
+   "prd": [
+    "M1"
+   ],
+   "kind": "page",
+   "gate": "all roles"
+  },
+  {
+   "path": "/posts/[id]",
+   "screen": "S05",
+   "ref": "02",
+   "primaryRole": "specialist",
+   "prd": [
+    "M2"
+   ],
+   "kind": "page",
+   "gate": "edit: specialist, admin; comment: stakeholder; read: developer"
+  },
+  {
+   "path": "/posts/[id]/versions",
+   "screen": "S06",
+   "ref": null,
+   "primaryRole": "specialist",
+   "prd": [
+    "M2 revisions"
+   ],
+   "kind": "sheet",
+   "gate": "restore: specialist, admin"
+  },
+  {
+   "path": "/posts/[id]/assets",
+   "screen": "S07",
+   "ref": "03",
+   "primaryRole": "specialist",
+   "prd": [
+    "M3"
+   ],
+   "kind": "page",
+   "gate": "act: specialist, admin; read: developer, stakeholder"
+  },
+  {
+   "path": "/assets",
+   "screen": "S08",
+   "ref": null,
+   "primaryRole": "specialist",
+   "prd": [
+    "M3 review"
+   ],
+   "kind": "page",
+   "gate": "act: specialist, admin"
+  },
+  {
+   "path": "/templates",
+   "screen": "S09",
+   "ref": null,
+   "primaryRole": "developer",
+   "prd": [
+    "M4"
+   ],
+   "kind": "page",
+   "gate": "manage: developer, admin"
+  },
+  {
+   "path": "/templates/ingest",
+   "screen": "S10",
+   "ref": "04",
+   "primaryRole": "developer",
+   "prd": [
+    "M4"
+   ],
+   "kind": "page",
+   "gate": "roles: developer, admin"
+  },
+  {
+   "path": "/approvals",
+   "screen": "S11",
+   "ref": "05",
+   "primaryRole": "specialist",
+   "prd": [
+    "Gate",
+    "M5"
+   ],
+   "kind": "page",
+   "gate": "approve: specialist, admin"
+  },
+  {
+   "path": "/merge-requests",
+   "screen": "S12",
+   "ref": null,
+   "primaryRole": "developer",
+   "prd": [
+    "M5"
+   ],
+   "kind": "page",
+   "gate": "all roles read"
+  },
+  {
+   "path": "/seo",
+   "screen": "S13",
+   "ref": "06",
+   "primaryRole": "specialist",
+   "prd": [
+    "M6",
+    "M7"
+   ],
+   "kind": "page",
+   "gate": "all roles"
+  },
+  {
+   "path": "/seo/reports",
+   "screen": "S14",
+   "ref": null,
+   "primaryRole": "stakeholder",
+   "prd": [
+    "M6 reports"
+   ],
+   "kind": "page",
+   "gate": "all roles"
+  },
+  {
+   "path": "/runs",
+   "screen": "S15",
+   "ref": null,
+   "primaryRole": "specialist",
+   "prd": [
+    "Triggers",
+    "Ledger",
+    "Cost controls"
+   ],
+   "kind": "page",
+   "gate": "trigger: specialist, admin"
+  },
+  {
+   "path": "/settings",
+   "screen": "S16",
+   "ref": null,
+   "primaryRole": "admin",
+   "prd": [
+    "Settings",
+    "Guardrails",
+    "Audit trail",
+    "Roles"
+   ],
+   "kind": "page",
+   "gate": "per tab; admin full"
+  },
+  {
+   "path": "/styleguide",
+   "screen": "S17",
+   "ref": null,
+   "primaryRole": "builders",
+   "prd": [
+    "DS verification"
+   ],
+   "kind": "page",
+   "gate": "dev env only"
+  }
+ ],
+ "flows": [
+  {
+   "id": "F1",
+   "name": "Monday triage: plan -> unblock",
+   "clickBudget": 6,
+   "happyPathClicks": 5,
+   "inputs": 1,
+   "meetsBudget": true,
+   "source": "01 (plan -> stuck post 1 click) + derived",
+   "steps": [
+    "/plan (0)",
+    "In review card 'root canal recovery: what to expect' arrow (1)",
+    "Add source (2)",
+    "paste URL + Add (3)",
+    "Gate Fix 'Keyword in first 100 words' (4)",
+    "Accept agent diff (5)",
+    "Approve unlocks -> F5"
+   ],
+   "edgeCases": [
+    "nothing stuck",
+    "ledger blocker entry",
+    "pivot trigger callout",
+    "source unreachable",
+    "source does not support claim",
+    "concurrent editor",
+    "plan load error"
+   ]
+  },
+  {
+   "id": "F2",
+   "name": "Idea -> brief -> draft (manual entry + Generate now)",
+   "clickBudget": 5,
+   "happyPathClicks": 5,
+   "inputs": 1,
+   "meetsBudget": true,
+   "source": "derived",
+   "steps": [
+    "/plan New idea (1)",
+    "type keyword (input); agent enriches",
+    "Add to plan (2)",
+    "card arrow (3)",
+    "Promote to brief (4)",
+    "Generate now with estimate (5)",
+    "Drafting progress -> Needs assets / In review"
+   ],
+   "edgeCases": [
+    "duplicate",
+    "pillar/money page strong model",
+    "over text cap",
+    "generation fails with retries",
+    "template lacks structure -> held",
+    "regulated disclaimer",
+    "no impressions -> DataGap",
+    "stakeholder gated",
+    "drag Idea -> Briefed promotes"
+   ]
+  },
+  {
+   "id": "F3",
+   "name": "Edit with agent diffs + resolve fact marker",
+   "clickBudget": 2,
+   "happyPathClicks": 2,
+   "inputs": 1,
+   "meetsBudget": true,
+   "source": "01 (accept agent edit 1 click) + derived",
+   "steps": [
+    "select section + instruct (input) + send (1)",
+    "Accept AgentDiff (2)",
+    "fact marker: Add source (1) + URL (input) + Add (2), or Rewrite without it (1) + Accept (2)"
+   ],
+   "edgeCases": [
+    "reject",
+    "stale diff",
+    "agent cannot comply -> new marker",
+    "multiple pending diffs",
+    "remove regulated disclaimer -> override",
+    "autosave failure",
+    "restore version",
+    "role read-only"
+   ]
+  },
+  {
+   "id": "F4",
+   "name": "Fill image slots",
+   "clickBudget": 2,
+   "happyPathClicks": 2,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "01 (fill from candidates 2 clicks) + derived",
+   "steps": [
+    "pick candidate 3 (1)",
+    "Use candidate 3 (2)",
+    "regenerate: edit prompt (input) + Regenerate + pick + Use (3)",
+    "upload own: Upload own + file + Use upload (3)",
+    "human-only: Mark human-only + confirm (2)",
+    "Send to review (1)"
+   ],
+   "edgeCases": [
+    "chart slot inline SVG",
+    "budget 80% / over cap",
+    "provider failure",
+    "guardrail refusal real people / living artist",
+    "admin forced human-only",
+    "upload too small",
+    "alt text empty",
+    "slow generation",
+    "stakeholder read-only"
+   ]
+  },
+  {
+   "id": "F5",
+   "name": "Approve with soft override -> MR opens",
+   "clickBudget": 4,
+   "happyPathClicks": 4,
+   "inputs": 1,
+   "meetsBudget": true,
+   "source": "01 (approve clean post 4 clicks)",
+   "steps": [
+    "/approvals?post=implant-vs-bridge (0)",
+    "ReadinessGrid: all hard checks pass",
+    "override reason (input)",
+    "3 assertions (1-3)",
+    "Approve and open MR (4)",
+    "toast 'MR !16 opened on GitHub'"
+   ],
+   "edgeCases": [
+    "hard blocks locked",
+    "reason too short",
+    "send back",
+    "MR open fails (approval kept)",
+    "draft changed resets assertions",
+    "role gated; admin cannot bypass",
+    "refresh cycle diff vs live",
+    "mobile pager"
+   ]
+  },
+  {
+   "id": "F6",
+   "name": "MR lifecycle: CI failing, conflict, merged -> Live -> KAS in 24h",
+   "clickBudget": 7,
+   "happyPathClicks": 7,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "derived",
+   "steps": [
+    "CI failing notification -> Fix link (1)",
+    "Accept (2)",
+    "Re-approve and update MR (3)",
+    "3 assertions (4-6)",
+    "Approve and update MR (7)",
+    "conflict: auto rebase + re-render from manifest (0) or developer 'Resolve on GitHub' (1)",
+    "merged: webhook -> Live, indexing request, KAS scheduled +24h (0)"
+   ],
+   "edgeCases": [
+    "no CI configured",
+    "CI pending long",
+    "MR closed",
+    "indexing not allowed",
+    "webhook down -> poll",
+    "manifest changed before rebase"
+   ]
+  },
+  {
+   "id": "F7",
+   "name": "Developer onboarding + template ingestion",
+   "clickBudget": 13,
+   "happyPathClicks": 13,
+   "inputs": 2,
+   "meetsBudget": true,
+   "source": "derived (P7): onboarding <= 7 + ingestion <= 6",
+   "steps": [
+    "Site name + domain (2 inputs) Continue (1)",
+    "Install GitHub app (2)",
+    "repo Continue (3)",
+    "Confirm 4 paths (4)",
+    "Connect Search Console (5)",
+    "Continue (6)",
+    "Ingest template (7)",
+    "FileDrop lumen-site.zip (8)",
+    "map div.cta-inline -> CTA block (9-10)",
+    "map aside.author-card -> Author bio (11-12)",
+    "Confirm manifest v1 (13)"
+   ],
+   "edgeCases": [
+    "all-repos install",
+    "path missing in main",
+    "branch pattern without {slug}",
+    "never push to base",
+    "skip Search Console -> DataGap",
+    "property mismatch",
+    "zip without sample post / too big",
+    "template has no table",
+    "Ignore mapping",
+    "re-ingest -> new version",
+    "specialist gated"
+   ]
+  },
+  {
+   "id": "F8",
+   "name": "SEO review: prove a post did something",
+   "clickBudget": 3,
+   "happyPathClicks": 3,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "derived (J5)",
+   "steps": [
+    "/seo headline 'Gap to phase projection -6.2%' (0)",
+    "snapshot Select 'After !14 merged' (1-2)",
+    "KasTable row 'emergency dentist lekki' (3)",
+    "keyword sheet: positions, snapshots, pages"
+   ],
+   "edgeCases": [
+    "Search Console missing",
+    "week gap",
+    "snapshot < 24h",
+    "Ahrefs missing",
+    "stakeholder read"
+   ]
+  },
+  {
+   "id": "F9",
+   "name": "Run now with cost estimate; refused over cap",
+   "clickBudget": 2,
+   "happyPathClicks": 2,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "derived + PRD cost controls",
+   "steps": [
+    "ScheduleRow Run now (1)",
+    "estimate dialog Run now (2)",
+    "refused: Run now (1) -> estimate $62.00 > $54.00 left; LockedAction + message"
+   ],
+   "edgeCases": [
+    "80% alert",
+    "admin raise cap",
+    "already running",
+    "actual exceeds estimate -> stop at cap",
+    "missed schedule catch-up",
+    "role gated"
+   ]
+  },
+  {
+   "id": "F10",
+   "name": "Stakeholder comment-only",
+   "clickBudget": 1,
+   "happyPathClicks": 1,
+   "inputs": 1,
+   "meetsBudget": true,
+   "source": "derived",
+   "steps": [
+    "email deep link -> /posts/root-canal-recovery (0)",
+    "type comment (input) + Comment (1)"
+   ],
+   "edgeCases": [
+    "comment after approval",
+    "empty comment",
+    "approvals read-only"
+   ]
+  },
+  {
+   "id": "F11",
+   "name": "Ledger aging (7 overdue / 14 named blocker)",
+   "clickBudget": 4,
+   "happyPathClicks": 4,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "PRD ledger + derived",
+   "steps": [
+    "automatic: To-do 0-6 d, Overdue 7-13 d, Blocker >= 14 d with downstream cost (0)",
+    "clear: LedgerItem (1) -> Upload own (2) -> file (3) -> Use upload (4)"
+   ],
+   "edgeCases": [
+    "downstream closed -> auto-close",
+    "reassign keeps age",
+    "no snooze",
+    "owner removed"
+   ]
+  },
+  {
+   "id": "F12",
+   "name": "Reschedule by dragging a card to another week",
+   "clickBudget": 1,
+   "happyPathClicks": 1,
+   "inputs": 0,
+   "meetsBudget": true,
+   "source": "PRD M1",
+   "steps": [
+    "/plan?view=calendar",
+    "drag 'how long do dental implants last' W40 -> W41 (1)",
+    "toast 'Moved to W41 ... Undo'"
+   ],
+   "edgeCases": [
+    "past week not droppable",
+    "already drafting -> publish week only",
+    "MR open / Live not draggable",
+    "role: no drag",
+    "drop fails -> revert",
+    "keyboard alternative (gap G1)"
+   ]
+  }
+ ],
+ "screens": [
+  {
+   "id": "S00",
+   "name": "Redirect",
+   "route": "/",
+   "ref": null,
+   "primaryCta": null,
+   "roles": "all",
+   "components": [
+    "AppFrame",
+    "Skeleton",
+    "Callout",
+    "Button"
+   ],
+   "states": {
+    "loaded": "redirect",
+    "empty": "n/a",
+    "loading": "rail skeleton",
+    "error": "Couldn't open Lumen Dental.",
+    "blocked": "signed out -> auth"
+   }
+  },
+  {
+   "id": "S01",
+   "name": "Connect a site",
+   "route": "/onboarding",
+   "ref": null,
+   "primaryCta": "Continue (per step)",
+   "roles": "developer, admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "Stepper",
+    "TextField",
+    "SegmentedControl",
+    "Button",
+    "Select",
+    "Callout",
+    "ScopeNote",
+    "SourceNote",
+    "KeyValue",
+    "EmptyState",
+    "Skeleton",
+    "RoleGate",
+    "Card"
+   ],
+   "states": {
+    "loaded": "current step with inferred values",
+    "empty": "no app installation yet",
+    "loading": "repo scan skeleton",
+    "error": "app not detected / OAuth failed",
+    "blocked": "specialist/stakeholder RoleGate"
+   }
+  },
+  {
+   "id": "S02",
+   "name": "Content plan",
+   "route": "/plan",
+   "ref": "01",
+   "primaryCta": "New idea",
+   "roles": "all; write specialist/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "SegmentedControl",
+    "Callout",
+    "StatStrip",
+    "SplitPane",
+    "PipelineColumn",
+    "PostCard",
+    "StateChip",
+    "Chip",
+    "ProgressBar",
+    "AgentBadge",
+    "HumanBadge",
+    "CalendarWeekGrid",
+    "PillarMatrix",
+    "Card",
+    "CardHeader",
+    "LedgerItem",
+    "KeyValue",
+    "Button",
+    "StatTile",
+    "Sparkline",
+    "ConcentrationGauge",
+    "SourceNote",
+    "EmptyState",
+    "Skeleton",
+    "RoleGate",
+    "PaginationDots",
+    "useToast",
+    "Dot",
+    "Kbd",
+    "Tooltip"
+   ],
+   "states": {
+    "loaded": "board as ref 01",
+    "empty": "no posts; run keyword swarm",
+    "loading": "skeleton strip, columns, aside",
+    "error": "Couldn't load the plan.",
+    "blocked": "stakeholder/developer read-only; no-repo callout"
+   }
+  },
+  {
+   "id": "S03",
+   "name": "New idea",
+   "route": "/plan/new",
+   "ref": null,
+   "primaryCta": "Add to plan",
+   "roles": "specialist, admin",
+   "components": [
+    "Sheet",
+    "TextField",
+    "AgentBadge",
+    "KeyValue",
+    "DataGap",
+    "Select",
+    "Chip",
+    "Button",
+    "Callout",
+    "LockedAction",
+    "Skeleton",
+    "RoleGate"
+   ],
+   "states": {
+    "loaded": "enriched fields",
+    "empty": "field empty",
+    "loading": "enrichment skeleton",
+    "error": "lookup failed; add anyway",
+    "blocked": "duplicate / role"
+   }
+  },
+  {
+   "id": "S04",
+   "name": "Posts",
+   "route": "/posts",
+   "ref": null,
+   "primaryCta": "New idea",
+   "roles": "all",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "TextField",
+    "Select",
+    "DataTable",
+    "StateChip",
+    "AgentBadge",
+    "Card",
+    "EmptyState",
+    "Skeleton",
+    "Callout",
+    "RoleGate",
+    "Button"
+   ],
+   "states": {
+    "loaded": "58 rows",
+    "empty": "no posts / no match",
+    "loading": "8 skeleton rows",
+    "error": "table callout",
+    "blocked": "stakeholder read-only"
+   }
+  },
+  {
+   "id": "S05",
+   "name": "Split editor",
+   "route": "/posts/[id]",
+   "ref": "02",
+   "primaryCta": "Approve (LockedAction)",
+   "roles": "edit specialist/admin; comment stakeholder; read developer",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "LockedAction",
+    "StateChip",
+    "OriginTag",
+    "TextField",
+    "FactHighlight",
+    "FactMarkerCard",
+    "AgentDiff",
+    "Callout",
+    "Composer",
+    "CardHeader",
+    "Chip",
+    "SegmentedControl",
+    "TemplatePreview",
+    "SourceNote",
+    "Card",
+    "GateChecklist",
+    "VersionList",
+    "Button",
+    "CommentThread",
+    "Timeline",
+    "EmptyState",
+    "KeyValue",
+    "ProgressBar",
+    "AgentBadge",
+    "Skeleton",
+    "RoleGate",
+    "Dialog",
+    "OverrideReason",
+    "Sheet",
+    "useToast",
+    "Kbd"
+   ],
+   "states": {
+    "loaded": "as ref 02",
+    "empty": "Idea: Promote to brief; Briefed: Generate now with estimate",
+    "loading": "drafting progress 'Writing section 4 of 7'",
+    "error": "generation failed / save failed / preview failed",
+    "blocked": "LockedAction reasons; stakeholder/developer read-only; after-approval re-approve; template held; over cap"
+   }
+  },
+  {
+   "id": "S06",
+   "name": "Version history",
+   "route": "/posts/[id]/versions",
+   "ref": null,
+   "primaryCta": "Restore v3",
+   "roles": "restore specialist/admin",
+   "components": [
+    "Sheet",
+    "VersionList",
+    "SourceCodeFrame",
+    "Button",
+    "DataGap",
+    "Skeleton",
+    "Callout",
+    "RoleGate"
+   ],
+   "states": {
+    "loaded": "4 versions",
+    "empty": "only v1; not live",
+    "loading": "skeleton",
+    "error": "Couldn't load versions.",
+    "blocked": "restore gated / needs re-approval"
+   }
+  },
+  {
+   "id": "S07",
+   "name": "Image pipeline for a post",
+   "route": "/posts/[id]/assets",
+   "ref": "03",
+   "primaryCta": "Use candidate 3; Send to review",
+   "roles": "act specialist/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "BudgetCard",
+    "Meter",
+    "LockedAction",
+    "Section",
+    "SlotRow",
+    "HumanBadge",
+    "Callout",
+    "CardHeader",
+    "ProviderBadge",
+    "CandidateGrid",
+    "PromptEditor",
+    "Chip",
+    "KeyValue",
+    "TextArea",
+    "ProvenanceCard",
+    "Button",
+    "PaginationDots",
+    "Sheet",
+    "FileDrop",
+    "Dialog",
+    "EmptyState",
+    "Skeleton",
+    "AgentBadge",
+    "ProgressBar",
+    "RoleGate",
+    "LedgerItem",
+    "useToast"
+   ],
+   "states": {
+    "loaded": "as ref 03",
+    "empty": "no production sheet",
+    "loading": "generating skeleton tiles",
+    "error": "provider failure / guardrail refusal",
+    "blocked": "over image cap / forced human-only / role"
+   }
+  },
+  {
+   "id": "S08",
+   "name": "Image slot queue",
+   "route": "/assets",
+   "ref": null,
+   "primaryCta": "Upload (first human-only card)",
+   "roles": "specialist/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "SegmentedControl",
+    "Section",
+    "Card",
+    "SlotRow",
+    "LedgerItem",
+    "Button",
+    "ProgressBar",
+    "BudgetCard",
+    "ShareBar",
+    "SourceNote",
+    "EmptyState",
+    "Skeleton",
+    "Callout",
+    "RoleGate",
+    "HumanBadge"
+   ],
+   "states": {
+    "loaded": "human-only first",
+    "empty": "every slot filled",
+    "loading": "skeleton",
+    "error": "Couldn't load image slots.",
+    "blocked": "stakeholder/developer read-only"
+   }
+  },
+  {
+   "id": "S09",
+   "name": "Templates",
+   "route": "/templates",
+   "ref": null,
+   "primaryCta": "Re-ingest template",
+   "roles": "developer/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "Card",
+    "CardHeader",
+    "Chip",
+    "KeyValue",
+    "OutputFormatPicker",
+    "DataTable",
+    "Callout",
+    "EmptyState",
+    "Skeleton",
+    "RoleGate",
+    "Button"
+   ],
+   "states": {
+    "loaded": "v2 current, v1 superseded",
+    "empty": "no template",
+    "loading": "skeleton",
+    "error": "Couldn't load templates.",
+    "blocked": "specialist/stakeholder RoleGate"
+   }
+  },
+  {
+   "id": "S10",
+   "name": "Template ingestion",
+   "route": "/templates/ingest",
+   "ref": "04",
+   "primaryCta": "Confirm manifest v1",
+   "roles": "developer/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "Stepper",
+    "Chip",
+    "LockedAction",
+    "CardHeader",
+    "SegmentedControl",
+    "SourceCodeFrame",
+    "OutputFormatPicker",
+    "Section",
+    "ManifestMappingRow",
+    "Select",
+    "SourceNote",
+    "FileDrop",
+    "ProgressBar",
+    "Callout",
+    "Button",
+    "Sheet",
+    "Skeleton",
+    "RoleGate"
+   ],
+   "states": {
+    "loaded": "confirm step as ref 04",
+    "empty": "upload idle",
+    "loading": "parse progress",
+    "error": "no sample post / invalid HTML / too big",
+    "blocked": "unmapped items / role"
+   }
+  },
+  {
+   "id": "S11",
+   "name": "Approvals",
+   "route": "/approvals",
+   "ref": "05",
+   "primaryCta": "Approve and open MR",
+   "roles": "approve specialist/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "TextField",
+    "ApprovalQueueItem",
+    "Callout",
+    "Chip",
+    "OriginTag",
+    "Button",
+    "ReadinessGrid",
+    "OverrideReason",
+    "AssertionList",
+    "LockedAction",
+    "MRPreview",
+    "ScopeNote",
+    "KeyValue",
+    "PaginationDots",
+    "EmptyState",
+    "Skeleton",
+    "RoleGate",
+    "Dialog",
+    "TextArea",
+    "useToast"
+   ],
+   "states": {
+    "loaded": "as ref 05",
+    "empty": "nothing waiting",
+    "loading": "skeletons; 'Opening merge request...'",
+    "error": "MR open failed, approval kept",
+    "blocked": "hard blocks / reason missing / role"
+   }
+  },
+  {
+   "id": "S12",
+   "name": "Merge requests",
+   "route": "/merge-requests",
+   "ref": null,
+   "primaryCta": "Open on GitHub / Resolve on GitHub",
+   "roles": "developer; others view",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "SegmentedControl",
+    "DataTable",
+    "CIStatus",
+    "Chip",
+    "SplitPane",
+    "CardHeader",
+    "KeyValue",
+    "Timeline",
+    "SourceCodeFrame",
+    "ScopeNote",
+    "Button",
+    "Card",
+    "Sheet",
+    "EmptyState",
+    "Skeleton",
+    "Dot",
+    "Callout",
+    "DataGap"
+   ],
+   "states": {
+    "loaded": "!13-!16",
+    "empty": "no open MRs",
+    "loading": "skeleton; CI pending pulse",
+    "error": "Couldn't reach GitHub.",
+    "blocked": "conflict waiting on developer / repo disconnected / stakeholder read-only"
+   }
+  },
+  {
+   "id": "S13",
+   "name": "SEO trajectory + KAS",
+   "route": "/seo",
+   "ref": "06",
+   "primaryCta": "Bi-weekly report",
+   "roles": "all",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "SegmentedControl",
+    "SourceNote",
+    "Button",
+    "StatTile",
+    "TrajectoryChart",
+    "StatusLight",
+    "CardHeader",
+    "Select",
+    "ConcentrationGauge",
+    "KasTable",
+    "KasRow",
+    "ShareBar",
+    "DataTable",
+    "Sparkline",
+    "Chip",
+    "Section",
+    "LedgerItem",
+    "Sheet",
+    "Timeline",
+    "EmptyState",
+    "Skeleton",
+    "Callout",
+    "DataGap",
+    "Card"
+   ],
+   "states": {
+    "loaded": "as ref 06",
+    "empty": "< 2 weeks of data",
+    "loading": "skeleton",
+    "error": "Couldn't load trajectory.",
+    "blocked": "Search Console missing -> DataGap; Ahrefs missing; week gap"
+   }
+  },
+  {
+   "id": "S14",
+   "name": "Bi-weekly reports",
+   "route": "/seo/reports",
+   "ref": null,
+   "primaryCta": "Open latest",
+   "roles": "all",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "DataTable",
+    "Chip",
+    "Card",
+    "StatTile",
+    "TrajectoryChart",
+    "StatusLight",
+    "KasTable",
+    "Section",
+    "Callout",
+    "LedgerItem",
+    "SourceNote",
+    "Select",
+    "EmptyState",
+    "Skeleton",
+    "DataGap"
+   ],
+   "states": {
+    "loaded": "edition #7",
+    "empty": "no reports yet",
+    "loading": "skeleton",
+    "error": "Couldn't open edition #7.",
+    "blocked": "stored DataGaps shown as stored"
+   }
+  },
+  {
+   "id": "S15",
+   "name": "Runs & ledger",
+   "route": "/runs",
+   "ref": null,
+   "primaryCta": "Run now",
+   "roles": "trigger specialist/admin",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "Tabs",
+    "BudgetCard",
+    "Meter",
+    "ScheduleRow",
+    "Toggle",
+    "Button",
+    "LedgerItem",
+    "DataTable",
+    "RunRow",
+    "Chip",
+    "EmptyState",
+    "Skeleton",
+    "Callout",
+    "LockedAction",
+    "RoleGate",
+    "Dialog",
+    "KeyValue"
+   ],
+   "states": {
+    "loaded": "schedules, ledger, run log",
+    "empty": "no runs / no ledger items",
+    "loading": "skeleton",
+    "error": "per-region callout",
+    "blocked": "over cap / already running / role"
+   }
+  },
+  {
+   "id": "S16",
+   "name": "Settings",
+   "route": "/settings",
+   "ref": null,
+   "primaryCta": "Save changes",
+   "roles": "admin; developer site & repo; specialist/stakeholder limited",
+   "components": [
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "AgentStatusPill",
+    "IconButton",
+    "MobileTabBar",
+    "PageHeader",
+    "Icon",
+    "Avatar",
+    "Menu",
+    "ToastProvider",
+    "Tabs",
+    "Select",
+    "KeyValue",
+    "ScopeNote",
+    "Chip",
+    "TextField",
+    "BudgetCard",
+    "Toggle",
+    "DataTable",
+    "SourceNote",
+    "Button",
+    "Callout",
+    "TextArea",
+    "Timeline",
+    "EmptyState",
+    "Skeleton",
+    "RoleGate",
+    "useToast"
+   ],
+   "states": {
+    "loaded": "tab content",
+    "empty": "just you / no activity",
+    "loading": "skeleton",
+    "error": "save failed",
+    "blocked": "non-admin RoleGate"
+   }
+  },
+  {
+   "id": "S17",
+   "name": "Styleguide",
+   "route": "/styleguide",
+   "ref": null,
+   "primaryCta": null,
+   "roles": "builders",
+   "components": [
+    "PageHeader",
+    "Section",
+    "Chip",
+    "Callout",
+    "AppFrame",
+    "IconRail",
+    "RailButton",
+    "TopBar",
+    "SiteSwitcher",
+    "CommandSearch",
+    "CommandPalette",
+    "AgentStatusPill",
+    "MobileTabBar",
+    "SplitPane",
+    "Icon",
+    "Button",
+    "IconButton",
+    "SegmentedControl",
+    "Tabs",
+    "TextField",
+    "TextArea",
+    "Select",
+    "Checkbox",
+    "Toggle",
+    "Dot",
+    "Kbd",
+    "Menu",
+    "Tooltip",
+    "Composer",
+    "FileDrop",
+    "Stepper",
+    "LockedAction",
+    "Card",
+    "CardHeader",
+    "StatStrip",
+    "StatTile",
+    "KeyValue",
+    "SourceNote",
+    "DataGap",
+    "EmptyState",
+    "Skeleton",
+    "ProgressBar",
+    "Meter",
+    "PaginationDots",
+    "Avatar",
+    "AvatarStack",
+    "Timeline",
+    "DataTable",
+    "Sheet",
+    "Dialog",
+    "ToastProvider",
+    "useToast",
+    "Divider",
+    "TrajectoryChart",
+    "Sparkline",
+    "ShareBar",
+    "StatusLight",
+    "ConcentrationGauge",
+    "CalendarWeekGrid",
+    "PillarMatrix",
+    "StateChip",
+    "AgentBadge",
+    "HumanBadge",
+    "PostCard",
+    "PipelineColumn",
+    "GateChecklist",
+    "FactMarkerCard",
+    "FactHighlight",
+    "AgentDiff",
+    "VersionList",
+    "OriginTag",
+    "TemplatePreview",
+    "SlotRow",
+    "CandidateGrid",
+    "ProviderBadge",
+    "PromptEditor",
+    "ProvenanceCard",
+    "ManifestMappingRow",
+    "SourceCodeFrame",
+    "OutputFormatPicker",
+    "ApprovalQueueItem",
+    "ReadinessGrid",
+    "OverrideReason",
+    "AssertionList",
+    "MRPreview",
+    "CIStatus",
+    "KasRow",
+    "KasTable",
+    "LedgerItem",
+    "RunRow",
+    "ScheduleRow",
+    "BudgetCard",
+    "RoleGate",
+    "CommentThread",
+    "ScopeNote"
+   ],
+   "states": {
+    "loaded": "all sections",
+    "empty": "n/a",
+    "loading": "n/a",
+    "error": "per-section callout",
+    "blocked": "404 in production"
+   }
+  },
+  {
+   "id": "O1",
+   "name": "Command palette",
+   "route": "overlay:cmdk",
+   "ref": null,
+   "primaryCta": null,
+   "roles": "all",
+   "components": [
+    "CommandPalette",
+    "StateChip",
+    "Skeleton",
+    "Callout",
+    "Kbd"
+   ],
+   "states": {
+    "loaded": "filtered list",
+    "empty": "no match",
+    "loading": "skeleton",
+    "error": "search unavailable",
+    "blocked": "disabled actions with reason"
+   }
+  },
+  {
+   "id": "O2",
+   "name": "Notifications",
+   "route": "overlay:notifications",
+   "ref": null,
+   "primaryCta": null,
+   "roles": "all",
+   "components": [
+    "Sheet",
+    "DataTable",
+    "Dot",
+    "Button",
+    "EmptyState",
+    "Skeleton",
+    "Callout"
+   ],
+   "states": {
+    "loaded": "notification rows",
+    "empty": "You're all caught up",
+    "loading": "skeleton",
+    "error": "callout",
+    "blocked": "n/a"
+   }
+  },
+  {
+   "id": "O3",
+   "name": "Account menu + role switcher",
+   "route": "overlay:account",
+   "ref": null,
+   "primaryCta": null,
+   "roles": "all",
+   "components": [
+    "Avatar",
+    "Menu"
+   ],
+   "states": {
+    "loaded": "menu",
+    "empty": "n/a",
+    "loading": "n/a",
+    "error": "n/a",
+    "blocked": "n/a"
+   }
+  },
+  {
+   "id": "O4",
+   "name": "Run estimate",
+   "route": "overlay:run-estimate",
+   "ref": null,
+   "primaryCta": "Run now",
+   "roles": "specialist/admin",
+   "components": [
+    "Dialog",
+    "KeyValue",
+    "Meter",
+    "Callout",
+    "Button",
+    "LockedAction",
+    "Skeleton"
+   ],
+   "states": {
+    "loaded": "estimate + cap",
+    "empty": "n/a",
+    "loading": "estimate skeleton, primary disabled",
+    "error": "no estimate -> no run",
+    "blocked": "over cap / role"
+   }
+  }
+ ],
+ "components": [
+  "AppFrame",
+  "IconRail",
+  "RailButton",
+  "TopBar",
+  "SiteSwitcher",
+  "CommandSearch",
+  "CommandPalette",
+  "AgentStatusPill",
+  "PageHeader",
+  "MobileTabBar",
+  "SplitPane",
+  "Icon",
+  "Button",
+  "IconButton",
+  "SegmentedControl",
+  "Tabs",
+  "TextField",
+  "TextArea",
+  "Select",
+  "Checkbox",
+  "Toggle",
+  "Chip",
+  "Dot",
+  "Kbd",
+  "Menu",
+  "Tooltip",
+  "Composer",
+  "FileDrop",
+  "Stepper",
+  "LockedAction",
+  "Card",
+  "CardHeader",
+  "Section",
+  "StatStrip",
+  "StatTile",
+  "KeyValue",
+  "Callout",
+  "SourceNote",
+  "DataGap",
+  "EmptyState",
+  "Skeleton",
+  "ProgressBar",
+  "Meter",
+  "PaginationDots",
+  "Avatar",
+  "AvatarStack",
+  "Timeline",
+  "DataTable",
+  "Sheet",
+  "Dialog",
+  "ToastProvider",
+  "useToast",
+  "Divider",
+  "TrajectoryChart",
+  "Sparkline",
+  "ShareBar",
+  "StatusLight",
+  "ConcentrationGauge",
+  "CalendarWeekGrid",
+  "PillarMatrix",
+  "StateChip",
+  "AgentBadge",
+  "HumanBadge",
+  "PostCard",
+  "PipelineColumn",
+  "GateChecklist",
+  "FactMarkerCard",
+  "FactHighlight",
+  "AgentDiff",
+  "VersionList",
+  "OriginTag",
+  "TemplatePreview",
+  "SlotRow",
+  "CandidateGrid",
+  "ProviderBadge",
+  "PromptEditor",
+  "ProvenanceCard",
+  "ManifestMappingRow",
+  "SourceCodeFrame",
+  "OutputFormatPicker",
+  "ApprovalQueueItem",
+  "ReadinessGrid",
+  "OverrideReason",
+  "AssertionList",
+  "MRPreview",
+  "CIStatus",
+  "KasRow",
+  "KasTable",
+  "LedgerItem",
+  "RunRow",
+  "ScheduleRow",
+  "BudgetCard",
+  "RoleGate",
+  "CommentThread",
+  "ScopeNote"
+ ],
+ "componentUsage": {
+  "AppFrame": [
+   "S00",
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "IconRail": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "RailButton": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "TopBar": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "SiteSwitcher": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "CommandSearch": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "CommandPalette": [
+   "O1"
+  ],
+  "AgentStatusPill": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "PageHeader": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "MobileTabBar": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "SplitPane": [
+   "S02",
+   "S12"
+  ],
+  "Icon": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "Button": [
+   "S00",
+   "S01",
+   "S02",
+   "S03",
+   "S04",
+   "S05",
+   "S06",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S15",
+   "S16",
+   "O2",
+   "O4"
+  ],
+  "IconButton": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "SegmentedControl": [
+   "S01",
+   "S02",
+   "S05",
+   "S08",
+   "S10",
+   "S12",
+   "S13"
+  ],
+  "Tabs": [
+   "S15",
+   "S16"
+  ],
+  "TextField": [
+   "S01",
+   "S03",
+   "S04",
+   "S05",
+   "S11",
+   "S16"
+  ],
+  "TextArea": [
+   "S07",
+   "S11",
+   "S16"
+  ],
+  "Select": [
+   "S01",
+   "S03",
+   "S04",
+   "S10",
+   "S13",
+   "S14",
+   "S16"
+  ],
+  "Checkbox": [],
+  "Toggle": [
+   "S15",
+   "S16"
+  ],
+  "Chip": [
+   "S02",
+   "S03",
+   "S05",
+   "S07",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "Dot": [
+   "S02",
+   "S12",
+   "O2"
+  ],
+  "Kbd": [
+   "S02",
+   "S05",
+   "O1"
+  ],
+  "Menu": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O3"
+  ],
+  "Tooltip": [
+   "S02"
+  ],
+  "Composer": [
+   "S05"
+  ],
+  "FileDrop": [
+   "S07",
+   "S10"
+  ],
+  "Stepper": [
+   "S01",
+   "S10"
+  ],
+  "LockedAction": [
+   "S03",
+   "S05",
+   "S07",
+   "S10",
+   "S11",
+   "S15",
+   "O4"
+  ],
+  "Card": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S08",
+   "S09",
+   "S12",
+   "S13",
+   "S14"
+  ],
+  "CardHeader": [
+   "S02",
+   "S05",
+   "S07",
+   "S09",
+   "S10",
+   "S12",
+   "S13"
+  ],
+  "Section": [
+   "S07",
+   "S08",
+   "S10",
+   "S13",
+   "S14"
+  ],
+  "StatStrip": [
+   "S02"
+  ],
+  "StatTile": [
+   "S02",
+   "S13",
+   "S14"
+  ],
+  "KeyValue": [
+   "S01",
+   "S02",
+   "S03",
+   "S05",
+   "S07",
+   "S09",
+   "S11",
+   "S12",
+   "S15",
+   "S16",
+   "O4"
+  ],
+  "Callout": [
+   "S00",
+   "S01",
+   "S02",
+   "S03",
+   "S04",
+   "S05",
+   "S06",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O1",
+   "O2",
+   "O4"
+  ],
+  "SourceNote": [
+   "S01",
+   "S02",
+   "S05",
+   "S08",
+   "S10",
+   "S13",
+   "S14",
+   "S16"
+  ],
+  "DataGap": [
+   "S03",
+   "S06",
+   "S12",
+   "S13",
+   "S14"
+  ],
+  "EmptyState": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O2"
+  ],
+  "Skeleton": [
+   "S00",
+   "S01",
+   "S02",
+   "S03",
+   "S04",
+   "S05",
+   "S06",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O1",
+   "O2",
+   "O4"
+  ],
+  "ProgressBar": [
+   "S02",
+   "S05",
+   "S07",
+   "S08",
+   "S10"
+  ],
+  "Meter": [
+   "S07",
+   "S15",
+   "O4"
+  ],
+  "PaginationDots": [
+   "S02",
+   "S07",
+   "S11"
+  ],
+  "Avatar": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O3"
+  ],
+  "AvatarStack": [],
+  "Timeline": [
+   "S05",
+   "S12",
+   "S13",
+   "S16"
+  ],
+  "DataTable": [
+   "S04",
+   "S09",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16",
+   "O2"
+  ],
+  "Sheet": [
+   "S03",
+   "S05",
+   "S06",
+   "S07",
+   "S10",
+   "S12",
+   "S13",
+   "O2"
+  ],
+  "Dialog": [
+   "S05",
+   "S07",
+   "S11",
+   "S15",
+   "O4"
+  ],
+  "ToastProvider": [
+   "S01",
+   "S02",
+   "S04",
+   "S05",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S12",
+   "S13",
+   "S14",
+   "S15",
+   "S16"
+  ],
+  "useToast": [
+   "S02",
+   "S05",
+   "S07",
+   "S11",
+   "S16"
+  ],
+  "Divider": [],
+  "TrajectoryChart": [
+   "S13",
+   "S14"
+  ],
+  "Sparkline": [
+   "S02",
+   "S13"
+  ],
+  "ShareBar": [
+   "S08",
+   "S13"
+  ],
+  "StatusLight": [
+   "S13",
+   "S14"
+  ],
+  "ConcentrationGauge": [
+   "S02",
+   "S13"
+  ],
+  "CalendarWeekGrid": [
+   "S02"
+  ],
+  "PillarMatrix": [
+   "S02"
+  ],
+  "StateChip": [
+   "S02",
+   "S04",
+   "S05",
+   "O1"
+  ],
+  "AgentBadge": [
+   "S02",
+   "S03",
+   "S04",
+   "S05",
+   "S07"
+  ],
+  "HumanBadge": [
+   "S02",
+   "S07",
+   "S08"
+  ],
+  "PostCard": [
+   "S02"
+  ],
+  "PipelineColumn": [
+   "S02"
+  ],
+  "GateChecklist": [
+   "S05"
+  ],
+  "FactMarkerCard": [
+   "S05"
+  ],
+  "FactHighlight": [
+   "S05"
+  ],
+  "AgentDiff": [
+   "S05"
+  ],
+  "VersionList": [
+   "S05",
+   "S06"
+  ],
+  "OriginTag": [
+   "S05",
+   "S11"
+  ],
+  "TemplatePreview": [
+   "S05"
+  ],
+  "SlotRow": [
+   "S07",
+   "S08"
+  ],
+  "CandidateGrid": [
+   "S07"
+  ],
+  "ProviderBadge": [
+   "S07"
+  ],
+  "PromptEditor": [
+   "S07"
+  ],
+  "ProvenanceCard": [
+   "S07"
+  ],
+  "ManifestMappingRow": [
+   "S10"
+  ],
+  "SourceCodeFrame": [
+   "S06",
+   "S10",
+   "S12"
+  ],
+  "OutputFormatPicker": [
+   "S09",
+   "S10"
+  ],
+  "ApprovalQueueItem": [
+   "S11"
+  ],
+  "ReadinessGrid": [
+   "S11"
+  ],
+  "OverrideReason": [
+   "S05",
+   "S11"
+  ],
+  "AssertionList": [
+   "S11"
+  ],
+  "MRPreview": [
+   "S11"
+  ],
+  "CIStatus": [
+   "S12"
+  ],
+  "KasRow": [
+   "S13"
+  ],
+  "KasTable": [
+   "S13",
+   "S14"
+  ],
+  "LedgerItem": [
+   "S02",
+   "S07",
+   "S08",
+   "S13",
+   "S14",
+   "S15"
+  ],
+  "RunRow": [
+   "S15"
+  ],
+  "ScheduleRow": [
+   "S15"
+  ],
+  "BudgetCard": [
+   "S07",
+   "S08",
+   "S15",
+   "S16"
+  ],
+  "RoleGate": [
+   "S01",
+   "S02",
+   "S03",
+   "S04",
+   "S05",
+   "S06",
+   "S07",
+   "S08",
+   "S09",
+   "S10",
+   "S11",
+   "S15",
+   "S16"
+  ],
+  "CommentThread": [
+   "S05"
+  ],
+  "ScopeNote": [
+   "S01",
+   "S11",
+   "S12",
+   "S16"
+  ]
+ },
+ "inventoryGaps": [
+  {
+   "id": "G1",
+   "component": "CalendarWeekGrid",
+   "need": "onMove(postId, week) + keyboard move (WCAG 2.5.7)",
+   "flows": [
+    "F12"
+   ]
+  },
+  {
+   "id": "G2",
+   "component": "AgentDiff",
+   "need": "read-only generic diff for version vs live and MR conflict",
+   "screens": [
+    "S06",
+    "S12"
+   ]
+  }
+ ]
+}

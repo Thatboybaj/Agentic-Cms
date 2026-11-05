@@ -1,0 +1,615 @@
+Agentic CMS: Product Requirements Document
+
+Agentic CMS: Product Requirements
+Document
+
+ S ep 25, 2026 · @Olayinka Adeyefa
+
+Summary
+
+The Agentic CMS is the product surface that turns the ten-agent SEO harness into
+shipped pages. It plans, drafts, illustrates, and renders blog posts into a connected site's
+real markup, then opens a merge request a developer can review and merge.
+The harness already produces good content. What it does not do is close the last mile.
+Today a drafted post sits as a markdown file until a human pastes it into a CMS, sources
+images by hand, rebuilds the page markup, and commits it. That gap is where cadence
+dies: posts stall, image slots go unfilled, and the SEO plan drifts from what is actually live.
+The CMS closes that gap with three additions to the harness:
+ 1. A native CMS agent that owns the post lifecycle, keeps the content plan current, and
+
+    writes repo-ready output rather than loose files.
+ 2. A visual asset pipeline routing image slots to Higgsfield MCP, OpenAI image models, or
+
+    open-source models by API and MCP, so no post waits on manual design work.
+ 3. A template engine that ingests the site's own blog template as HTML or a ZIP bundle
+
+    and renders posts into that exact markup, so merge requests look handwritten.
+On top of that sits the measurement layer: an SEO trajectory view and a Keyword
+Attribution Score that quantifies how much of the company's ranking weight sits on
+which keywords, recalculated every time a post ships.
+
+Goals and non-goals
+
+v1 succeeds if a content specialist can run a client's entire blog programme without
+opening a code editor.
+Goals
+ 1. Post goes from idea to merge-request-ready in one workspace, no manual file handling.
+ 2. Every image slot filled by an agent-generated asset or a clearly flagged human upload,
+
+    never blocking publication silently.
+ 3. Site template ingested once, then every post renders into that markup without
+
+    developer involvement.
+
+                                                                                                                                                                                                                                            Page 1 of 14
+Agentic CMS: Product Requirements Document
+
+4. Content plan, SEO trajectory, and keyword weight visible on one screen, refreshed
+    automatically.
+
+5. Scheduled and manual triggers both produce identical output quality.
+
+Non-goals for v1
+
+    Direct publishing to production. The CMS opens merge requests; humans merge.
+    Replacing the site's frontend framework or becoming the runtime CMS. Content lives
+    in the repo.
+    Multi-language content. English only until v2.
+    Paid media, social scheduling, or email. Search only.
+    Rank tracking as a first-party data source. The CMS reads Search Console and optional
+    Ahrefs or Semrush exports.
+
+Success metrics
+
+Metric                                      v1 target                      Measured by
+
+Idea to merge request, median               Under 90 minutes of human      CMS
+                                            time                           timestamps
+
+Posts shipped per specialist per week 4 or more                            Merged MR
+                                                                           count
+Image slots filled without human            70% or more
+upload                                                                     Asset pipeline
+                                            90% or more                    log
+Merge requests merged without
+markup fixes                                Every live post scored within  Repo commit
+                                            24 hours                       diffs
+Keyword Attribution Score coverage
+                                                                           Scoring job log
+
+Users and roles
+
+Four roles, one workspace per client site. Permissions are per site, not global.
+
+Role        Primary job in the Can do                                  Cannot do
+            CMS
+Content                                                                Merge MRs, change
+marketing   Runs the                        Approve posts, trigger     repo config, alter
+specialist  programme day to                runs, edit drafts, upload  model budgets
+            day                             images, sign off prune
+                                            lists
+
+                                                                                  Page 2 of 14
+Agentic CMS: Product Requirements Document
+
+Role              Primary job in the        Can do                   Cannot do
+                  CMS
+Developer / repo  Guards the                Connect repo, ingest     Approve content
+owner             codebase                  templates, review and    quality gates
+                                            merge MRs, set branch
+Client            Reviews and               rules                    Approve, trigger, or
+stakeholder       comments                                           edit
+                                            View plan, comment on
+Agency admin      Owns the                  drafts, view SEO         Bypass the approval
+                  account                   trajectory               gate on content
+
+                                            Everything above plus
+                                            billing, model routing,
+                                            adding sites and users
+
+The specialist is the primary user. Every screen is designed so that person, not an
+engineer, is the one operating it. The developer touches the system twice: once at setup,
+then only to review merge requests.
+
+System architecture
+
+The CMS is a product surface plus one new agent. It does not replace the harness; it gives
+the harness hands.
+
+CMS request flow · 8 stages, 1 human gate, 1 feedback loop
+
+The loop closes on itself: what ships gets scored, and the score reshapes the next cycle's
+plan.
+Three layers
+
+                                                                                                                                                                                                                                           Page 3 of 14
+Agentic CMS: Product Requirements Document
+
+1. Surface layer. The web app: content plan board, post editor, template manager, SEO
+    dashboard, approval queue. This is what the specialist sees.
+
+2. Agent layer. The existing ten harness agents plus the native CMS agent. The CMS
+    agent owns post state, calls the others, and is the only agent with repo write access.
+
+3. Integration layer. MCP and API connections out to image models, the Git host, Search
+    Console, and optional rank data sources.
+
+What the native CMS agent adds
+
+The harness agents produce artifacts. The CMS agent turns artifacts into site changes. It
+holds the post state machine, resolves template slots, names and places files by repo
+convention, writes commit messages and MR descriptions, and recalculates keyword
+attribution after each merge. It is the only component that knows both the content and
+the codebase.
+
+Module 1: Content plan and pipeline
+
+The default landing screen. It answers one question: what is coming, and what is stuck.
+Pipeline board. Posts move through fixed states, each owned by either an agent or a
+human:
+
+State      Owner                            Exits when
+
+Idea       Agent                            Specialist promotes it to brief
+
+Briefed    Agent                            Draft generation completes
+
+Drafting   Agent                            Draft and image slots produced
+
+Needs assets Human or agent Every slot filled
+
+In review  Human                            Specialist approves or sends back
+
+MR open    Developer                        Merged or closed
+
+Live       System                           Scored and indexed
+
+Decaying   Agent                            Refresh cycle picks it up
+
+Where ideas come from. Three sources feed the Idea column, deduplicated against live
+and planned posts:
+
+    Scheduled keyword swarm runs, weekly by default
+    Gaps the Keyword Attribution Score exposes, where the plan claims a pillar the
+    content does not cover
+
+                                                                               Page 4 of 14
+Agentic CMS: Product Requirements Document
+
+    Manual entry, a specialist typing a topic or pasting a keyword
+Plan view. A calendar and a pillar matrix over the same data. The calendar shows cadence
+against the action plan target. The matrix shows posts per pillar against planned coverage,
+so thin pillars are visible before they cost rankings.
+Each idea card carries its keyword, intent, estimated difficulty with evidence, pillar, and a
+suggested content type. Cards are draggable; moving one to a different week reschedules
+its generation run.
+
+Module 2: Post creation and editing
+
+A split editor: content on the left, live template preview on the right, agent panel below.
+Generation. Triggering a brief calls the blog writing agent with the brand pack, the
+keyword, and the template's available slots. The agent returns the draft, the image
+production sheet, and any unresolved fact markers. Pillar and money pages route to the
+stronger model automatically.
+Editing. The specialist edits directly, or instructs the agent in the panel: tighten a section,
+add an FAQ, rewrite the direct answer block, change the angle. Every agent edit is a diff
+the specialist accepts or rejects, never a silent overwrite.
+Inline SEO gate. The on-page optimizer runs continuously against the draft and shows a
+live checklist: title length and front-loading, keyword placement in the first 100 words,
+density with the actual count, heading hierarchy, internal and external links, FAQ count,
+schema readiness. Failing items block approval unless the specialist overrides with a
+reason, which is logged.
+Fact markers. Any claim the agent could not source appears as a highlighted marker.
+Unresolved markers block approval. This is the one guardrail that cannot be overridden,
+because a wrong statistic on a client site is the most expensive failure mode in the
+system.
+Revisions. Full version history per post, with each version tagged by origin: agent
+generation, agent edit, human edit, or refresh cycle. Any version can be restored or diffed
+against the live one.
+
+Module 3: Image generation pipeline
+
+This module removes the single biggest blocker in the current harness: posts stalling
+because nobody made the images.
+
+                                                                                                                                                                                                                                            Page 5 of 14
+Agentic CMS: Product Requirements Document
+
+Slot to asset. The blog agent's image production sheet becomes a queue of slots. Each
+slot carries placement, type, dimensions, format, style direction, a generation prompt, the
+target filename, and pre-written alt text. The pipeline claims each slot, routes it to a
+provider, and returns candidates.
+
+Provider routing. Three providers, chosen by slot type rather than by preference:
+
+Slot type                                   Primary provider              Why
+Hero, lifestyle, brand-
+styled imagery                              Higgsfield via MCP            Style presets, character and
+                                                                          element consistency across a
+Diagram, annotated                                                        series, video and motion
+screenshot, text-in-image                                                 where the post supports it
+Volume, iteration, cost-
+sensitive batches                           OpenAI image models via       Stronger instruction following
+                                            API                           and legible text rendering
+Charts and data visuals
+                                            Open-source models via API    Cheapest per image, self-
+                                            or MCP, such as Flux or SDXL  hostable, no per-asset
+                                            endpoints                     licensing question
+
+                                            No image model                Rendered as inline SVG from
+                                                                          the post's own data, never
+                                                                          generated
+
+Routing is configurable per client. An agency admin can pin a client to one provider, set a
+monthly image budget, or force human-only assets for brands with strict visual
+governance.
+
+Consistency. For series work, Higgsfield reference elements and character models are
+stored per client so recurring visual motifs stay stable across posts. The brand pack
+supplies the palette and style keywords injected into every prompt regardless of provider.
+
+Review. Each slot returns two to four candidates. The specialist picks, regenerates with
+an edited prompt, or uploads their own. A slot can be marked human-only, which sends it
+to the specialist's task queue with the brief attached and holds the post in Needs assets.
+
+Post-processing. Selected assets are compressed to WebP or AVIF, resized to the
+template's declared breakpoints, renamed per the production sheet, and written into the
+repo's asset directory in the same commit as the post. Alt text travels with the asset into
+the markup.
+
+Provenance. Every generated asset records its provider, model, prompt, and generation
+date. This matters for client disclosure and for the licensing question that follows AI
+imagery around.
+
+                                                                               Page 6 of 14
+Agentic CMS: Product Requirements Document
+
+Module 4: Template ingestion and rendering
+
+The CMS writes into the site's own markup, not a generic wrapper. That is what makes
+merge requests reviewable rather than suspicious.
+Ingestion. A developer uploads either a single HTML file representing one rendered blog
+post, or a ZIP containing the template plus its partials, CSS, and a sample post. The system
+accepts both because agencies receive both.
+Parsing. On upload the parser produces a template manifest:
+ 1. Detects the content region and the repeating structures inside it: headings,
+
+    paragraphs, lists, blockquotes, code blocks, tables.
+ 2. Identifies image containers with their classes, wrapper markup, and any responsive
+
+    attributes such as srcset patterns.
+ 3. Extracts metadata bindings: title, description, canonical, Open Graph tags, publish
+
+    date, author, tags.
+ 4. Finds existing schema blocks and records their shape.
+ 5. Flags anything it could not classify, for the developer to map by hand once.
+Confirmation step. The developer sees the parse result side by side with the sample post
+and confirms or corrects each mapping. This happens once per site. The confirmed
+manifest is versioned, so a site redesign means re-ingesting rather than rebuilding.
+Output formats. The manifest declares what the repo actually consumes, since not every
+site takes raw HTML:
+
+    Markdown or MDX with frontmatter, for static site generators
+    HTML fragments or full pages
+    JSON content files, for headless setups
+    Framework components, where posts are compiled files
+Rendering. At render time the post's structured content is mapped into the manifest's
+markup: heading levels preserved, images placed in their real containers with the site's
+own classes and responsive attributes, schema blocks emitted in the shape the site
+already uses. Output passes an HTML validity check and a diff-shape check against the
+sample before a merge request opens.
+Fidelity rule. The renderer never invents markup. If the post needs a structure the
+template does not define, such as a comparison table on a template that has none, the
+post is held and the developer is asked to extend the template. Silent improvisation in
+someone else's codebase is how trust in the system dies.
+
+                                                                                                                                                                                                                                            Page 7 of 14
+Agentic CMS: Product Requirements Document
+
+Module 5: Repo integration and merge requests
+
+The CMS ships changes the way a developer would: one branch, one post, a description
+that explains itself.
+Connection. GitHub and GitLab at v1, via app installation rather than personal tokens.
+Scope is limited to the content and asset paths declared during setup, so the integration
+cannot touch application code. Bitbucket and self-hosted GitLab follow in v2.
+Setup declares four things: the content directory, the asset directory, the branch naming
+convention, and the base branch. Everything else is inferred from the repo's existing
+structure.
+Branch and commit. One branch per post, named on the declared convention, defaulting
+to content/post-slug . Commits are conventional and scoped: the post file, its assets,
+and any index or sitemap file the repo maintains manually.
+Merge request contents. Every MR carries:
+
+    The rendered post file in the site's own format
+    Optimized assets in the asset directory
+    A description with the target keyword, search intent, the on-page checklist result,
+    internal links added, and the schema types emitted
+    A rendered preview link where the host supports preview deployments
+    The list of unresolved items, if the specialist overrode a soft gate
+CI. The MR waits on whatever checks the repo already runs. The CMS adds no required
+checks of its own; it reads results and surfaces failures in the post's timeline so the
+specialist sees a red build without opening the repo.
+After merge. A webhook marks the post Live, records the merge commit and timestamp,
+schedules the first scoring run for 24 hours later, and submits the URL for indexing where
+Search Console access allows it.
+Conflicts. If the base branch moved and the post no longer applies cleanly, the CMS
+rebases and re-renders from the current template manifest rather than forcing. A conflict
+it cannot resolve is surfaced to the developer with both versions, never auto-merged.
+
+Module 6: SEO trajectory and plan
+
+One screen answering whether the programme is working, built on the reporting agent
+already in the harness.
+
+                                                                                                                                                                                                                                            Page 8 of 14
+Agentic CMS: Product Requirements Document
+
+Trajectory. Organic sessions and impressions over eight weeks, plotted against the action
+plan's phase projection for the site's age. The gap between actual and projected is the
+headline number, not raw traffic, because raw traffic in month two means nothing.
+Plan status. Traffic-light milestones from the action plan: cadence against target, pillar
+coverage against plan, technical health, and execution rate on human-owned items. Each
+light carries the number that justifies it.
+Content performance. Every live post with its position trend, impressions, clicks, and
+current Keyword Attribution Score contribution. Sortable to find page-2 posts, which the
+refresh agent picks up automatically.
+Bi-weekly report. The visualization agent generates the full report on its schedule and the
+CMS stores every edition, so trajectory is auditable over time rather than a rolling
+snapshot. Pivot triggers fire into the plan view as alerts.
+Data sources. Search Console is the required connection. Optional Ahrefs or Semrush
+exports enrich difficulty and backlink data. The CMS never invents a metric it cannot
+source; a missing connection renders as an explicit gap, not a blank.
+
+Module 7: Keyword Attribution Score
+
+The KAS answers a question rank trackers do not: of all the search visibility this company
+has, how much of it sits on which keyword, and which page earns it.
+A rank tracker says you are position 7 for a term. The KAS says that term carries 18% of
+your total search weight, it rests on one post, and that post is decaying. That is a different
+and more useful fact.
+Per-keyword weight. For each tracked keyword k, raw weight combines position quality,
+demand, and business value:
+
+where I is impressions over the window, C(p) is the click-through curve value for position
+p, and V is a business value multiplier from the keyword's intent: transactional 1.5,
+commercial 1.25, informational 1.0, navigational 0.75.
+Attribution score. Raw weights normalize to a percentage share of total site search
+weight:
+
+Every live keyword's score sums to 100. A keyword's score rising means it took share, not
+merely that it moved up a position.
+
+                                                                                                                                                                                                                                            Page 9 of 14
+Agentic CMS: Product Requirements Document
+
+Page attribution. Each keyword's score is assigned to the URL actually ranking for it. A
+post's score is the sum of its keywords', which gives the one number that says how much
+of the company's search presence a single page carries.
+
+Derived indicators
+
+Indicator            What it is                        Why it matters
+Concentration
+                     Share held by the top 5 keywords  Above 60% means fragile: one
+Pillar distribution                                    algorithm update or one
+                                                       competitor can take most of the
+Orphan weight                                          visibility
+Claimed but
+unearned             Score summed per pillar           Shows whether ranking weight
+Movement                                               actually sits where the strategy
+                                                       claims
+
+                     Score on keywords with only one Names the single points of failure
+                     ranking page
+
+                     Plan pillars with under 5% of     The gap between the strategy on
+                     total score                       paper and the strategy in the
+                                                       index
+
+                     Score change period over period, Separates real share gains from
+
+                     by keyword and page               position noise
+
+Recalculation. Runs 24 hours after each merge, then weekly. Each run stores a snapshot,
+so the CMS shows how attribution shifted after a specific post shipped. That is how a
+specialist proves a post did something.
+
+How it drives the system. The score is not a vanity metric; three agents read it. The
+keyword swarm prioritizes pillars with claimed-but-unearned gaps. The refresh agent
+prioritizes decaying pages carrying high score. The report agent uses concentration as a
+pivot trigger.
+
+Honest limit. Position and impression data come from Search Console, which samples and
+lags by roughly two to three days. The click-through curve is a modeled industry curve
+unless the site has enough of its own data to fit one. Both assumptions are stated on the
+dashboard rather than buried, and the CTA curve is configurable per client.
+
+                                                                       Page 10 of 14
+Agentic CMS: Product Requirements Document
+
+Approvals, scheduling, and triggers
+
+The gate. One mandatory human approval per post, between In review and MR open.
+Approving asserts three things: the facts are right, the voice is right, and the brand stands
+behind it. Nothing else in the system requires human sign-off; this one cannot be
+automated away or delegated to an agent.
+
+Hard blocks stop approval outright: unresolved fact markers, unfilled image slots, a failing
+on-page item in the first five checklist sections, or a template the renderer cannot satisfy.
+
+Soft blocks can be overridden with a logged reason: word count below target, fewer than
+two internal links, missing schema on a post type that usually carries it.
+
+Scheduled triggers. Configurable per site, defaulting to the harness cadence:
+
+Run       Default schedule                  Produces
+
+Keyword swarm Monday weekly                 New ideas in the plan
+
+Post generation Per publish slot            Drafts in review
+
+Technical monitor Friday weekly             Health digest, issues in the queue
+
+QA sweep  Friday light, bi-weekly full      Scorecard and the human ledger
+
+Content refresh Monthly                     Refresh drafts and a prune list
+
+Link prospecting Monthly                    Prospects and outreach drafts
+
+Bi-weekly report Alternate Fridays          The visual progress report
+
+KAS recalculation 24 hours post-merge, then weekly Updated attribution
+
+Manual triggers. Every scheduled run also has a button, and every post has a Generate
+now. Manual and scheduled runs are identical in behaviour, which matters for catch-up
+after a missed week.
+
+The ledger. Human-blocked items accumulate with deadlines, age automatically, go
+overdue at 7 days, and become named blockers at 14 with the downstream cost stated.
+The ledger appears on the dashboard and in every report, so accountability is visible to
+the client, not just to the specialist.
+
+Data model, integrations, and stack
+
+Core entities. Site owns TemplateManifest, Pillar, Keyword, Post, Asset, and Run. Post
+owns Draft versions, ImageSlots, MergeRequest, and KASSnapshots. Keyword owns
+PositionHistory and KASSnapshots. Run records every agent execution with its inputs,
+
+                                                                        Page 11 of 14
+Agentic CMS: Product Requirements Document
+
+outputs, model used, and token cost, which is what makes the system auditable and
+billable.
+
+Integrations
+
+Surface         Connection                  Purpose
+Git host        GitHub or GitLab app        Branches, commits, merge requests,
+                                            webhooks
+Search Console  OAuth                       Positions, impressions, clicks, indexing
+                                            requests
+Higgsfield      MCP                         Styled imagery, reference elements, video
+                                            Diagram and text-in-image generation
+OpenAI          API                         Volume and cost-sensitive generation
+
+Open-source     API or MCP                  Difficulty and backlink data
+models
+                                            Approval requests, blockers, report
+Ahrefs or Semrush API or CSV import,        delivery
+                               optional
+
+Slack or email  Webhook
+
+Model routing. Inherited from the harness config: a fast model for mechanical work such
+as crawling and diffing, a mid-tier model as the workhorse for writing and judgment, and
+the strongest model reserved for strategy runs, pillar pages, and pivot analysis. Routing is
+per-task and configurable per client, with model identifiers verified against current
+provider documentation rather than hardcoded from memory.
+
+Cost controls. Per-client monthly caps on text generation and image generation
+separately. Runs estimate cost before executing and refuse above the cap with a clear
+message rather than failing silently. The Run table makes per-client cost reportable, which
+the agency needs for pricing.
+
+Suggested stack. Next.js on Vercel for the surface, Postgres for relational data, object
+storage for assets, and a queue with durable retries for agent runs, since image generation
+and crawls are slow and failure-prone. Agent execution runs server-side with MCP clients
+per provider. Nothing here is load-bearing on a specific vendor except the MCP
+requirement.
+
+                                            Page 12 of 14
+Agentic CMS: Product Requirements Document
+
+Permissions, security, and guardrails
+
+The system writes to client codebases and spends money on their behalf. Both need hard
+limits, not conventions.
+Repo access. Path-scoped to the declared content and asset directories. The integration
+cannot write application code, workflows, or configuration. It opens merge requests and
+never pushes to the base branch, so a compromised CMS still cannot deploy anything a
+human did not merge.
+Secrets. Provider keys and Git credentials are stored per client, encrypted at rest, never
+rendered in the UI after entry, and never passed into model prompts.
+Tenant isolation. One client's brand pack, templates, keywords, and generated assets are
+never visible to another tenant or used as context in another tenant's run.
+Content guardrails, enforced regardless of what a prompt asks:
+
+    No fabricated statistics, quotes, or citations. Unsourced claims surface as markers,
+    never as confident text.
+    No invented client credentials, certifications, or case study results.
+    No generated imagery depicting identifiable real people, or in a style that imitates a
+    living artist.
+    Regulated topics such as health, finance, and legal carry a mandatory disclaimer block
+    the specialist cannot remove without an explicit override.
+Spend guardrails. Hard monthly caps per client for text and image generation, a per-run
+estimate check, and an alert at 80% of cap. Overruns block the run rather than silently
+billing.
+Audit trail. Every run, edit, approval, override, and merge is logged with actor, timestamp,
+and inputs. When a client asks who approved a claim on their site, the answer is one
+query, not an investigation.
+
+Roadmap
+
+Three phases, each shippable and useful on its own. Phase gates are usage facts, not
+dates.
+v0, internal pilot. One site, one repo, manual triggers only. Template ingestion for a single
+HTML file. Post editor with the on-page gate. GitHub merge requests. Images by OpenAI
+API only. No dashboard, no KAS, no scheduling. Gate to v1: 10 posts shipped end to end
+with no manual file handling.
+
+                                                                                                                                                                                                                                          Page 13 of 14
+Agentic CMS: Product Requirements Document
+
+v1, the product. Multi-site and multi-tenant. ZIP template ingestion with the confirmation
+step. Full image pipeline with all three provider routes. Scheduled runs and the approval
+queue. SEO trajectory dashboard. Keyword Attribution Score with weekly recalculation.
+GitLab support. Client stakeholder role with comment-only access. Gate to v2: three
+clients running eight or more weeks unattended.
+
+v2, the platform. Multi-language content. Bitbucket and self-hosted Git. Custom per-
+client agent instructions without code changes. A public API. Programmatic SEO at scale,
+meaning templated page generation from structured data. White-label client reporting
+portals.
+
+Deliberately deferred. Direct production publishing, a WYSIWYG page builder, social and
+email distribution, and paid media. Each would double the surface area while diluting the
+one thing the product does well.
+
+Open questions
+
+Eight decisions that change the build. My recommendation is in each, but these are yours
+to settle.
+
+ 1. Product or internal tool? A Grandeur or Utopia internal system has a very different bar
+    from a sellable product on multi-tenancy, onboarding, and support. I would build v0 as
+    an internal tool and decide at the v1 gate.
+
+ 2. Who is the first site? Building against a real repo beats building against a hypothetical
+    one. A Utopia portfolio site or a Grandeur client would both work.
+
+ 3. Does the harness stay separate, or fold in? Cleanest is the CMS calling the harness
+    skills as they stand, so the skills remain usable standalone. The alternative is absorbing
+    them into the CMS agent, which is simpler to run but loses reusability.
+
+ 4. Click-through curve source. A modeled industry curve is fine at launch, but per-client
+    fitted curves make the KAS meaningfully more accurate. Needs enough Search
+    Console history to fit.
+
+ 5. Image licensing position. What do we tell clients about AI-generated imagery on their
+    commercial sites, and does that differ by provider? This is a policy decision before it is
+    a technical one.
+
+ 6. Template drift. When a site redesigns, existing posts render with the old manifest. Do
+    we re-render historical posts, or only new ones?
+
+ 7. Approval delegation. Can a client stakeholder ever be the approver instead of the
+    specialist, or is approval always agency-side? Affects the role model.
+
+ 8. Cost model. Per-post, per-site monthly, or usage-based? The Run table supports all
+    three, but pricing shapes the cap defaults.
+
+Settle 1, 2, and 3 and I can draft the v0 build plan with a task breakdown.
+
+                                                                                                                                                                                                                                          Page 14 of 14
+

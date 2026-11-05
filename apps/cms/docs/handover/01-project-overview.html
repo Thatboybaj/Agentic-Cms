@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Agentic CMS · Project overview</title>
+<link rel="stylesheet" href="brief.css" />
+</head>
+<body>
+
+<div class="cover">
+	<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+	<div class="kicker">The Utopia Studio · Studio Product Framework</div>
+	<div class="shell">
+		<div class="mark">✳</div>
+		<h1>Agentic CMS<br />Project overview</h1>
+		<p class="lede">One agency workspace that runs the whole blog programme for many client websites: the agency approves ideas, and agents draft, illustrate, check and render each post into the client's own template, open the merge request and publish it.</p>
+		<div class="meta">
+			<div><b>Status</b><span>Frontend prototype complete</span></div>
+			<div><b>App</b><span>apps/cms · @studio/cms</span></div>
+			<div><b>Harness</b><span>@studio/seo-harness 0.2.0</span></div>
+			<div><b>Date</b><span>5 November 2026</span></div>
+		</div>
+	</div>
+</div>
+
+<section>
+	<div class="eyebrow">01 · Summary</div>
+	<h2>What this is</h2>
+	<p class="lead">Agencies run SEO blogs for many clients. Today each post means a writer, a designer, an SEO check and a developer pasting HTML into the client's codebase. The Agentic CMS removes everything except the decisions that need a person.</p>
+	<div class="grid g4" style="margin-block: 4mm">
+		<div class="card sunken stat"><b>1</b><span>human decision per post by default: approving the idea</span></div>
+		<div class="card sunken stat"><b>11 + 1</b><span>harness agents plus the CMS agent that owns the repo</span></div>
+		<div class="card sunken stat"><b>8</b><span>client sites seeded in the demo workspace, 7 people</span></div>
+		<div class="card sunken stat"><b>156</b><span>automated tests passing; type-check and production build clean</span></div>
+	</div>
+	<div class="grid g2">
+		<div class="card">
+			<h4>The promise</h4>
+			<p>Run a client's entire blog programme without opening a code editor. Every post lands in the client's own site template, through a normal merge request, with every claim sourced and every action audited.</p>
+		</div>
+		<div class="card">
+			<h4>What's been delivered</h4>
+			<ul>
+				<li>A full working frontend prototype for many sites and many users</li>
+				<li>A design system built from the reference screens</li>
+				<li>The SEO harness packaged into the monorepo</li>
+				<li>A backend blueprint, schema and ten ordered build handoffs</li>
+			</ul>
+		</div>
+	</div>
+</section>
+
+<section>
+	<div class="eyebrow">02 · How a post moves</div>
+	<h2>Only ideas need approval</h2>
+	<p>Autopost is on by default for every site. A person approves the idea; the agents do the rest, and stop for a person only when a guardrail fires.</p>
+	<div class="flow">
+		<div class="step human"><b>Idea</b>From keyword research, a ranking gap or a person. A specialist approves it.</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Draft</b>Writing agent drafts in the site's brand voice, marking every factual claim.</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Images</b>Visual agent generates, diagrams or sources images, with provenance.</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Gate</b>SEO checks run. Agents fix what they can, and source or rewrite unsourced facts.</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Merge request</b>Rendered into the client's template, committed on its own branch.</div>
+		<div class="arrow">→</div>
+		<div class="step pass"><b>Live</b>Merges itself when the client's CI is green. Ranking measured after 24 h.</div>
+	</div>
+	<div class="grid g2">
+		<div class="callout"><strong>When a post is held</strong> it stops at In review with the reason on the ledger. Reasons include a hard check that can't be fixed, no repo, a template that can't render the post, a budget cap, a provider failure, or an image slot marked for a person.</div>
+		<div class="callout agent"><strong>When autopost is off</strong> for a site, every post stops at In review for a specialist to approve, and a developer merges. Auto-merge itself is an admin-only setting.</div>
+	</div>
+</section>
+
+<section class="page">
+	<div class="eyebrow">03 · Who uses it</div>
+	<h2>Roles are per site, not global</h2>
+	<p>One person can be a specialist on four sites and have no access to the rest. Workspace owners and admins act as admin on every site. Locked actions always explain why instead of disappearing.</p>
+	<table>
+		<thead><tr><th>Role</th><th>Does</th><th>Can't</th></tr></thead>
+		<tbody>
+			<tr><td>Content specialist</td><td>Approves ideas and content, edits posts, sends drafts back, overrides soft checks, triggers runs, turns autopost on or off</td><td>Merge, connect repos, change budgets</td></tr>
+			<tr><td>Developer</td><td>Connects the repo and Search Console, uploads and confirms blog templates, merges and rebases merge requests</td><td>Approve content</td></tr>
+			<tr><td>Client stakeholder</td><td>Sees their own site, its plan, posts and SEO reports; comments</td><td>Anything that changes content or settings</td></tr>
+			<tr><td>Agency admin</td><td>Everything, plus budgets, model routing, members, new sites and the auto-merge policy</td><td>—</td></tr>
+		</tbody>
+	</table>
+
+	<h3>Working on many sites at once</h3>
+	<div class="grid g3">
+		<div class="card"><h4>Sites portfolio</h4><p>Every client in one view, as a grid or a table: status, ideas waiting, gap to projection, spend against cap and who's online.</p></div>
+		<div class="card"><h4>Inbox</h4><p>Everything across my sites that needs me: ideas to approve, held posts, image slots for a person, overdue ledger items, failing CI, invites.</p></div>
+		<div class="card"><h4>Team</h4><p>People against sites with each person's role, plus invites. Seat use is shown against the workspace plan.</p></div>
+		<div class="card"><h4>Site in the URL</h4><p>Every site screen lives under <code>/s/&lt;site&gt;/…</code>, so two tabs or two people can work on different clients at the same time.</p></div>
+		<div class="card"><h4>Presence and edit locks</h4><p>Avatars show who else is on a site. If someone is editing a post, others see "view only" with a take-over option.</p></div>
+		<div class="card"><h4>Tenant isolation</h4><p>A site you have no access to is hidden from the switcher and shows "Request access". Tests check that one client's data never appears on another's.</p></div>
+	</div>
+</section>
+
+<section class="page">
+	<div class="eyebrow">04 · What's in the app</div>
+	<h2>Screens</h2>
+	<table>
+		<thead><tr><th>Area</th><th>Screens</th><th>What it does</th></tr></thead>
+		<tbody>
+			<tr><td>Plan</td><td>Board · calendar · pillar matrix · new idea</td><td>The content plan by week and pillar, with ideas waiting for approval and the projection</td></tr>
+			<tr><td>Editor</td><td>Post · versions · assets</td><td>Draft with inline agent suggestions, fact markers, gate checks, comments, version history and image slots</td></tr>
+			<tr><td>Live preview</td><td>Desktop · tablet · mobile</td><td>The post rendered into the client's real template, exactly as it will look once published</td></tr>
+			<tr><td>Images</td><td>Asset library · visual agent</td><td>Candidates per slot with their source and licence; generate, diagram or source from the web</td></tr>
+			<tr><td>Templates</td><td>Library · upload (.html / .zip)</td><td>Developers upload the blog template; the CMS detects its structure and asks to confirm it</td></tr>
+			<tr><td>Approvals and MRs</td><td>Approvals queue · merge requests</td><td>What's waiting on a person, and every merge request with its CI status</td></tr>
+			<tr><td>SEO</td><td>Trajectory · KAS · reports</td><td>Search Console traffic against projection, keyword attribution scores and biweekly reports</td></tr>
+			<tr><td>Operations</td><td>Runs · settings · onboarding</td><td>Agent runs and their cost, budgets and caps, connections (image MCPs and APIs), schedules, site setup</td></tr>
+			<tr><td>Workspace</td><td>Sites · inbox · team · account · sign-in</td><td>The multi-site layer described above</td></tr>
+		</tbody>
+	</table>
+</section>
+
+<section>
+	<div class="eyebrow">05 · Design system</div>
+	<h2>Glass hierarchy, adapted from the Nawa template</h2>
+	<div class="grid g3">
+		<div class="card"><h4>Hierarchy</h4><p>Page → canvas → soft colour washes → frosted shell → white cards → small chips. One black primary button per region.</p></div>
+		<div class="card"><h4>Type</h4><p><strong>General Sans 500</strong> for titles and UI, <strong>Poppins 400</strong> for body and meta.</p></div>
+		<div class="card"><h4>Colour means something</h4><p><span class="chip agent">Agent blue</span> machine work · <span class="chip human">Human amber</span> waiting on a person · <span class="chip block">Red</span> hard block · <span class="chip pass">Green</span> pass.</p></div>
+	</div>
+	<p class="small" style="margin-block-start: 2mm">Rules are enforced by tests: colours only from tokens, layout that works right-to-left, icons through one registry, WCAG contrast checked. The full kit is shown at <code>/styleguide</code>; the documents are <code>docs/design-system.md</code> and <code>docs/02-design-system.cms.md</code>.</p>
+</section>
+
+<section class="page">
+	<div class="eyebrow">06 · The agents</div>
+	<h2>SEO harness, packaged in the repo</h2>
+	<p>The harness lives in <code>packages/seo-harness</code>: each agent has a written skill, typed inputs and outputs, a model tier and a schedule. The CMS agent is the product's own agent and the only thing that writes to a client repo.</p>
+	<table>
+		<thead><tr><th>Agent</th><th>Model tier</th><th>Runs</th><th>Produces</th></tr></thead>
+		<tbody>
+			<tr><td>SEO action plan</td><td><span class="chip">Opus 5.5</span></td><td>On demand, or when a pivot is triggered</td><td>The plan and pillar keywords</td></tr>
+			<tr><td>Keyword research swarm</td><td><span class="chip">Sonnet 5</span></td><td>Weekly, Monday</td><td>New keyword pipeline and top 10</td></tr>
+			<tr><td>Blog writing agent</td><td><span class="chip">Sonnet 5</span> → Opus for pillar pages</td><td>Per publish slot</td><td>Draft, fact list, image sheet</td></tr>
+			<tr><td>On-page SEO optimizer</td><td><span class="chip">Sonnet 5</span></td><td>After each draft</td><td>Gate checks and fixes</td></tr>
+			<tr><td>Visual asset agent</td><td><span class="chip">Sonnet 5</span></td><td>After each draft</td><td>Images and diagrams with provenance</td></tr>
+			<tr><td>Technical SEO monitor</td><td><span class="chip">Haiku 4.5</span></td><td>Weekly, Friday</td><td>Site health issues</td></tr>
+			<tr><td>SEO QA agent</td><td><span class="chip">Sonnet 5</span></td><td>Weekly light, biweekly full</td><td>Ledger items</td></tr>
+			<tr><td>Content refresh agent</td><td><span class="chip">Sonnet 5</span></td><td>Monthly</td><td>Refresh briefs for decaying posts</td></tr>
+			<tr><td>Link building prospector</td><td><span class="chip">Sonnet 5</span></td><td>Monthly</td><td>Outreach targets (sending needs a person)</td></tr>
+			<tr><td>Visualization report agent</td><td><span class="chip">Sonnet 5</span> → Opus on pivot</td><td>Biweekly, after QA</td><td>The client report</td></tr>
+			<tr><td>Orchestrator</td><td><span class="chip">Haiku 4.5</span></td><td>—</td><td>Replaced by deterministic scheduling in the backend</td></tr>
+			<tr><td>CMS agent</td><td><span class="chip agent">Product agent</span></td><td>Every post</td><td>Rendering, merge requests, autopost fixes, auto-merge</td></tr>
+		</tbody>
+	</table>
+	<p class="small">Model IDs must be checked against Anthropic's docs before deploying. Always a human decision: approving ideas and the plan, sending outreach, deleting pages, spending over a cap.</p>
+
+	<h3>Images and templates</h3>
+	<div class="grid g2">
+		<div class="card"><h4>Bring your own image providers</h4><p>Each site can connect image-generation MCP servers or APIs, plus stock and open-licence sources (Openverse, Wikimedia, Unsplash, Pexels). Keys stay on the server, encrypted. Every candidate records where it came from and its licence.</p></div>
+		<div class="card"><h4>Bring your own blog template</h4><p>Developers upload the template as HTML or a zip. The renderer only fills in the structure it found and never invents markup; if a post needs something the template can't show, the post is held instead of shipped wrong.</p></div>
+	</div>
+</section>
+
+
+<section class="page">
+	<div class="eyebrow">07 · Where it stands</div>
+	<h2>Status and what's next</h2>
+	<div class="grid g2">
+		<div class="card pass">
+			<h4>Done and checked</h4>
+			<ul>
+				<li>Every planned screen built for desktop and mobile</li>
+				<li>Multi-site, multi-user flows checked in the browser: sign-in, portfolio, no-access, redirects from old links, two-tab edit lock and take-over</li>
+				<li>Real template upload and rendering, live preview, image connections</li>
+				<li>156 tests pass; type-check clean; production build green</li>
+			</ul>
+		</div>
+		<div class="card human">
+			<h4>Not real yet</h4>
+			<ul>
+				<li>Everything runs in the browser: data is local and agent work is simulated with timers</li>
+				<li>Sign-in is a "pick a person" demo, not Clerk</li>
+				<li>No real model calls in the pipeline, no GitHub writes, no Search Console data</li>
+				<li>Template uploads and keys are stored on the local disk, localhost only</li>
+			</ul>
+		</div>
+	</div>
+
+	<h3>Backend build plan</h3>
+	<p>Ten handoffs, each self-contained for a builder agent. The UI keeps the same hooks, so screens don't change when the backend lands.</p>
+	<table class="compact">
+		<thead><tr><th>Phase</th><th>Work</th><th>Size</th></tr></thead>
+		<tbody>
+			<tr><td>B0</td><td>Accounts, environments, keys</td><td>S</td></tr>
+			<tr><td>B1</td><td>Schema, tenancy and access checks, Clerk organisations, members, presence, locks, audit</td><td>L</td></tr>
+			<tr><td>B2</td><td>Post lifecycle as durable workflows; autopost ship or hold; schedules</td><td>L</td></tr>
+			<tr><td>B3</td><td>Real agents: Anthropic gateway, spend-capped inference, prompts from skills, Langfuse traces</td><td>L</td></tr>
+			<tr><td>B4</td><td>Visual agent and assets: connections, encrypted secrets, R2 storage</td><td>L</td></tr>
+			<tr><td>B5</td><td>Template parsing and rendering on the server</td><td>M</td></tr>
+			<tr><td>B6</td><td>GitHub App, webhooks, auto-merge; GitLab</td><td>L</td></tr>
+			<tr><td>B7</td><td>Search Console import and KAS</td><td>M</td></tr>
+			<tr><td>B8</td><td>Spend ledger and billing (Autumn, Polar)</td><td>M</td></tr>
+			<tr><td>B9</td><td>Security review, hardening and pilot</td><td>M</td></tr>
+		</tbody>
+	</table>
+
+	<h3>Decisions needed</h3>
+	<div class="grid g2">
+		<div class="card"><h4>D1 · Own Convex deployment</h4><p>Recommended: yes. Its tenancy and data differ from the existing app. Needed before B1.</p></div>
+		<div class="card"><h4>D2 · Anthropic direct</h4><p>Recommended: call Anthropic directly rather than through OpenRouter, which stays as a fallback. Needed before B3.</p></div>
+		<div class="card"><h4>D3 · Bill per site or per workspace</h4><p>The stack says per site; the multi-site model puts plan and seats on the workspace. Suggested: workspace plan plus a per-site item. Needed before B8.</p></div>
+		<div class="card"><h4>D14 · Image licensing policy</h4><p>Which sourced and generated images are allowed, per provider. Needed before a paid pilot.</p></div>
+	</div>
+	<p class="small">Also open: a signed eval-first spec for autonomy level L3 and the cost-per-post budget, and the cost model (D15).</p>
+</section>
+
+</body>
+</html>

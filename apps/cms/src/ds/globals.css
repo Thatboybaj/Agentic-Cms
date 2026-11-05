@@ -1,0 +1,250 @@
+@import "tailwindcss";
+@import "./tokens.css";
+
+/* Tailwind aliases → tokens. No color literals here (tokens.css is the only source). */
+@theme inline {
+	--font-display: var(--c-font-display);
+	--font-sans: var(--c-font-body);
+	--font-mono: var(--c-font-mono);
+
+	--color-page: var(--c-page);
+	--color-canvas: var(--c-canvas);
+	--color-glass: var(--c-glass);
+	--color-glass-strong: var(--c-glass-strong);
+	--color-glass-edge: var(--c-glass-edge);
+	--color-surface: var(--c-surface);
+	--color-sunken: var(--c-sunken);
+	--color-sunken-2: var(--c-sunken-2);
+	--color-scrim: var(--c-scrim);
+	--color-wash-blue: var(--c-wash-blue);
+	--color-wash-peach: var(--c-wash-peach);
+	--color-wash-green: var(--c-wash-green);
+	--color-wash-neutral: var(--c-wash-neutral);
+	--color-tenant: var(--c-tenant);
+	--color-avatar: var(--c-avatar);
+
+	--color-ink: var(--c-ink);
+	--color-ink-2: var(--c-ink-2);
+	--color-ink-3: var(--c-ink-3);
+	--color-ink-4: var(--c-ink-4);
+	--color-ink-5: var(--c-ink-5);
+	--color-on-ink: var(--c-on-ink);
+	--color-ink-hover: var(--c-ink-hover);
+
+	--color-line: var(--c-line);
+	--color-line-2: var(--c-line-2);
+	--color-line-3: var(--c-line-3);
+
+	--color-agent: var(--c-agent);
+	--color-agent-ink: var(--c-agent-ink);
+	--color-agent-soft: var(--c-agent-soft);
+	--color-agent-line: var(--c-agent-line);
+	--color-human: var(--c-human);
+	--color-human-ink: var(--c-human-ink);
+	--color-human-soft: var(--c-human-soft);
+	--color-human-line: var(--c-human-line);
+	--color-block: var(--c-block);
+	--color-block-ink: var(--c-block-ink);
+	--color-block-soft: var(--c-block-soft);
+	--color-pass: var(--c-pass);
+	--color-pass-ink: var(--c-pass-ink);
+	--color-pass-soft: var(--c-pass-soft);
+	--color-info-soft: var(--c-info-soft);
+	--color-art-1: var(--c-art-1);
+	--color-art-2: var(--c-art-2);
+	--color-art-3: var(--c-art-3);
+	--color-art-4: var(--c-art-4);
+
+	--text-2xs: var(--c-text-2xs);
+	--text-xs: var(--c-text-xs);
+	--text-sm: var(--c-text-sm);
+	--text-md: var(--c-text-md);
+	--text-base: var(--c-text-base);
+	--text-lg: var(--c-text-lg);
+	--text-xl: var(--c-text-xl);
+	--text-2xl: var(--c-text-2xl);
+	--text-3xl: var(--c-text-3xl);
+	--text-4xl: var(--c-text-4xl);
+	--text-5xl: var(--c-text-5xl);
+
+	--radius-xs: var(--c-radius-xs);
+	--radius-sm: var(--c-radius-sm);
+	--radius-md: var(--c-radius-md);
+	--radius-lg: var(--c-radius-lg);
+	--radius-xl: var(--c-radius-xl);
+	--radius-2xl: var(--c-radius-2xl);
+	--radius-3xl: var(--c-radius-3xl);
+	--radius-shell: var(--c-radius-shell);
+	--radius-pill: var(--c-radius-pill);
+
+	--shadow-card: var(--c-shadow-card);
+	--shadow-raised: var(--c-shadow-raised);
+	--shadow-float: var(--c-shadow-float);
+	--shadow-sheet: var(--c-shadow-sheet);
+
+	--ease-out: var(--c-ease-out);
+	--ease-spring: var(--c-ease-spring);
+}
+
+@layer base {
+	*,
+	*::before,
+	*::after {
+		box-sizing: border-box;
+	}
+	html {
+		-webkit-text-size-adjust: 100%;
+		color-scheme: light;
+	}
+	body {
+		margin: 0;
+		background: var(--c-page);
+		color: var(--c-ink);
+		font-family: var(--c-font-body);
+		font-size: var(--c-text-base);
+		line-height: var(--c-leading-body);
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+	/* Display family carries UI labels, titles, numbers, buttons (refs: General Sans 500). */
+	h1,
+	h2,
+	h3,
+	h4,
+	button,
+	.font-display {
+		font-family: var(--c-font-display);
+		font-weight: 500;
+	}
+	h1,
+	h2,
+	h3,
+	h4,
+	p {
+		margin: 0;
+	}
+	button {
+		font: inherit;
+		font-family: var(--c-font-display);
+		color: inherit;
+		cursor: pointer;
+		background: none;
+		border: 0;
+		padding: 0;
+	}
+	a {
+		color: inherit;
+		text-decoration: none;
+	}
+	:focus-visible {
+		outline: none;
+		box-shadow: 0 0 0 3px var(--c-focus);
+	}
+	::selection {
+		background: var(--c-agent-soft);
+	}
+}
+
+@layer utilities {
+	.tabular {
+		font-variant-numeric: tabular-nums;
+	}
+	.tracking-display {
+		letter-spacing: var(--c-tracking-tight);
+	}
+	.tracking-hero {
+		letter-spacing: var(--c-tracking-tighter);
+	}
+	.leading-display {
+		line-height: var(--c-leading-tight);
+	}
+	.leading-prose {
+		line-height: var(--c-leading-prose);
+	}
+	.no-scrollbar {
+		scrollbar-width: none;
+	}
+	.no-scrollbar::-webkit-scrollbar {
+		display: none;
+	}
+	.thin-scrollbar {
+		scrollbar-width: thin;
+		scrollbar-color: var(--c-line-3) transparent;
+	}
+	.press {
+		transition: transform var(--c-dur-1) var(--c-ease-out), background-color var(--c-dur-2) var(--c-ease-out), color var(--c-dur-2) var(--c-ease-out), box-shadow var(--c-dur-2) var(--c-ease-out), opacity var(--c-dur-2);
+	}
+	.press:active:not(:disabled) {
+		transform: scale(0.97);
+	}
+	.glass {
+		background: var(--c-glass);
+		border: 1px solid var(--c-glass-edge);
+		backdrop-filter: blur(24px) saturate(1.2);
+		-webkit-backdrop-filter: blur(24px) saturate(1.2);
+	}
+	.glass-strong {
+		background: var(--c-glass-strong);
+		border: 1px solid var(--c-glass-edge);
+		backdrop-filter: blur(20px) saturate(1.2);
+		-webkit-backdrop-filter: blur(20px) saturate(1.2);
+	}
+	.wash-orb {
+		position: absolute;
+		border-radius: 9999px;
+		pointer-events: none;
+		filter: blur(120px);
+	}
+	.ring-agent {
+		box-shadow: 0 0 0 4px var(--c-agent-soft);
+	}
+}
+
+/* Skeleton shimmer */
+@keyframes c-shimmer {
+	from {
+		background-position: 200% 0;
+	}
+	to {
+		background-position: -200% 0;
+	}
+}
+.c-skeleton {
+	background: linear-gradient(90deg, var(--c-sunken) 25%, var(--c-surface) 50%, var(--c-sunken) 75%);
+	background-size: 200% 100%;
+	animation: c-shimmer 1.4s linear infinite;
+}
+
+/* Agent running pulse (blue dot) */
+@keyframes c-pulse {
+	0%,
+	100% {
+		box-shadow: 0 0 0 4px var(--c-agent-soft);
+	}
+	50% {
+		box-shadow: 0 0 0 7px var(--c-agent-soft);
+	}
+}
+.c-pulse {
+	animation: c-pulse 1.8s var(--c-ease-out) infinite;
+}
+
+@keyframes c-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+.c-spin {
+	animation: c-spin 0.9s linear infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 0s !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0s !important;
+		scroll-behavior: auto !important;
+	}
+}

@@ -1,0 +1,2113 @@
+{
+  "schemaVersion": 1,
+  "project": {
+    "name": "Grandeur SEO Agent Harness v0.2",
+    "summary": "Eleven agents plus the Agentic CMS's own agent run a client's search programme on a schedule: people approve ideas, agents draft, illustrate and publish, and reports prove it.",
+    "repository": "https://github.com/olayinka-david/utopiaos.git",
+    "revision": "f825efb3a653",
+    "branch": "feat/rally-design-system-and-app",
+    "generatedAt": "2026-09-27T09:28:18.519Z",
+    "architecture": "multi-agent",
+    "refreshCommand": "node scan-repo.mjs --repo \"C:/Users/ASUS ROG STRIX/Documents/Utopia OS/packages/seo-harness\" --out atlas.json && node build-site.mjs --atlas atlas.json --out site"
+  },
+  "entities": [
+    {
+      "id": "model-claude-haiku-4-5",
+      "type": "model",
+      "name": "Claude Haiku 4.5",
+      "role": "fast tier",
+      "summary": "High-frequency routing and mechanical crawling.",
+      "details": "Tier logic from HARNESS.md: the fast model for mechanical high-frequency work, the workhorse for writing and judgment, the strongest reserved for rare strategy-setting runs. IDs must be verified against the provider docs before wiring API calls.",
+      "provider": "Anthropic",
+      "selectionRule": "Declared per agent in harness-config.yaml (fast tier); escalation rules move specific runs up a tier",
+      "fallback": "unknown - no fallback model is declared",
+      "confidence": "confirmed",
+      "tags": [
+        "model",
+        "fast"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 4,
+          "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+        }
+      ]
+    },
+    {
+      "id": "model-claude-opus-5-5",
+      "type": "model",
+      "name": "Claude Opus 5.5",
+      "role": "strongest tier",
+      "summary": "Strategy runs, pillar and money pages, pivot analysis.",
+      "details": "Tier logic from HARNESS.md: the fast model for mechanical high-frequency work, the workhorse for writing and judgment, the strongest reserved for rare strategy-setting runs. IDs must be verified against the provider docs before wiring API calls.",
+      "provider": "Anthropic",
+      "selectionRule": "Declared per agent in harness-config.yaml (strongest tier); escalation rules move specific runs up a tier",
+      "fallback": "unknown - no fallback model is declared",
+      "confidence": "confirmed",
+      "tags": [
+        "model",
+        "strongest"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 4,
+          "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+        }
+      ]
+    },
+    {
+      "id": "model-claude-sonnet-5",
+      "type": "model",
+      "name": "Claude Sonnet 5",
+      "role": "workhorse tier",
+      "summary": "Writing, judgment, QA, reporting and image routing.",
+      "details": "Tier logic from HARNESS.md: the fast model for mechanical high-frequency work, the workhorse for writing and judgment, the strongest reserved for rare strategy-setting runs. IDs must be verified against the provider docs before wiring API calls.",
+      "provider": "Anthropic",
+      "selectionRule": "Declared per agent in harness-config.yaml (workhorse tier); escalation rules move specific runs up a tier",
+      "fallback": "unknown - no fallback model is declared",
+      "confidence": "confirmed",
+      "tags": [
+        "model",
+        "workhorse"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 4,
+          "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+        }
+      ]
+    },
+    {
+      "id": "orchestrator",
+      "type": "agent",
+      "name": "Orchestrator (#0)",
+      "role": "Scheduler and dispatcher",
+      "summary": "Reads the schedule, checks each run's preconditions, routes runs and passes the newest report file to the next agent.",
+      "details": "The only agent that starts work on its own clock. It never writes content; when an input is missing it logs the gap to the QA human ledger instead of guessing.",
+      "responsibilities": [
+        "Check preconditions before every run",
+        "Route scheduled and manual runs",
+        "Pass the newest matching artifact to each consumer",
+        "Log missing inputs to the human ledger"
+      ],
+      "inputs": [
+        "Schedule",
+        "reports/ folder"
+      ],
+      "outputs": [
+        "Dispatched runs",
+        "Gap entries in the ledger"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "dispatcher",
+        "harness",
+        "model:claude-haiku-4-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 20,
+          "excerpt": "orchestrator: model claude-haiku-4-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 11
+        }
+      ]
+    },
+    {
+      "id": "seo-action-plan",
+      "type": "agent",
+      "name": "SEO action plan (#1)",
+      "role": "Strategy",
+      "summary": "Produces the plan every other agent works from: pillars, keyword strategy, traffic timeline and phase milestones.",
+      "details": "Runs rarely: once per brand, quarterly, or when the report agent fires a pivot flag. Uses the strongest model because it sets direction for everything downstream. A human approves the plan.",
+      "responsibilities": [
+        "Define pillars and targets",
+        "Set phase milestones",
+        "Re-plan on pivot triggers"
+      ],
+      "inputs": [
+        "Brand interview",
+        "Research"
+      ],
+      "outputs": [
+        "5-tab plan HTML",
+        "Pillar keyword CSV"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "strategy",
+        "model:claude-opus-5-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 25,
+          "excerpt": "seo-action-plan: model claude-opus-5-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 12
+        },
+        {
+          "path": "skills/seo-action-plan/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: seo-action-plan"
+        }
+      ]
+    },
+    {
+      "id": "keyword-research-swarm",
+      "type": "agent",
+      "name": "Keyword research swarm (#2)",
+      "role": "Weekly pipeline refill",
+      "summary": "Every Monday refills the idea pipeline with 25-30 keywords, deduplicated against live and planned posts.",
+      "details": "Its output lands as Ideas in the CMS. Under v0.2 an idea is the only thing a human must approve before the agents take a post all the way to live.",
+      "responsibilities": [
+        "Mine autocomplete, questions, communities and competitor gaps",
+        "Make honest difficulty calls with evidence",
+        "Prioritise pillars the KAS shows as claimed but unearned"
+      ],
+      "inputs": [
+        "Pillar keyword CSV",
+        "Keyword tracker CSV"
+      ],
+      "outputs": [
+        "Pipeline CSV",
+        "Top-10 markdown"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "research",
+        "ideas",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 32,
+          "excerpt": "keyword-research-swarm: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 13
+        },
+        {
+          "path": "skills/keyword-research-swarm/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: keyword-research-swarm"
+        }
+      ]
+    },
+    {
+      "id": "blog-writing-agent",
+      "type": "agent",
+      "name": "Blog writing agent (#3)",
+      "role": "Per-post drafting",
+      "summary": "Writes the draft, the image production sheet and the [VERIFY] list for claims it could not source.",
+      "details": "Escalates to the strongest model for pillar and money pages. In v0.2 it no longer stops at a human image step: the production sheet is handed to the visual-asset agent.",
+      "responsibilities": [
+        "Draft SEO/AEO posts from an approved idea",
+        "Write the image production sheet",
+        "Mark unsourced claims with [VERIFY]"
+      ],
+      "inputs": [
+        "Approved brief or keyword",
+        "Brand pack"
+      ],
+      "outputs": [
+        "Draft markdown",
+        "Image production sheet",
+        "Verify list"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "writing",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 39,
+          "excerpt": "blog-writing-agent: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 14
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 41,
+          "excerpt": "escalate_to: claude-opus-5-5 when pillar_page, money_page"
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 46,
+          "excerpt": "hands_off_to: visual-asset-agent"
+        },
+        {
+          "path": "skills/blog-writing-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: blog-writing-agent"
+        }
+      ]
+    },
+    {
+      "id": "on-page-seo-optimizer",
+      "type": "agent",
+      "name": "On-page SEO optimizer (#4)",
+      "role": "Pre-publish audit gate",
+      "summary": "Scores every draft against the on-page checklist and produces the optimized post.",
+      "details": "Its scorecard is the input to the CMS agent's auto-gate. Failing items in the first five sections are hard blocks.",
+      "responsibilities": [
+        "Audit title, headings, keyword placement, links, FAQ and schema",
+        "Rewrite failing sections"
+      ],
+      "inputs": [
+        "Draft",
+        "Target keyword",
+        "Intent"
+      ],
+      "outputs": [
+        "Scorecard",
+        "Optimized post"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "gate",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 48,
+          "excerpt": "on-page-seo-optimizer: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 15
+        },
+        {
+          "path": "skills/on-page-seo-optimizer/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: on-page-seo-optimizer"
+        }
+      ]
+    },
+    {
+      "id": "technical-seo-monitor",
+      "type": "agent",
+      "name": "Technical SEO monitor (#5)",
+      "role": "Weekly site health",
+      "summary": "Friday health digest: indexability, broken links, sitemap and robots, HTTPS, Core Web Vitals signals, schema.",
+      "details": "Mostly mechanical, so it runs on the fast model and escalates ambiguous diagnoses.",
+      "responsibilities": [
+        "Crawl and diff site health",
+        "Report severity counts"
+      ],
+      "inputs": [
+        "Site URL",
+        "Previous digest"
+      ],
+      "outputs": [
+        "Dated digest"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "technical",
+        "model:claude-haiku-4-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 55,
+          "excerpt": "technical-seo-monitor: model claude-haiku-4-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 16
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 57,
+          "excerpt": "escalate_to: claude-sonnet-5 when ambiguous_diagnosis"
+        },
+        {
+          "path": "skills/technical-seo-monitor/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: technical-seo-monitor"
+        }
+      ]
+    },
+    {
+      "id": "content-refresh-agent",
+      "type": "agent",
+      "name": "Content refresh agent (#6)",
+      "role": "Monthly decay cycle",
+      "summary": "Finds decaying and page-2 posts, drafts refreshed versions, and proposes a prune list.",
+      "details": "Refresh drafts re-enter the CMS pipeline. Pruning a page always needs a human sign-off.",
+      "responsibilities": [
+        "Target page-2 and decaying posts",
+        "Draft refreshes",
+        "Propose prunes"
+      ],
+      "inputs": [
+        "Search Console export",
+        "Site URL",
+        "Previous cycle report"
+      ],
+      "outputs": [
+        "Refresh drafts",
+        "Prune sign-off list",
+        "Cycle report"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "refresh",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 63,
+          "excerpt": "content-refresh-agent: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 17
+        },
+        {
+          "path": "skills/content-refresh-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: content-refresh-agent"
+        }
+      ]
+    },
+    {
+      "id": "link-building-prospector",
+      "type": "agent",
+      "name": "Link-building prospector (#7)",
+      "role": "Monthly prospecting",
+      "summary": "Builds the link prospect pipeline and outreach drafts.",
+      "details": "Outreach is identity work: a human personalises and sends every email.",
+      "responsibilities": [
+        "Reverse-engineer competitor links",
+        "Find expert-quote and podcast openings",
+        "Draft outreach"
+      ],
+      "inputs": [
+        "Competitors",
+        "Backlink export (optional)",
+        "Sender profile"
+      ],
+      "outputs": [
+        "Prospect CSV",
+        "Outreach drafts",
+        "Human action list"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "links",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 70,
+          "excerpt": "link-building-prospector: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 18
+        },
+        {
+          "path": "skills/link-building-prospector/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: link-building-prospector"
+        }
+      ]
+    },
+    {
+      "id": "seo-qa-agent",
+      "type": "agent",
+      "name": "SEO QA agent (#8)",
+      "role": "Verification and accountability",
+      "summary": "Checks other agents' output against their contracts and against the live site, and demands human updates with deadlines.",
+      "details": "Weekly light run, bi-weekly full run. Owns the human ledger: items go overdue at 7 days and become named blockers at 14.",
+      "responsibilities": [
+        "Audit artifacts against contracts",
+        "Verify the live site",
+        "Maintain the human ledger"
+      ],
+      "inputs": [
+        "All agent artifacts",
+        "Site URL",
+        "Plan milestones",
+        "Previous ledger"
+      ],
+      "outputs": [
+        "QA scorecard",
+        "Human ledger (JSON + md)",
+        "Blockers"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "qa",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 77,
+          "excerpt": "seo-qa-agent: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 19
+        },
+        {
+          "path": "skills/seo-qa-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: seo-qa-agent"
+        }
+      ]
+    },
+    {
+      "id": "visualization-report-agent",
+      "type": "agent",
+      "name": "Visualization report agent (#9)",
+      "role": "Bi-weekly report",
+      "summary": "Produces the bi-weekly visual progress report and raises pivot flags.",
+      "details": "Escalates to the strongest model when a pivot trigger fires; a pivot flag queues an action-plan review via the orchestrator.",
+      "responsibilities": [
+        "Build the report from the bound template",
+        "Narrate progress",
+        "Raise pivot flags"
+      ],
+      "inputs": [
+        "QA scorecard",
+        "Search Console export",
+        "All artifacts",
+        "Report template"
+      ],
+      "outputs": [
+        "Bi-weekly report HTML",
+        "Pivot flags"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "reporting",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 85,
+          "excerpt": "visualization-report-agent: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 20
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 87,
+          "excerpt": "escalate_to: claude-opus-5-5 when pivot_trigger_fired"
+        },
+        {
+          "path": "templates/biweekly-report-template.html",
+          "kind": "docs"
+        },
+        {
+          "path": "skills/visualization-report-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: visualization-report-agent"
+        }
+      ]
+    },
+    {
+      "id": "visual-asset-agent",
+      "type": "agent",
+      "name": "Visual asset agent (#10) - new in v0.2",
+      "role": "Images, diagrams and sourcing",
+      "summary": "Fills every image slot: generates brand imagery through connected MCP servers or image APIs, builds SVG diagrams from the post's own facts, or sources licensed images from the web.",
+      "details": "Chooses a route per slot type. Records provider, model, prompt, license, creator and source URL for every asset. If a provider fails it tries the next route; if none works it holds the slot and adds a ledger item. Charts are always inline SVG, never generated.",
+      "responsibilities": [
+        "Route each slot: generate, diagram, or source",
+        "Inject brand palette and style keywords into every prompt",
+        "Return 2-4 candidates per slot",
+        "Post-process to WebP/AVIF at template breakpoints",
+        "Write the provenance log"
+      ],
+      "inputs": [
+        "Image production sheet",
+        "Brand pack",
+        "Post content",
+        "Site connections"
+      ],
+      "outputs": [
+        "Asset candidates",
+        "SVG diagrams",
+        "Provenance log",
+        "Hold list"
+      ],
+      "confidence": "confirmed",
+      "tags": [
+        "images",
+        "new-in-v0.2",
+        "model:claude-sonnet-5"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 93,
+          "excerpt": "visual-asset-agent: model claude-sonnet-5"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 21
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 100,
+          "excerpt": "routing: brand_imagery / diagram / text_in_image / volume / chart / stock_or_real_world"
+        },
+        {
+          "path": "skills/visual-asset-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: visual-asset-agent"
+        },
+        {
+          "path": "../../apps/cms/src/server/visual-agent/run.ts",
+          "kind": "code",
+          "line": 38,
+          "excerpt": "export async function runVisualAgent("
+        },
+        {
+          "path": "../../apps/cms/src/server/visual-agent/route.ts",
+          "kind": "code",
+          "line": 186,
+          "excerpt": "export function chooseRoute(slot, connections, brandPack, override)"
+        }
+      ],
+      "limitations": [
+        "Only web sourcing (Openverse) and template SVG diagrams were exercised with real calls; MCP, image-API and Claude-diagram paths are unit-tested but untried without keys.",
+        "Post-processing (WebP/AVIF, resizing) and the on-disk provenance log are not built yet."
+      ]
+    },
+    {
+      "id": "cms-agent",
+      "type": "agent",
+      "name": "CMS agent (product surface)",
+      "role": "Post state owner and sole repo writer",
+      "summary": "The Agentic CMS's native agent: owns post state, renders posts into the site's template, runs the auto-gate under autopost, and is the only component that opens and merges merge requests.",
+      "details": "Not part of the harness count of 11. It calls the harness agents and consumes their artifacts. With autopost on it sources or rewrites open claims, accepts soft blocks with a logged reason, opens the MR and merges it when the repo's CI passes; any hard block it cannot clear holds the post for a human.",
+      "responsibilities": [
+        "Hold the post state machine",
+        "Render posts into the site's own markup",
+        "Run the auto-gate and open/merge MRs",
+        "Recalculate keyword attribution after each merge"
+      ],
+      "inputs": [
+        "Draft",
+        "Assets + provenance",
+        "On-page scorecard",
+        "Template manifest"
+      ],
+      "outputs": [
+        "Merge request per post",
+        "Agent-edit log",
+        "Autopost reasons"
+      ],
+      "confidence": "supported",
+      "tags": [
+        "product",
+        "autopost",
+        "repo-writer",
+        "model:claude-sonnet-5"
+      ],
+      "limitations": [
+        "In the current Agentic CMS build the agent's work is simulated in the client store; the model is configurable in the CMS."
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 17,
+          "excerpt": "product_agent: cms-agent (outside the harness count; sole repo writer)"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 22
+        },
+        {
+          "path": "../../apps/cms/src/lib/store.tsx",
+          "kind": "code",
+          "line": 1319,
+          "excerpt": "approve(postId, overrides = {})"
+        },
+        {
+          "path": "../../apps/cms/src/lib/store.tsx",
+          "kind": "code",
+          "line": 1399,
+          "excerpt": "mergeMr(mrId)"
+        },
+        {
+          "path": "../../apps/cms/src/lib/store.tsx",
+          "kind": "code",
+          "line": 1277,
+          "excerpt": "shipNow(postId)"
+        }
+      ]
+    },
+    {
+      "id": "reports-dir",
+      "type": "memory",
+      "name": "Shared reports folder",
+      "role": "Harness shared state",
+      "summary": "Every agent reads and writes dated artifacts here; the orchestrator hands the newest matching file to each consumer.",
+      "scope": "Per client site",
+      "retention": "Dated files are kept, so delta reporting works across runs",
+      "correctionPath": "Rerun the producing agent; the newer dated file supersedes the old one",
+      "confidence": "confirmed",
+      "tags": [
+        "memory",
+        "files"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 11,
+          "excerpt": "shared_state_dir: ./reports"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 72
+        }
+      ]
+    },
+    {
+      "id": "human-ledger",
+      "type": "memory",
+      "name": "Human ledger",
+      "role": "Accountability record",
+      "summary": "Human-owned items with deadlines, written by the QA agent and shown in every report and in the CMS.",
+      "scope": "Per client site",
+      "retention": "Items age until resolved: overdue at 7 days, named blocker at 14",
+      "correctionPath": "The owner resolves the item in the CMS; QA verifies on its next run",
+      "confidence": "confirmed",
+      "tags": [
+        "memory",
+        "ledger"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 119,
+          "excerpt": "stale_human_item_days_warn: 7"
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 120,
+          "excerpt": "stale_human_item_days_block: 14"
+        }
+      ]
+    },
+    {
+      "id": "provenance-log",
+      "type": "memory",
+      "name": "Asset provenance log",
+      "role": "Image audit trail",
+      "summary": "For every asset: provider, model, prompt, license, creator, source URL and date, needed for client disclosure and licensing questions.",
+      "scope": "Per post and asset",
+      "retention": "unknown - travels with the asset into the repo commit",
+      "correctionPath": "Regenerate or replace the asset; a new provenance record is written",
+      "confidence": "supported",
+      "tags": [
+        "memory",
+        "images",
+        "new-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 100,
+          "excerpt": "outputs: asset_candidates, svg_diagrams, provenance_log"
+        },
+        {
+          "path": "skills/visual-asset-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: visual-asset-agent"
+        }
+      ]
+    },
+    {
+      "id": "cms-store",
+      "type": "memory",
+      "name": "Agentic CMS post store",
+      "role": "Post state, versions, audit",
+      "summary": "Posts, versions, gate results, merge requests, runs, ledger and audit events for each site.",
+      "scope": "Per site (tenant)",
+      "retention": "Prototype: browser localStorage under cms.state.v1; the PRD specifies Postgres for production",
+      "correctionPath": "Restore a version, or 'Reset demo data' in the prototype",
+      "confidence": "confirmed",
+      "tags": [
+        "memory",
+        "cms"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/lib/store.tsx",
+          "kind": "code",
+          "line": 68,
+          "excerpt": "const KEY = \"cms.state.v1\";"
+        }
+      ]
+    },
+    {
+      "id": "image-mcp",
+      "type": "tool",
+      "name": "Image MCP servers",
+      "role": "Brand imagery",
+      "summary": "Higgsfield (preferred) or any custom MCP server the site connects; used for brand-styled hero and lifestyle imagery with consistent characters and elements.",
+      "confidence": "supported",
+      "tags": [
+        "tool",
+        "mcp",
+        "images"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 101,
+          "excerpt": "brand_imagery: connected_mcp_or_api  # higgsfield preferred"
+        },
+        {
+          "path": "../../apps/cms/src/server/connections.ts",
+          "kind": "code",
+          "line": 318,
+          "excerpt": "export async function callMcpTool(id, toolName, args)"
+        }
+      ]
+    },
+    {
+      "id": "image-api",
+      "type": "tool",
+      "name": "Image APIs",
+      "role": "Text-in-image and volume",
+      "summary": "OpenAI image models for legible text-in-image; open-source models (Replicate, fal) for cheap volume batches.",
+      "confidence": "supported",
+      "tags": [
+        "tool",
+        "api",
+        "images"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 103,
+          "excerpt": "text_in_image: image_api  # openai"
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 104,
+          "excerpt": "volume: open_source"
+        },
+        {
+          "path": "../../apps/cms/src/server/visual-agent/generate.ts",
+          "kind": "code",
+          "excerpt": "openai-images / replicate / fal"
+        }
+      ]
+    },
+    {
+      "id": "web-image-sources",
+      "type": "tool",
+      "name": "Licensed web image sources",
+      "role": "Real-world and stock imagery",
+      "summary": "Openverse, Wikimedia Commons, or the site's own stock API; license, creator and attribution are recorded.",
+      "confidence": "confirmed",
+      "tags": [
+        "tool",
+        "web",
+        "images",
+        "new-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 106,
+          "excerpt": "stock_or_real_world: web_source_licensed"
+        },
+        {
+          "path": "../../apps/cms/src/server/visual-agent/source.ts",
+          "kind": "code",
+          "line": 38,
+          "excerpt": "api.openverse.org/v1/images"
+        }
+      ]
+    },
+    {
+      "id": "git-host",
+      "type": "tool",
+      "name": "Git host (GitHub or GitLab app)",
+      "role": "Branches, MRs, webhooks",
+      "summary": "Path-scoped app installation; the CMS agent opens one branch and MR per post and merges on green CI under autopost.",
+      "confidence": "confirmed",
+      "tags": [
+        "tool",
+        "git"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 15,
+          "excerpt": "auto_merge_on_green_ci: true"
+        }
+      ]
+    },
+    {
+      "id": "search-console",
+      "type": "dependency",
+      "name": "Google Search Console",
+      "role": "Positions, impressions, clicks",
+      "summary": "Required data source for refresh targeting, KAS and the report; lags roughly 2-3 days.",
+      "confidence": "confirmed",
+      "tags": [
+        "dependency",
+        "data"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 67,
+          "excerpt": "inputs: [gsc_export, site_url, previous_cycle_report]"
+        }
+      ]
+    },
+    {
+      "id": "kas-scoring",
+      "type": "worker",
+      "name": "Keyword Attribution Score",
+      "role": "Deterministic scoring",
+      "summary": "Ordinary code that turns impressions x click-through curve x intent value into each keyword's share of the site's search weight.",
+      "details": "Not an LLM. Recalculated 24 h after each merge, then weekly; the swarm, refresh and report agents all read it.",
+      "confidence": "confirmed",
+      "tags": [
+        "worker",
+        "kas"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/lib/logic.ts",
+          "kind": "code",
+          "line": 144,
+          "excerpt": "export function computeKas("
+        }
+      ]
+    },
+    {
+      "id": "template-renderer",
+      "type": "worker",
+      "name": "Template renderer",
+      "role": "Posts into the site's own markup",
+      "summary": "Parses an uploaded .html/.zip template, then maps each post into the template's real elements, classes and image containers for the live preview and the MR; never invents markup (missing structures are held).",
+      "confidence": "confirmed",
+      "tags": [
+        "worker",
+        "render"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/docs/prd-source.txt",
+          "kind": "docs",
+          "line": 301,
+          "excerpt": "Fidelity rule. The renderer never invents markup."
+        },
+        {
+          "path": "../../apps/cms/src/render/render.ts",
+          "kind": "code",
+          "line": 168,
+          "excerpt": "export function renderPost(input: IRenderInput): IRenderResult {"
+        },
+        {
+          "path": "../../apps/cms/src/render/parse.ts",
+          "kind": "code",
+          "line": 45,
+          "excerpt": "export function parseTemplate(html, parseHtml, idPrefix)"
+        }
+      ]
+    },
+    {
+      "id": "gate-human",
+      "type": "guardrail",
+      "name": "Human gates",
+      "role": "Where a person must decide",
+      "summary": "Approve ideas, approve the plan, send outreach, delete or prune pages, and spend above the cap.",
+      "details": "v0.2 replaced the v0.1 'publish' gate with 'approve_idea'. Publishing is automated, not bypassed.",
+      "confidence": "confirmed",
+      "tags": [
+        "guardrail",
+        "human",
+        "changed-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 12,
+          "excerpt": "human_gates: [approve_idea, send_outreach, delete_pages, spend_over_cap, approve_plan]"
+        }
+      ]
+    },
+    {
+      "id": "gate-autopost",
+      "type": "guardrail",
+      "name": "Autopost auto-gate",
+      "role": "Automatic publishing with holds",
+      "summary": "On by default per site. Open claims are sourced or rewritten first; hard blocks the agents cannot clear hold the post for a person. With autopost off, every post stops at human review.",
+      "confidence": "confirmed",
+      "tags": [
+        "guardrail",
+        "autopost",
+        "new-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 14,
+          "excerpt": "autopost_default: true"
+        },
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 106,
+          "excerpt": "Publishing is automatic by default ... never ships around a block."
+        },
+        {
+          "path": "../../apps/cms/docs/uxer/00-decisions.md",
+          "kind": "docs",
+          "excerpt": "Founder direction C10-C11"
+        },
+        {
+          "path": "../../apps/cms/src/lib/logic.ts",
+          "kind": "code",
+          "line": 353,
+          "excerpt": "export function autopostDecision(post, gate, site)"
+        }
+      ]
+    },
+    {
+      "id": "gate-facts",
+      "type": "guardrail",
+      "name": "No fabricated claims",
+      "role": "Fact markers",
+      "summary": "Unsourced statistics, quotes or citations never ship; they are sourced or removed before publishing.",
+      "confidence": "confirmed",
+      "tags": [
+        "guardrail",
+        "facts"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/lib/logic.ts",
+          "kind": "code",
+          "line": 253,
+          "excerpt": "export function evaluateGate("
+        }
+      ]
+    },
+    {
+      "id": "gate-spend",
+      "type": "guardrail",
+      "name": "Spend caps",
+      "role": "Budget control",
+      "summary": "Every run is estimated first; runs above the site's monthly cap are refused, with an alert at 80%.",
+      "confidence": "confirmed",
+      "tags": [
+        "guardrail",
+        "cost"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/lib/logic.ts",
+          "kind": "code",
+          "line": 373,
+          "excerpt": "export function checkCap("
+        },
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 114,
+          "excerpt": "estimate_before_run_refuse_over_cap"
+        }
+      ]
+    },
+    {
+      "id": "gate-images",
+      "type": "guardrail",
+      "name": "Image guardrails",
+      "role": "Rights and safety",
+      "summary": "No identifiable real people unless licensed, no living-artist style imitation, no watermarks, no non-commercial licenses on commercial sites, diagrams only from the post's facts, provenance for every asset.",
+      "confidence": "confirmed",
+      "tags": [
+        "guardrail",
+        "images",
+        "new-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 107,
+          "excerpt": "guardrails: no_identifiable_real_people_unless_licensed ..."
+        },
+        {
+          "path": "../../apps/cms/src/server/visual-agent/svg.ts",
+          "kind": "code",
+          "line": 52,
+          "excerpt": "export function sanitizeSvg(input: string): string | null {"
+        }
+      ]
+    },
+    {
+      "id": "gate-repo-scope",
+      "type": "guardrail",
+      "name": "Repo scope",
+      "role": "Write boundary",
+      "summary": "The integration writes only to the declared content and asset paths and never pushes to the base branch; the repo's own CI decides merges.",
+      "confidence": "supported",
+      "tags": [
+        "guardrail",
+        "git"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/docs/prd-source.txt",
+          "kind": "docs",
+          "line": 528,
+          "excerpt": "Repo access. Path-scoped to the declared content and asset directories."
+        }
+      ]
+    },
+    {
+      "id": "agentic-cms",
+      "type": "interface",
+      "name": "Agentic CMS",
+      "role": "Product surface",
+      "summary": "Where people approve ideas, watch posts ship, connect image providers, upload templates and read the SEO trajectory.",
+      "confidence": "confirmed",
+      "tags": [
+        "interface",
+        "cms"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/docs/BUILD-PLAN.md",
+          "kind": "docs",
+          "line": 1,
+          "excerpt": "Agentic CMS - build plan"
+        }
+      ]
+    },
+    {
+      "id": "biweekly-report",
+      "type": "interface",
+      "name": "Bi-weekly report",
+      "role": "Client-facing progress",
+      "summary": "Visual HTML report with health score, KPI deltas, charts, the human ledger and pivot calls.",
+      "confidence": "confirmed",
+      "tags": [
+        "interface",
+        "report"
+      ],
+      "evidence": [
+        {
+          "path": "templates/biweekly-report-template.html",
+          "kind": "docs"
+        }
+      ]
+    },
+    {
+      "id": "connection-vault",
+      "type": "memory",
+      "name": "Connection store",
+      "role": "Provider connections and secrets",
+      "summary": "Per-site MCP servers, image APIs and web sources; secrets are held server-side, never returned by any route and never put in prompts.",
+      "scope": "Per site (tenant-filtered on every read)",
+      "retention": "Prototype: .data/connections.json + .data/secrets.json (AES-256-GCM when CMS_SECRET_KEY is set)",
+      "correctionPath": "Edit or remove the connection in Settings - Connections; changing a key resets its status to untested",
+      "confidence": "confirmed",
+      "tags": [
+        "memory",
+        "secrets",
+        "new-in-v0.2"
+      ],
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/server/connections.ts",
+          "kind": "code",
+          "line": 136,
+          "excerpt": "export async function getSecret(id)"
+        }
+      ]
+    }
+  ],
+  "relations": [
+    {
+      "from": "orchestrator",
+      "to": "seo-action-plan",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "keyword-research-swarm",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "blog-writing-agent",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "technical-seo-monitor",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "content-refresh-agent",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "link-building-prospector",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "seo-qa-agent",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "visualization-report-agent",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "visual-asset-agent",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "on-page-seo-optimizer",
+      "type": "dispatches",
+      "label": "on schedule or manual trigger",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    },
+    {
+      "from": "seo-action-plan",
+      "to": "model-claude-opus-5-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "seo-action-plan: model"
+        }
+      ]
+    },
+    {
+      "from": "keyword-research-swarm",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "keyword-research-swarm: model"
+        }
+      ]
+    },
+    {
+      "from": "blog-writing-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "blog-writing-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "on-page-seo-optimizer",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "on-page-seo-optimizer: model"
+        }
+      ]
+    },
+    {
+      "from": "content-refresh-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "content-refresh-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "link-building-prospector",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "link-building-prospector: model"
+        }
+      ]
+    },
+    {
+      "from": "seo-qa-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "seo-qa-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "visualization-report-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "visualization-report-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "visual-asset-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "cms-agent",
+      "to": "model-claude-sonnet-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "cms-agent: model"
+        }
+      ]
+    },
+    {
+      "from": "orchestrator",
+      "to": "model-claude-haiku-4-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "orchestrator: model"
+        }
+      ]
+    },
+    {
+      "from": "technical-seo-monitor",
+      "to": "model-claude-haiku-4-5",
+      "type": "uses-model",
+      "label": "declared model",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "excerpt": "technical-seo-monitor: model"
+        }
+      ]
+    },
+    {
+      "from": "seo-action-plan",
+      "to": "keyword-research-swarm",
+      "type": "hands-off-to",
+      "label": "pillar keyword CSV",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "keyword-research-swarm",
+      "to": "gate-human",
+      "type": "hands-off-to",
+      "label": "ideas wait for approval",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-human",
+      "to": "blog-writing-agent",
+      "type": "dispatches",
+      "label": "approved idea becomes a brief",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "blog-writing-agent",
+      "to": "visual-asset-agent",
+      "type": "hands-off-to",
+      "label": "image production sheet",
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 46,
+          "excerpt": "hands_off_to: visual-asset-agent"
+        }
+      ]
+    },
+    {
+      "from": "blog-writing-agent",
+      "to": "on-page-seo-optimizer",
+      "type": "hands-off-to",
+      "label": "draft",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "image-mcp",
+      "type": "calls",
+      "label": "brand imagery",
+      "confidence": "supported",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "image-api",
+      "type": "calls",
+      "label": "text-in-image, volume",
+      "confidence": "supported",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "web-image-sources",
+      "type": "calls",
+      "label": "licensed real-world images",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "provenance-log",
+      "type": "writes",
+      "label": "provider, model, prompt, license",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "cms-agent",
+      "type": "hands-off-to",
+      "label": "selected assets + provenance",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "on-page-seo-optimizer",
+      "to": "cms-agent",
+      "type": "hands-off-to",
+      "label": "scorecard for the auto-gate",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "cms-agent",
+      "to": "template-renderer",
+      "type": "calls",
+      "label": "render into site markup",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "cms-agent",
+      "to": "git-host",
+      "type": "writes",
+      "label": "one MR per post; merge on green CI",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "cms-agent",
+      "to": "cms-store",
+      "type": "writes",
+      "label": "post state, versions, audit",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "cms-agent",
+      "to": "kas-scoring",
+      "type": "calls",
+      "label": "recalculate 24 h after merge",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-autopost",
+      "to": "cms-agent",
+      "type": "guards",
+      "label": "ships or holds each post",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-facts",
+      "to": "cms-agent",
+      "type": "guards",
+      "label": "no unsourced claims ship",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-spend",
+      "to": "visual-asset-agent",
+      "type": "guards",
+      "label": "estimate before run, refuse over cap",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-images",
+      "to": "visual-asset-agent",
+      "type": "guards",
+      "label": "rights and safety rules",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "gate-repo-scope",
+      "to": "git-host",
+      "type": "guards",
+      "label": "declared paths only",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "keyword-research-swarm",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "blog-writing-agent",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "on-page-seo-optimizer",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "technical-seo-monitor",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "content-refresh-agent",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "link-building-prospector",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "reports-dir",
+      "type": "writes",
+      "label": "dated artifact",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "seo-qa-agent",
+      "to": "reports-dir",
+      "type": "reads",
+      "label": "all agent artifacts",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "seo-qa-agent",
+      "to": "human-ledger",
+      "type": "writes",
+      "label": "deadlines and blockers",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visualization-report-agent",
+      "to": "human-ledger",
+      "type": "reads",
+      "label": "ledger in every report",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visualization-report-agent",
+      "to": "biweekly-report",
+      "type": "delivers",
+      "label": "bi-weekly HTML",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visualization-report-agent",
+      "to": "orchestrator",
+      "type": "returns-to",
+      "label": "pivot flag queues a plan review",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "content-refresh-agent",
+      "to": "search-console",
+      "type": "reads",
+      "label": "decay and page-2 targeting",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "kas-scoring",
+      "to": "search-console",
+      "type": "reads",
+      "label": "impressions and positions",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "keyword-research-swarm",
+      "to": "kas-scoring",
+      "type": "reads",
+      "label": "claimed-but-unearned pillars",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "agentic-cms",
+      "to": "cms-store",
+      "type": "reads",
+      "label": "everything the specialist sees",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "visual-asset-agent",
+      "to": "connection-vault",
+      "type": "reads",
+      "label": "which providers this site connected",
+      "confidence": "confirmed",
+      "evidence": []
+    },
+    {
+      "from": "agentic-cms",
+      "to": "connection-vault",
+      "type": "writes",
+      "label": "Settings - Connections",
+      "confidence": "confirmed",
+      "evidence": []
+    }
+  ],
+  "features": [
+    {
+      "id": "idea-to-live",
+      "name": "Approved idea ships on its own",
+      "summary": "After a person approves an idea, the agents draft, illustrate, check and publish it through a merge request that merges on green CI.",
+      "deliveredBy": [
+        "keyword-research-swarm",
+        "blog-writing-agent",
+        "visual-asset-agent",
+        "on-page-seo-optimizer",
+        "cms-agent"
+      ],
+      "dependsOn": [
+        "gate-human",
+        "gate-autopost",
+        "git-host",
+        "template-renderer"
+      ],
+      "confidence": "supported",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 14,
+          "excerpt": "autopost_default: true"
+        }
+      ]
+    },
+    {
+      "id": "images-without-design-work",
+      "name": "Every image slot filled",
+      "summary": "Generated, diagrammed or licensed-sourced images with provenance, so posts never wait on a designer.",
+      "deliveredBy": [
+        "visual-asset-agent"
+      ],
+      "dependsOn": [
+        "image-mcp",
+        "image-api",
+        "web-image-sources",
+        "provenance-log",
+        "gate-images",
+        "gate-spend"
+      ],
+      "confidence": "supported",
+      "evidence": [
+        {
+          "path": "skills/visual-asset-agent/SKILL.md",
+          "kind": "docs",
+          "line": 2,
+          "excerpt": "name: visual-asset-agent"
+        }
+      ]
+    },
+    {
+      "id": "human-review-mode",
+      "name": "Human review when autopost is off",
+      "summary": "Sites that turn autopost off get the original In review gate for every post.",
+      "deliveredBy": [
+        "cms-agent"
+      ],
+      "dependsOn": [
+        "gate-autopost",
+        "agentic-cms"
+      ],
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 16,
+          "excerpt": "when_autopost_off: human_review"
+        }
+      ]
+    },
+    {
+      "id": "search-weight",
+      "name": "Keyword Attribution Score",
+      "summary": "Shows which keywords and pages carry the site's search weight and proves what a post changed.",
+      "deliveredBy": [
+        "kas-scoring"
+      ],
+      "dependsOn": [
+        "search-console"
+      ],
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "../../apps/cms/src/lib/logic.ts",
+          "kind": "code",
+          "line": 144
+        }
+      ]
+    },
+    {
+      "id": "progress-reporting",
+      "name": "Bi-weekly progress and pivots",
+      "summary": "A visual report every second Friday with pivot flags that can re-open strategy.",
+      "deliveredBy": [
+        "seo-qa-agent",
+        "visualization-report-agent"
+      ],
+      "dependsOn": [
+        "human-ledger",
+        "reports-dir",
+        "biweekly-report"
+      ],
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 85,
+          "excerpt": "visualization-report-agent"
+        }
+      ]
+    },
+    {
+      "id": "accountability",
+      "name": "Human work is tracked, not forgotten",
+      "summary": "The ledger ages human items to overdue at 7 days and blocker at 14, visible to the client.",
+      "deliveredBy": [
+        "seo-qa-agent"
+      ],
+      "dependsOn": [
+        "human-ledger"
+      ],
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "harness-config.yaml",
+          "kind": "config",
+          "line": 119
+        }
+      ]
+    },
+    {
+      "id": "site-health-and-links",
+      "name": "Site health, refreshes and links",
+      "summary": "Weekly technical digest, monthly refresh drafts and prune list, monthly link prospects with human-sent outreach.",
+      "deliveredBy": [
+        "technical-seo-monitor",
+        "content-refresh-agent",
+        "link-building-prospector"
+      ],
+      "dependsOn": [
+        "search-console",
+        "gate-human"
+      ],
+      "confidence": "confirmed",
+      "evidence": [
+        {
+          "path": "HARNESS.md",
+          "kind": "docs",
+          "line": 92
+        }
+      ]
+    }
+  ],
+  "history": [
+    {
+      "generatedAt": "2026-09-27T09:28:01.649Z",
+      "fromRevision": "f825efb3a653",
+      "toRevision": "f825efb3a653",
+      "changes": [
+        {
+          "action": "added",
+          "kind": "entity",
+          "id": "connection-vault",
+          "name": "Connection store"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "visual-asset-agent",
+          "name": "Visual asset agent (#10) - new in v0.2"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "cms-agent",
+          "name": "CMS agent (product surface)"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "image-mcp",
+          "name": "Image MCP servers"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "image-api",
+          "name": "Image APIs"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "web-image-sources",
+          "name": "Licensed web image sources"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "template-renderer",
+          "name": "Template renderer"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "gate-autopost",
+          "name": "Autopost auto-gate"
+        },
+        {
+          "action": "changed",
+          "kind": "entity",
+          "id": "gate-images",
+          "name": "Image guardrails"
+        },
+        {
+          "action": "added",
+          "kind": "relation",
+          "id": "visual-asset-agent|connection-vault|reads",
+          "name": "which providers this site connected"
+        },
+        {
+          "action": "added",
+          "kind": "relation",
+          "id": "agentic-cms|connection-vault|writes",
+          "name": "Settings - Connections"
+        },
+        {
+          "action": "changed",
+          "kind": "relation",
+          "id": "visual-asset-agent|web-image-sources|calls",
+          "name": "licensed real-world images"
+        },
+        {
+          "action": "changed",
+          "kind": "relation",
+          "id": "cms-agent|template-renderer|calls",
+          "name": "render into site markup"
+        }
+      ]
+    },
+    {
+      "generatedAt": "2026-09-27T09:28:18.519Z",
+      "fromRevision": "f825efb3a653",
+      "toRevision": "f825efb3a653",
+      "changes": []
+    }
+  ],
+  "warnings": [
+    "Dropped relation runvisualagent -> model-claude-opus-4-8: entity not found.",
+    "Dropped relation runvisualagent -> model-claude-sonnet-4-6: entity not found.",
+    "Dropped relation runvisualagent -> model-claude-diagram: entity not found.",
+    "Dropped relation runvisualagent -> model-claude-haiku-4-5: entity not found.",
+    "Dropped relation runvisualagent -> model-claude-opus-5-5: entity not found.",
+    "Dropped relation runvisualagent -> model-claude-sonnet-5: entity not found.",
+    "Dropped relation runvisualagent -> postgres-memory: entity not found.",
+    "Dropped relation runvisualagent -> openai-api: entity not found.",
+    "Dropped relation runvisualagent -> anthropic-api: entity not found.",
+    "Dropped relation runvisualagent -> mcp: entity not found."
+  ],
+  "notes": [
+    "Model IDs follow the current family and must be verified against https://docs.claude.com before deployment.",
+    "v0.1 used claude-opus-4-8 and claude-sonnet-4-6; see HARNESS.md 'Changes from v0.1'."
+  ],
+  "stats": {
+    "filesScanned": 19,
+    "agents": 12,
+    "models": 3,
+    "memories": 5,
+    "dependencies": 15,
+    "relations": 60,
+    "features": 7,
+    "confirmedClaims": 30
+  }
+}

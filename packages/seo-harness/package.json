@@ -1,0 +1,28 @@
+{
+  "name": "@studio/seo-harness",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "description": "Grandeur SEO Agent Harness v0.2: skills, config, report template, and a typed roster for the Agentic CMS.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./skills/*": "./skills/*",
+    "./templates/*": "./templates/*",
+    "./harness-config.yaml": "./harness-config.yaml",
+    "./HARNESS.md": "./HARNESS.md"
+  },
+  "files": ["src", "skills", "templates", "HARNESS.md", "HUMAN-TASKS.md", "README.md", "harness-config.yaml"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "typescript": "^5.8.3",
+    "vitest": "^4.1.11",
+    "yaml": "^2.8.1"
+  }
+}

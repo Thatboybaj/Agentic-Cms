@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Grandeur — SEO & AEO Action Plan</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f4f0;
+    --color-background-tertiary: #eeecea;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-text-tertiary: #888780;
+    --color-border-tertiary: rgba(0,0,0,0.10);
+    --color-border-secondary: rgba(0,0,0,0.18);
+    --color-text-success: #1D9E75;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a28;
+      --color-background-tertiary: #222220;
+      --color-text-primary: #e8e6df;
+      --color-text-secondary: #a8a69e;
+      --color-text-tertiary: #6e6d68;
+      --color-border-tertiary: rgba(255,255,255,0.10);
+      --color-border-secondary: rgba(255,255,255,0.18);
+      --color-text-success: #5DCAA5;
+    }
+  }
+  body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-tertiary); padding: 2rem 1rem; min-height: 100vh; }
+  .container { max-width: 860px; margin: 0 auto; background: var(--color-background-primary); border-radius: 16px; padding: 2rem; border: 0.5px solid var(--color-border-tertiary); }
+  .header { margin-bottom: 2rem; }
+  .header h1 { font-size: 22px; font-weight: 500; margin-bottom: 4px; }
+  .header p { font-size: 14px; color: var(--color-text-secondary); }
+  .plan { }
+  .nav { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 2rem; }
+  .nav button { padding: 7px 14px; font-size: 13px; border-radius: 20px; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); cursor: pointer; transition: all .18s; font-family: inherit; }
+  .nav button.active { background: #3B3489; color: #fff; border-color: #3B3489; }
+  .nav button:hover:not(.active) { background: var(--color-background-secondary); }
+  .tab { display: none; } .tab.active { display: block; }
+  h2 { font-size: 18px; font-weight: 500; margin-bottom: 4px; }
+  h3 { font-size: 15px; font-weight: 500; margin-bottom: 8px; color: var(--color-text-primary); }
+  p, li { font-size: 14px; line-height: 1.65; color: var(--color-text-secondary); }
+  .section { margin-bottom: 2rem; }
+  .label { font-size: 12px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; margin-bottom: 6px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .card { background: var(--color-background-secondary); border-radius: 10px; padding: 14px 16px; }
+  .card.white { background: var(--color-background-primary); border: 0.5px solid var(--color-border-tertiary); }
+  .pill { display: inline-block; font-size: 11px; padding: 3px 9px; border-radius: 20px; font-weight: 500; margin: 2px 2px 2px 0; }
+  .pill-purple { background: #EEEDFE; color: #3C3489; }
+  .pill-teal { background: #E1F5EE; color: #0F6E56; }
+  .pill-amber { background: #FAEEDA; color: #854F0B; }
+  .pill-coral { background: #FAECE7; color: #993C1D; }
+  .pill-blue { background: #E6F1FB; color: #185FA5; }
+  @media (prefers-color-scheme: dark) {
+    .pill-purple { background: #26215C; color: #AFA9EC; }
+    .pill-teal { background: #04342C; color: #5DCAA5; }
+    .pill-amber { background: #412402; color: #EF9F27; }
+    .pill-coral { background: #4A1B0C; color: #F0997B; }
+    .pill-blue { background: #042C53; color: #85B7EB; }
+  }
+  .kw-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .kw-table th { text-align: left; padding: 8px 10px; font-size: 11px; color: var(--color-text-tertiary); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .kw-table td { padding: 9px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); vertical-align: top; }
+  .kw-table tr:last-child td { border-bottom: none; }
+  .kw-table td:first-child { color: var(--color-text-primary); font-weight: 500; font-size: 13px; }
+  .intent { font-size: 10px; padding: 2px 7px; border-radius: 10px; display: inline-block; font-weight: 500; }
+  .int-info { background: #E6F1FB; color: #185FA5; }
+  .int-com { background: #FAEEDA; color: #854F0B; }
+  .int-nav { background: #E1F5EE; color: #0F6E56; }
+  @media (prefers-color-scheme: dark) {
+    .int-info { background: #042C53; color: #85B7EB; }
+    .int-com { background: #412402; color: #EF9F27; }
+    .int-nav { background: #04342C; color: #5DCAA5; }
+  }
+  .vol-bar-wrap { display: flex; align-items: center; gap: 8px; }
+  .vol-bar { height: 6px; border-radius: 3px; background: #7F77DD; min-width: 4px; }
+  .timeline-row { display: grid; grid-template-columns: 120px 1fr; gap: 16px; align-items: start; margin-bottom: 20px; }
+  .phase-badge { font-size: 11px; font-weight: 500; padding: 4px 10px; border-radius: 20px; text-align: center; }
+  .phase-1 { background: #E6F1FB; color: #185FA5; }
+  .phase-2 { background: #FAEEDA; color: #854F0B; }
+  .phase-3 { background: #E1F5EE; color: #0F6E56; }
+  .phase-4 { background: #EEEDFE; color: #3C3489; }
+  @media (prefers-color-scheme: dark) {
+    .phase-1 { background: #042C53; color: #85B7EB; }
+    .phase-2 { background: #412402; color: #EF9F27; }
+    .phase-3 { background: #04342C; color: #5DCAA5; }
+    .phase-4 { background: #26215C; color: #AFA9EC; }
+  }
+  .traffic-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .traffic-label { font-size: 12px; color: var(--color-text-secondary); width: 120px; flex-shrink: 0; }
+  .traffic-track { flex: 1; background: var(--color-background-secondary); border-radius: 4px; height: 18px; position: relative; overflow: hidden; }
+  .traffic-fill { height: 100%; border-radius: 4px; display: flex; align-items: center; padding-left: 8px; font-size: 11px; font-weight: 500; color: #fff; white-space: nowrap; }
+  .tool-row { display: flex; align-items: flex-start; gap: 12px; padding: 10px 0; border-bottom: 0.5px solid var(--color-border-tertiary); }
+  .tool-row:last-child { border-bottom: none; }
+  .tool-name { font-size: 13px; font-weight: 500; color: var(--color-text-primary); min-width: 140px; }
+  .tool-cost { font-size: 11px; color: var(--color-text-success); font-weight: 500; }
+  .tool-desc { font-size: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+  .step-num { width: 24px; height: 24px; border-radius: 50%; background: #7F77DD; color: #fff; font-size: 12px; font-weight: 500; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 2px; }
+  .step-row { display: flex; gap: 12px; margin-bottom: 16px; }
+  .chart-wrap { position: relative; height: 220px; margin-bottom: 1rem; }
+  .divider { height: 0.5px; background: var(--color-border-tertiary); margin: 1.5rem 0; }
+  .warn { background: #FAEEDA; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #633806; margin-top: 8px; }
+  @media (prefers-color-scheme: dark) { .warn { background: #412402; color: #FAC775; } }
+  .tip { background: #E1F5EE; border-radius: 8px; padding: 10px 14px; font-size: 13px; color: #085041; margin-top: 8px; }
+  @media (prefers-color-scheme: dark) { .tip { background: #04342C; color: #5DCAA5; } }
+  @media (max-width: 600px) {
+    .grid2 { grid-template-columns: 1fr; }
+    .grid3 { grid-template-columns: 1fr 1fr; }
+    .timeline-row { grid-template-columns: 90px 1fr; }
+    .container { padding: 1.25rem; }
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>Grandeur — SEO & AEO Domination Plan</h1>
+    <p>Keyword strategy · Traffic timeline · Content workflow · Tool stack · AEO/GEO</p>
+  </div>
+
+  <div class="plan">
+    <div class="nav" id="nav">
+      <button class="active" onclick="showTab('keywords', this)">Keyword strategy</button>
+      <button onclick="showTab('timeline', this)">Timeline & traffic</button>
+      <button onclick="showTab('workflow', this)">Content workflow</button>
+      <button onclick="showTab('stack', this)">Tool stack</button>
+      <button onclick="showTab('aeo', this)">AEO / GEO</button>
+    </div>
+
+    <!-- TAB 1: KEYWORDS -->
+    <div id="tab-keywords" class="tab active">
+      <div class="section">
+        <div class="label">Pillar 1 — Marketing OS / Platform</div>
+        <div class="card white" style="margin-bottom:12px">
+          <table class="kw-table">
+            <thead><tr><th>Keyword</th><th>Intent</th><th>Est. volume</th><th>Why Grandeur wins</th></tr></thead>
+            <tbody>
+              <tr><td>marketing OS for teams</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:38px"></div>low-med</div></td><td>Exact product category — own it early</td></tr>
+              <tr><td>all-in-one marketing platform</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:72px"></div>high</div></td><td>Hub content + comparison pages</td></tr>
+              <tr><td>marketing workflow software</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:55px"></div>medium</div></td><td>Blog series + Grandeur feature pages</td></tr>
+              <tr><td>campaign management tool for agencies</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:50px"></div>medium</div></td><td>Agency persona fit; BrandPack multi-brand story</td></tr>
+              <tr><td>AI marketing platform 2025</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:80px"></div>high</div></td><td>High recency boost for fresh blog posts</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="label">Pillar 2 — Brand Safety & Guardrails</div>
+        <div class="card white" style="margin-bottom:12px">
+          <table class="kw-table">
+            <thead><tr><th>Keyword</th><th>Intent</th><th>Est. volume</th><th>Why Grandeur wins</th></tr></thead>
+            <tbody>
+              <tr><td>brand safety in AI content creation</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:44px"></div>low-med</div></td><td>BrandGuard is a differentiator — write the definitive guide</td></tr>
+              <tr><td>brand voice consistency across channels</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:58px"></div>medium</div></td><td>BrandPack feature maps directly to this</td></tr>
+              <tr><td>how to maintain brand guidelines at scale</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:46px"></div>medium</div></td><td>Deep-dive blog; AEO featured snippet target</td></tr>
+              <tr><td>AI content approval workflow</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:40px"></div>low-med</div></td><td>Stage Gates + Approvals module = perfect match</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="label">Pillar 3 — SEO & AEO for Marketers</div>
+        <div class="card white" style="margin-bottom:12px">
+          <table class="kw-table">
+            <thead><tr><th>Keyword</th><th>Intent</th><th>Est. volume</th><th>Why Grandeur wins</th></tr></thead>
+            <tbody>
+              <tr><td>what is AEO in marketing</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:52px"></div>medium</div></td><td>AEO Advisor module → own the education layer</td></tr>
+              <tr><td>answer engine optimization guide</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:48px"></div>medium</div></td><td>This is Grandeur's own feature — massive authority signal</td></tr>
+              <tr><td>SEO content workflow tool</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:36px"></div>low-med</div></td><td>Advisor pipeline + Brief generator</td></tr>
+              <tr><td>SERP entity mapping tool</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:32px"></div>low</div></td><td>Low competition, very high conversion intent</td></tr>
+              <tr><td>content brief generator AI</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:65px"></div>med-high</div></td><td>Direct Node Composer output</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="label">Pillar 4 — Content & Campaign Production</div>
+        <div class="card white">
+          <table class="kw-table">
+            <thead><tr><th>Keyword</th><th>Intent</th><th>Est. volume</th><th>Why Grandeur wins</th></tr></thead>
+            <tbody>
+              <tr><td>content calendar tool for marketing teams</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:68px"></div>med-high</div></td><td>Calendar module is core UI</td></tr>
+              <tr><td>how to plan a marketing campaign</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:90px"></div>very high</div></td><td>TOFU magnet → lead into Grandeur's campaign wizard</td></tr>
+              <tr><td>AI campaign ideation tool</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:42px"></div>low-med</div></td><td>Ideation Flow + Node Composer</td></tr>
+              <tr><td>influencer campaign management software</td><td><span class="intent int-com">Commercial</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:56px"></div>medium</div></td><td>CreatorZone feature plays here</td></tr>
+              <tr><td>marketing content repurposing workflow</td><td><span class="intent int-info">Informational</span></td><td><div class="vol-bar-wrap"><div class="vol-bar" style="width:44px"></div>low-med</div></td><td>Node Composer Rewrite/Shorten/Localize nodes</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip" style="margin-top:12px">Start with Pillar 3 (SEO/AEO) — Grandeur literally has an AEO Advisor module. Publishing authoritative educational content about AEO positions you as the source of truth AND shows the product in action. Double ROI on every post.</div>
+      </div>
+    </div>
+
+    <!-- TAB 2: TIMELINE -->
+    <div id="tab-timeline" class="tab">
+      <div class="section">
+        <p style="margin-bottom:1.5rem">Traffic projections assume clean technical SEO, proper internal linking, schema markup, and no pre-existing domain authority. Google's sandbox effect means months 1–3 produce almost no organic traffic regardless of volume — write for foundations, not vanity metrics.</p>
+        <div class="grid3" style="margin-bottom:1.5rem">
+          <div class="card">
+            <div style="font-size:22px;font-weight:500">2 posts/wk</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">Minimum viable cadence</div>
+            <div style="margin-top:8px;font-size:13px;color:var(--color-text-secondary)">8 posts/mo → ~96/yr. Slow compounding. Traction at 12–18 months.</div>
+          </div>
+          <div class="card" style="border:1.5px solid #7F77DD">
+            <div style="font-size:22px;font-weight:500;color:#534AB7">4 posts/wk</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">Recommended sweet spot</div>
+            <div style="margin-top:8px;font-size:13px;color:var(--color-text-secondary)">16 posts/mo → ~192/yr. Meaningful traction at 9–12 months.</div>
+          </div>
+          <div class="card">
+            <div style="font-size:22px;font-weight:500">6+ posts/wk</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);margin-top:2px">Aggressive / funded mode</div>
+            <div style="margin-top:8px;font-size:13px;color:var(--color-text-secondary)">24+ posts/mo → 288+/yr. AEO wins possible at 6 months.</div>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <h3 style="margin-bottom:1rem">Traffic trajectory by posting cadence</h3>
+        <div class="chart-wrap"><canvas id="trafficChart"></canvas></div>
+        <div class="divider"></div>
+        <h3 style="margin-bottom:1rem">Phase milestones</h3>
+        <div class="timeline-row">
+          <div><div class="phase-badge phase-1">Months 1–3</div><div style="font-size:11px;color:var(--color-text-tertiary);margin-top:6px;text-align:center">Foundation</div></div>
+          <div>
+            <h3>Technical setup + first 30–50 posts</h3>
+            <p>Build your blog on a fast CMS (Ghost or Webflow). Set up GSC, GA4, schema markup, sitemap. Publish pillar pages for each of the 4 keyword clusters. Aim for 1,500–2,500 words per post, proper heading hierarchy, FAQ sections for AEO. Traffic: near-zero — Google is indexing and evaluating.</p>
+            <div style="margin-top:8px"><span class="pill pill-blue">Technical SEO</span><span class="pill pill-blue">Pillar pages</span><span class="pill pill-blue">Internal link map</span><span class="pill pill-blue">Schema markup</span></div>
+          </div>
+        </div>
+        <div class="timeline-row">
+          <div><div class="phase-badge phase-2">Months 4–6</div><div style="font-size:11px;color:var(--color-text-tertiary);margin-top:6px;text-align:center">Early signal</div></div>
+          <div>
+            <h3>First rankings + AEO wins begin</h3>
+            <p>Low-competition, long-tail keywords start ranking on page 2–3. FAQ-structured posts targeting "what is AEO" / "what is a marketing OS" begin appearing in AI overviews and featured snippets. At 4 posts/wk expect 500–2,000 organic sessions/month. At 6+/wk: 1,500–4,000.</p>
+            <div style="margin-top:8px"><span class="pill pill-amber">First AEO snippets</span><span class="pill pill-amber">Long-tail page 2–3</span><span class="pill pill-amber">Answer blocks</span></div>
+          </div>
+        </div>
+        <div class="timeline-row">
+          <div><div class="phase-badge phase-3">Months 7–12</div><div style="font-size:11px;color:var(--color-text-tertiary);margin-top:6px;text-align:center">Growth phase</div></div>
+          <div>
+            <h3>Compounding traffic + page 1 entries</h3>
+            <p>Domain authority grows. Mid-competition terms move to page 1. Branded searches increase. At 4 posts/wk: 3,000–8,000 sessions/month. At 6+/wk: 8,000–20,000. This is when you see real inbound leads. Update your top 20 posts with new data to maintain freshness signals.</p>
+            <div style="margin-top:8px"><span class="pill pill-teal">Page 1 rankings</span><span class="pill pill-teal">Branded uplift</span><span class="pill pill-teal">Inbound leads</span><span class="pill pill-teal">Update cycle</span></div>
+          </div>
+        </div>
+        <div class="timeline-row">
+          <div><div class="phase-badge phase-4">Month 12+</div><div style="font-size:11px;color:var(--color-text-tertiary);margin-top:6px;text-align:center">Domination</div></div>
+          <div>
+            <h3>Category authority + AI citation status</h3>
+            <p>Grandeur content starts being cited by Claude, ChatGPT, Perplexity for marketing platform queries. High-competition terms (e.g. "all-in-one marketing platform") enter page 1. At 4/wk: 10,000–30,000+/month. At 6+/wk: 25,000–60,000+. Competitors will start linking to your definitions.</p>
+            <div style="margin-top:8px"><span class="pill pill-purple">AI citation</span><span class="pill pill-purple">Category leader</span><span class="pill pill-purple">Competitor backlinks</span><span class="pill pill-purple">Perplexity answers</span></div>
+          </div>
+        </div>
+        <div class="warn">AEO results arrive faster than traditional SEO — typically 3–6 months for structured, FAQ-formatted content vs 9–18 months for organic search dominance. Start with AEO-optimized posts immediately.</div>
+      </div>
+    </div>
+
+    <!-- TAB 3: WORKFLOW -->
+    <div id="tab-workflow" class="tab">
+      <div class="section">
+        <p style="margin-bottom:1.5rem">This workflow lets one person produce 4–6 SEO-optimized, AEO-ready blog posts per week using Claude + cheap tooling. The human's job is direction, quality gate, and publishing. Claude does the heavy lifting.</p>
+        <div class="step-row">
+          <div class="step-num">1</div>
+          <div class="card white" style="flex:1">
+            <h3>Keyword mining (30 min/week — batch)</h3>
+            <p>Use <strong>Ahrefs Lite ($29/mo) or Semrush free tier</strong> to pull 20–30 target keywords per week. Prioritize: keyword difficulty under 30, question-format keywords ("how to", "what is", "best way to"), and competitor gap keywords. Drop into a shared Notion or Airtable tracker with assigned intent type and target pillar.</p>
+            <div style="margin-top:8px"><span class="pill pill-blue">Ahrefs Lite / Semrush</span><span class="pill pill-blue">Airtable tracker</span><span class="pill pill-blue">Batch Monday AM</span></div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">2</div>
+          <div class="card white" style="flex:1">
+            <h3>SERP research prompt → Claude</h3>
+            <p>For each keyword, run a structured prompt in Claude that produces: (a) a content brief with H1, H2/H3 structure, target entities, related keywords, and FAQ section, (b) an AEO answer block in 40–60 words for direct answer formatting, (c) a meta title + description. Store the brief in Notion. This takes ~5 mins per keyword with a saved prompt template.</p>
+            <div style="margin-top:8px"><span class="pill pill-purple">Claude brief generator</span><span class="pill pill-purple">Saved prompt templates</span><span class="pill pill-purple">Notion briefs</span></div>
+            <div class="tip" style="margin-top:8px">Example prompt: "You are an SEO strategist for Grandeur, a marketing OS. Write a content brief for the keyword: [keyword]. Include: H1, H2/H3 outline, 5 related entities, 8 LSI keywords, a 50-word AEO answer block, meta title, meta description, and 3 internal linking opportunities."</div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">3</div>
+          <div class="card white" style="flex:1">
+            <h3>Full post generation in Claude</h3>
+            <p>Pass the brief back to Claude with your BrandPack context (Grandeur's tone, do/don'ts, positioning) and request the full 1,500–2,500 word article. Use separate Claude turns for each major section to maintain quality. Always include: intro with the keyword in the first 100 words, FAQ section at the bottom (minimum 4 questions), one CTA block pointing to a relevant Grandeur feature.</p>
+            <div style="margin-top:8px"><span class="pill pill-purple">Claude Projects</span><span class="pill pill-purple">Brand voice system prompt</span><span class="pill pill-purple">Section-by-section</span></div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">4</div>
+          <div class="card white" style="flex:1">
+            <h3>Quality gate + keyword optimization (human, 15 min)</h3>
+            <p>Human reviews for: factual accuracy, brand voice, keyword density (1–2% target), heading structure, FAQ quality, internal links, and CTA relevance. Use <strong>Surfer SEO ($49/mo) or Frase ($45/mo)</strong> content editor for keyword coverage scoring before publishing. This is the only mandatory human step.</p>
+            <div style="margin-top:8px"><span class="pill pill-amber">Surfer SEO / Frase</span><span class="pill pill-amber">Human quality gate</span><span class="pill pill-amber">15 min per post</span></div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">5</div>
+          <div class="card white" style="flex:1">
+            <h3>Publish + technical SEO layer</h3>
+            <p>Publish via Ghost or WordPress. Auto-generate: schema markup (Article + FAQ schema using RankMath or Yoast), internal links using a link-building SOP, canonical tags, and Open Graph tags for social sharing. Use <strong>Make.com (Integromat)</strong> to automatically post a social teaser to LinkedIn + X on publish. Total publish time: 10–15 min.</p>
+            <div style="margin-top:8px"><span class="pill pill-teal">Ghost / WordPress</span><span class="pill pill-teal">RankMath / Yoast</span><span class="pill pill-teal">Make.com automation</span><span class="pill pill-teal">FAQ schema</span></div>
+          </div>
+        </div>
+        <div class="step-row">
+          <div class="step-num">6</div>
+          <div class="card white" style="flex:1">
+            <h3>Monthly update cycle (compound returns)</h3>
+            <p>Every month, use GSC data to identify posts ranking on page 2 (positions 11–20). These are your highest-leverage update targets. Re-run Claude with: "Update this post, add more depth to sections X and Y, add 2 more FAQs, and refresh the statistics." Publishing an update triggers a re-crawl and often a ranking jump within 2–4 weeks.</p>
+            <div style="margin-top:8px"><span class="pill pill-coral">GSC position report</span><span class="pill pill-coral">Claude refresh</span><span class="pill pill-coral">P2 → P1 targeting</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: TOOL STACK -->
+    <div id="tab-stack" class="tab">
+      <div class="section">
+        <h3 style="margin-bottom:4px">Total monthly cost: ~$150–$230/month</h3>
+        <p style="margin-bottom:1.5rem">For 4 posts/week at scale. This stack runs your entire blog operation with one part-time person.</p>
+        <div class="card white" style="margin-bottom:1.5rem">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px;margin-bottom:12px">
+            <div style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;text-transform:uppercase;letter-spacing:.04em">Tool</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;text-transform:uppercase;letter-spacing:.04em">Cost</div>
+            <div style="font-size:11px;color:var(--color-text-tertiary);font-weight:500;text-transform:uppercase;letter-spacing:.04em">Role</div>
+          </div>
+          <div style="border-top:0.5px solid var(--color-border-tertiary)">
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Claude Pro / API</div><div class="tool-cost">$20–$60/mo</div></div><div style="flex:2"><div class="tool-desc">Content briefs, full post generation, FAQ creation, update rewrites. The engine of the entire operation. Use Claude Projects with a Grandeur BrandPack system prompt always active.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Ahrefs Lite</div><div class="tool-cost">$29/mo</div></div><div style="flex:2"><div class="tool-desc">Keyword research, competitor gap analysis, backlink monitoring, rank tracking. Use the Content Explorer to find what's ranking in your niche and reverse-engineer winning structures.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Surfer SEO or Frase</div><div class="tool-cost">$49–$45/mo</div></div><div style="flex:2"><div class="tool-desc">Content editor that scores keyword coverage against the top 20 SERP results. Paste Claude output in, optimize to 70+ score, publish. Eliminates guesswork on keyword density.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Ghost CMS</div><div class="tool-cost">$9/mo (starter)</div></div><div style="flex:2"><div class="tool-desc">Fast, SEO-friendly blog platform with built-in newsletter, clean markup, native sitemap, and excellent Core Web Vitals scores. Better for pure SEO than WordPress out of the box.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">RankMath / Ghost SEO</div><div class="tool-cost">Free–$59/yr</div></div><div style="flex:2"><div class="tool-desc">Schema markup automation (Article, FAQ, HowTo), meta tags, sitemap. Critical for AEO — the FAQ schema tells Google/AI engines exactly which text blocks are answers.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Make.com</div><div class="tool-cost">$9/mo</div></div><div style="flex:2"><div class="tool-desc">Automation glue: trigger social posts on publish, move keywords in Airtable, send Slack notifications, auto-ping Google Search Console for faster indexing.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Airtable (free)</div><div class="tool-cost">Free</div></div><div style="flex:2"><div class="tool-desc">Editorial calendar and keyword pipeline tracker. Columns: keyword, pillar, intent, status, target publish date, live URL, GSC position (updated monthly).</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Google Search Console</div><div class="tool-cost">Free</div></div><div style="flex:2"><div class="tool-desc">The ground truth for what's working. Weekly: check impressions and CTR. Monthly: identify P2 posts to update. Connect to GA4 for full funnel view.</div></div></div>
+            <div class="tool-row"><div style="flex:1"><div class="tool-name">Canva Pro</div><div class="tool-cost">$13/mo</div></div><div style="flex:2"><div class="tool-desc">Featured images, social cards, infographics. Use Canva's Brand Kit to keep visuals on-brand. Even basic custom images improve click-through vs text-only posts.</div></div></div>
+          </div>
+        </div>
+        <div class="grid2">
+          <div class="card">
+            <h3 style="margin-bottom:6px">Optional upgrades (scale)</h3>
+            <p><strong>Perplexity API ($5–20/mo)</strong> — scrape current SERP data for real-time keyword briefs.<br><br><strong>Clearbit / SparkToro ($0–50/mo)</strong> — understand your blog audience demographics.<br><br><strong>Beehiiv or Kit (free)</strong> — newsletter to recycle blog content, drives return visits.</p>
+          </div>
+          <div class="card">
+            <h3 style="margin-bottom:6px">What NOT to spend on</h3>
+            <p><strong>Jasper / Writer / Copy.ai</strong> — Claude does everything these do, better.<br><br><strong>Expensive link-building tools</strong> — earn links through great content.<br><br><strong>Premium social schedulers</strong> — Make.com handles this for $9/mo.<br><br><strong>AI detection tools</strong> — Google ranks quality, not origin.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: AEO -->
+    <div id="tab-aeo" class="tab">
+      <div class="section">
+        <p style="margin-bottom:1.5rem">AEO (Answer Engine Optimization) is where Grandeur can dominate fastest. AI overview boxes, featured snippets, Perplexity citations, and ChatGPT answers all reward the same structural signals. Since Grandeur has a native AEO Advisor module, you can simultaneously create the content AND demonstrate the product.</p>
+        <div class="grid2" style="margin-bottom:1.5rem">
+          <div class="card">
+            <h3>AEO vs SEO timing</h3>
+            <div class="traffic-row" style="margin-top:10px"><div class="traffic-label">SEO (organic)</div><div class="traffic-track"><div class="traffic-fill" style="width:90%;background:#378ADD">9–18 months</div></div></div>
+            <div class="traffic-row"><div class="traffic-label">AEO (snippets)</div><div class="traffic-track"><div class="traffic-fill" style="width:40%;background:#1D9E75">3–6 months</div></div></div>
+            <div class="traffic-row"><div class="traffic-label">AI overviews</div><div class="traffic-track"><div class="traffic-fill" style="width:35%;background:#7F77DD">2–5 months</div></div></div>
+            <div class="traffic-row"><div class="traffic-label">Perplexity citation</div><div class="traffic-track"><div class="traffic-fill" style="width:30%;background:#EF9F27">2–4 months</div></div></div>
+          </div>
+          <div class="card">
+            <h3>AEO format rules</h3>
+            <p style="margin-top:6px">Every post must include:</p>
+            <ul style="margin-top:8px;padding-left:16px;display:flex;flex-direction:column;gap:6px">
+              <li>A <strong>40–60 word direct answer</strong> immediately below the H1</li>
+              <li><strong>FAQ section</strong> at bottom with minimum 4 questions (FAQ schema)</li>
+              <li><strong>Definition blocks</strong> for any jargon: "What is a BrandPack?"</li>
+              <li><strong>Numbered lists</strong> for processes ("5 steps to...")</li>
+              <li><strong>Comparison tables</strong> (Grandeur vs alternatives)</li>
+              <li>HowTo schema where relevant</li>
+            </ul>
+          </div>
+        </div>
+        <h3 style="margin-bottom:12px">AEO content types — prioritized for Grandeur</h3>
+        <div class="card white">
+          <table class="kw-table">
+            <thead><tr><th>Content type</th><th>AEO target</th><th>Example topic</th><th>Est. time to snippet</th></tr></thead>
+            <tbody>
+              <tr><td>Definition posts</td><td>AI overview + featured snippet</td><td>"What is a Marketing OS?"</td><td>2–4 months</td></tr>
+              <tr><td>"How to" guides</td><td>Featured snippet + Perplexity</td><td>"How to build a brand voice guide"</td><td>3–5 months</td></tr>
+              <tr><td>Comparison posts</td><td>Commercial AI answers</td><td>"Grandeur vs HubSpot vs Sprout Social"</td><td>4–6 months</td></tr>
+              <tr><td>FAQ hubs</td><td>People Also Ask boxes</td><td>"Marketing automation FAQ: 20 questions answered"</td><td>2–3 months</td></tr>
+              <tr><td>Statistics roundups</td><td>Citation target for AI engines</td><td>"35 AI marketing statistics for 2025"</td><td>2–4 months</td></tr>
+              <tr><td>Template posts</td><td>Direct downloads + citations</td><td>"Free campaign brief template [downloadable]"</td><td>3–5 months</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="tip" style="margin-top:1.5rem"><strong>GEO (Generative Engine Optimization) angle:</strong> To get Grandeur cited by ChatGPT, Claude, and Gemini — create content that gets backlinked by other authoritative sites. The more external sites reference your definitions of "Marketing OS" or "BrandPack workflow", the more likely AI engines absorb your framing as the canonical answer. Write posts so good that people quote them.</div>
+        <div class="divider"></div>
+        <h3 style="margin-bottom:12px">The AEO post template Claude should follow every time</h3>
+        <div class="card white">
+          <div style="font-family:var(--font-mono,monospace);font-size:12px;color:var(--color-text-secondary);line-height:1.8">
+            <div style="color:var(--color-text-tertiary);margin-bottom:4px"># [Keyword-rich H1 — question or benefit format]</div>
+            <div>[40–60 word direct answer paragraph — this gets pulled as the snippet]</div>
+            <div style="margin-top:8px;color:var(--color-text-tertiary)">## What is [core concept]? [entity definition block]</div>
+            <div style="color:var(--color-text-tertiary)">## Why [topic] matters for marketing teams</div>
+            <div style="color:var(--color-text-tertiary)">## How to [action related to topic] — [numbered steps]</div>
+            <div style="color:var(--color-text-tertiary)">## [Topic] best practices — [bulleted list]</div>
+            <div style="color:var(--color-text-tertiary)">## How Grandeur's [relevant feature] solves [problem]</div>
+            <div style="color:var(--color-text-tertiary)">## FAQ — [minimum 4 Q&As, each Q is an H3]</div>
+            <div style="margin-top:4px;color:#7F77DD">→ FAQ schema on every single FAQ section</div>
+            <div style="color:#7F77DD">→ Article schema on every post</div>
+            <div style="color:#7F77DD">→ Internal link to 2–3 related Grandeur posts</div>
+            <div style="color:#7F77DD">→ CTA to relevant Grandeur feature page</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+function showTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('#nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'timeline' && !window.chartBuilt) buildChart();
+}
+function buildChart() {
+  window.chartBuilt = true;
+  const months = ['M1','M2','M3','M4','M5','M6','M7','M8','M9','M10','M11','M12'];
+  const data2 = [0,0,50,150,300,600,1000,1800,3000,4500,6000,8000];
+  const data4 = [0,0,100,400,900,2000,3500,5500,8500,12000,18000,28000];
+  const data6 = [0,0,200,800,2000,4500,8000,12000,18000,26000,38000,58000];
+  new Chart(document.getElementById('trafficChart'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [
+        { label: '2 posts/week', data: data2, borderColor: '#9c9a92', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0.4 },
+        { label: '4 posts/week', data: data4, borderColor: '#7F77DD', backgroundColor: 'rgba(127,119,221,0.08)', borderWidth: 2, pointRadius: 3, tension: 0.4, fill: true },
+        { label: '6+ posts/week', data: data6, borderColor: '#1D9E75', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0.4, borderDash: [5,3] }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: true, position: 'top', labels: { font: { size: 12 }, boxWidth: 14, padding: 16, color: '#888' } },
+        tooltip: { callbacks: { label: ctx => ' ' + ctx.dataset.label + ': ' + ctx.parsed.y.toLocaleString() + ' sessions' } }
+      },
+      scales: {
+        x: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, color: '#888' } },
+        y: { grid: { color: 'rgba(0,0,0,0.04)' }, ticks: { font: { size: 11 }, color: '#888', callback: v => v >= 1000 ? Math.round(v/1000) + 'k' : v } }
+      }
+    }
+  });
+}
+</script>
+</body>
+</html>

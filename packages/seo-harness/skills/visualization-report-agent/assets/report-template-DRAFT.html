@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bi-Weekly SEO Report - Template v0.1</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f5f4f0;
+    --color-background-tertiary: #eeecea;
+    --color-text-primary: #1a1a18;
+    --color-text-secondary: #5f5e5a;
+    --color-text-tertiary: #888780;
+    --color-border-tertiary: rgba(0,0,0,0.10);
+    --color-border-secondary: rgba(0,0,0,0.18);
+    --accent: #3B3489;
+    --accent-2: #8B84E0;
+    --good: #1D9E75;
+    --warn: #C28A00;
+    --bad: #C0392B;
+    --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --font-mono: 'SF Mono', 'Fira Code', monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --color-background-primary: #1e1e1c;
+      --color-background-secondary: #2a2a28;
+      --color-background-tertiary: #222220;
+      --color-text-primary: #e8e6df;
+      --color-text-secondary: #a8a69e;
+      --color-text-tertiary: #6e6d68;
+      --color-border-tertiary: rgba(255,255,255,0.10);
+      --color-border-secondary: rgba(255,255,255,0.18);
+      --accent: #8B84E0;
+      --accent-2: #5A4FC0;
+      --good: #5DCAA5;
+      --warn: #E0B34D;
+      --bad: #E07B6B;
+    }
+  }
+  body { font-family: var(--font-sans); color: var(--color-text-primary); background: var(--color-background-tertiary); padding: 2rem 1rem; }
+  .container { max-width: 920px; margin: 0 auto; background: var(--color-background-primary); border-radius: 16px; padding: 2rem; border: 0.5px solid var(--color-border-tertiary); }
+  .header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; margin-bottom: 1.5rem; flex-wrap: wrap; }
+  .header h1 { font-size: 22px; font-weight: 500; }
+  .header p { font-size: 14px; color: var(--color-text-secondary); margin-top: 4px; }
+  .score-ring { text-align: center; }
+  .score-ring .num { font-size: 20px; font-weight: 600; fill: var(--color-text-primary); }
+  .verdict { border-radius: 10px; padding: 12px 16px; font-size: 14px; margin-bottom: 2rem; border: 0.5px solid var(--color-border-tertiary); }
+  .verdict.on-track { background: color-mix(in srgb, var(--good) 12%, transparent); }
+  .verdict.adjust  { background: color-mix(in srgb, var(--warn) 14%, transparent); }
+  .verdict.pivot   { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+  .verdict b { font-weight: 600; }
+  h2 { font-size: 16px; font-weight: 600; margin: 2.2rem 0 4px; }
+  .sub { font-size: 13px; color: var(--color-text-tertiary); margin-bottom: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px,1fr)); gap: 12px; }
+  .kpi { background: var(--color-background-secondary); border-radius: 12px; padding: 14px; border: 0.5px solid var(--color-border-tertiary); }
+  .kpi .label { font-size: 12px; color: var(--color-text-tertiary); text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 24px; font-weight: 600; margin: 4px 0 2px; }
+  .kpi .delta { font-size: 13px; font-weight: 500; }
+  .up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--color-text-tertiary); }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 720px) { .grid2 { grid-template-columns: 1fr; } }
+  .card { background: var(--color-background-secondary); border-radius: 12px; padding: 16px; border: 0.5px solid var(--color-border-tertiary); }
+  svg { width: 100%; height: auto; display: block; }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--color-text-secondary); margin-top: 8px; flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; background: var(--c); vertical-align: -1px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-weight: 500; color: var(--color-text-tertiary); font-size: 12px; text-transform: uppercase; letter-spacing: .03em; padding: 8px 10px; border-bottom: 1px solid var(--color-border-secondary); }
+  td { padding: 9px 10px; border-bottom: 0.5px solid var(--color-border-tertiary); color: var(--color-text-secondary); }
+  td:first-child { color: var(--color-text-primary); }
+  .pill { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+  .pill.ok { background: color-mix(in srgb, var(--good) 15%, transparent); color: var(--good); }
+  .pill.watch { background: color-mix(in srgb, var(--warn) 18%, transparent); color: var(--warn); }
+  .pill.triggered, .pill.overdue { background: color-mix(in srgb, var(--bad) 15%, transparent); color: var(--bad); }
+  .pill.due { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+  .heat { display: grid; gap: 3px; font-size: 11px; }
+  .heat .cell { border-radius: 4px; padding: 6px 2px; text-align: center; color: #fff; font-weight: 500; }
+  .heat .rowlabel { font-size: 12px; color: var(--color-text-secondary); align-self: center; padding-right: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .heat .collabel { text-align: center; color: var(--color-text-tertiary); padding-bottom: 4px; }
+  .actions li { margin: 0 0 10px 18px; font-size: 14px; line-height: 1.55; color: var(--color-text-secondary); }
+  .actions b { color: var(--color-text-primary); font-weight: 600; }
+  .footer { margin-top: 2.5rem; font-size: 12px; color: var(--color-text-tertiary); border-top: 0.5px solid var(--color-border-tertiary); padding-top: 12px; }
+  .sample-banner { background: color-mix(in srgb, var(--accent) 10%, transparent); border: 0.5px dashed var(--accent); color: var(--accent); border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 1.5rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="sample-banner">TEMPLATE v0.1 with SAMPLE DATA. The visualization-report-agent replaces the REPORT_DATA block below each cycle; layout, charts, and logic stay fixed.</div>
+
+  <div class="header">
+    <div>
+      <h1 id="r-title"></h1>
+      <p id="r-period"></p>
+    </div>
+    <div class="score-ring" id="score-ring"></div>
+  </div>
+
+  <div id="verdict"></div>
+
+  <div class="kpis" id="kpis"></div>
+
+  <h2>Traffic trend</h2>
+  <div class="sub">Organic sessions and impressions, last 8 weeks (line chart, each series indexed to its own scale)</div>
+  <div class="card"><div id="chart-traffic"></div>
+    <div class="legend"><span style="--c:var(--accent)">Sessions</span><span style="--c:var(--accent-2)">Impressions</span></div>
+  </div>
+
+  <h2>Ranking movement this period</h2>
+  <div class="sub">Slope chart: tracked keyword positions at period start vs period end (lower is better)</div>
+  <div class="grid2">
+    <div class="card"><div id="chart-slope"></div></div>
+    <div class="card">
+      <div class="sub" style="margin-bottom:8px">Top movers</div>
+      <table id="movers-table"></table>
+    </div>
+  </div>
+
+  <h2>Refresh impact</h2>
+  <div class="sub">Dumbbell chart: position before vs after for posts updated by the refresh cycle</div>
+  <div class="card"><div id="chart-dumbbell"></div>
+    <div class="legend"><span style="--c:var(--color-text-tertiary)">Before</span><span style="--c:var(--good)">After</span></div>
+  </div>
+
+  <h2>Production vs plan</h2>
+  <div class="sub">Bullet charts: actual output against the action plan targets for this period</div>
+  <div class="card"><div id="chart-bullets"></div></div>
+
+  <h2>Content mix and pipeline</h2>
+  <div class="grid2">
+    <div class="card">
+      <div class="sub" style="margin-bottom:8px">Posts published by pillar (stacked columns)</div>
+      <div id="chart-stacked"></div>
+      <div class="legend" id="stacked-legend"></div>
+    </div>
+    <div class="card">
+      <div class="sub" style="margin-bottom:8px">Keyword pipeline status (donut)</div>
+      <div id="chart-donut"></div>
+      <div class="legend" id="donut-legend"></div>
+    </div>
+  </div>
+
+  <h2>Search funnel</h2>
+  <div class="sub">Impressions to clicks to leads this period, with stage conversion</div>
+  <div class="card"><div id="chart-funnel"></div></div>
+
+  <h2>Position heatmap</h2>
+  <div class="sub">Tracked keywords by week; green under 10, amber 10 to 20, red above 20</div>
+  <div class="card"><div id="chart-heatmap"></div></div>
+
+  <h2>QA and human ledger</h2>
+  <div class="sub" id="qa-line"></div>
+  <div class="card"><table id="ledger-table"></table></div>
+
+  <h2>Key actions for the next two weeks</h2>
+  <ol class="actions" id="actions"></ol>
+
+  <h2>Pivot triggers</h2>
+  <div class="sub">Pre-agreed thresholds; two consecutive triggered reports queue an action plan review</div>
+  <div class="card"><table id="pivot-table"></table></div>
+
+  <div class="footer">Generated by visualization-report-agent · Data sources: GSC export, QA scorecard, agent artifacts · Next report: <span id="next-date"></span></div>
+</div>
+
+<script>
+/* ============ REPORT_DATA: the only block the agent replaces each cycle ============ */
+const REPORT_DATA = {
+  brand: "Grandeur",
+  period: "Jun 29 - Jul 12, 2026",
+  nextReport: "Jul 24, 2026",
+  healthScore: 78,
+  verdict: { level: "on-track", text: "<b>On track.</b> Traffic and rankings are compounding per the plan's phase 2 expectations. One watch item: outreach sends are behind target for the second period." },
+  kpis: [
+    { label: "Organic sessions", value: "4,820", delta: 12.4, unit: "%" },
+    { label: "Impressions", value: "188K", delta: 8.1, unit: "%" },
+    { label: "Avg position", value: "14.2", delta: 1.8, unit: "", invert: true },
+    { label: "AI citations", value: "7", delta: 3, unit: "" }
+  ],
+  traffic: {
+    labels: ["W-7","W-6","W-5","W-4","W-3","W-2","W-1","W0"],
+    sessions:    [1650, 1820, 1990, 2140, 2050, 2380, 2310, 2510],
+    impressions: [61000, 68000, 74000, 81000, 79000, 88000, 91000, 97000]
+  },
+  keywordSlope: [
+    { kw: "what is a marketing OS", start: 18, end: 9 },
+    { kw: "AEO guide", start: 24, end: 14 },
+    { kw: "brand voice consistency", start: 12, end: 11 },
+    { kw: "content brief generator", start: 31, end: 22 },
+    { kw: "campaign management tool", start: 15, end: 19 }
+  ],
+  movers: [
+    { kw: "what is a marketing OS", from: 18, to: 9, note: "refresh + FAQ schema" },
+    { kw: "AEO guide", from: 24, to: 14, note: "new pillar page" },
+    { kw: "campaign management tool", from: 15, to: 19, note: "competitor update; refresh queued" }
+  ],
+  dumbbell: [
+    { label: "Marketing OS definition post", before: 18, after: 9 },
+    { label: "Brand guidelines at scale", before: 22, after: 15 },
+    { label: "AI approval workflow", before: 27, after: 21 },
+    { label: "Content calendar guide", before: 14, after: 12 }
+  ],
+  bullets: [
+    { label: "Posts published", actual: 7, target: 8, max: 12 },
+    { label: "Refreshes shipped", actual: 4, target: 4, max: 6 },
+    { label: "Outreach sent (human)", actual: 2, target: 5, max: 8 },
+    { label: "QA pass rate %", actual: 86, target: 90, max: 100 }
+  ],
+  stacked: {
+    labels: ["Week 1", "Week 2"],
+    series: [
+      { name: "Marketing OS", data: [2, 1] },
+      { name: "Brand Safety", data: [1, 1] },
+      { name: "SEO & AEO", data: [1, 0] },
+      { name: "Production", data: [0, 1] }
+    ]
+  },
+  pipeline: [
+    { label: "Live", value: 38 },
+    { label: "In production", value: 6 },
+    { label: "Briefed", value: 12 },
+    { label: "Backlog", value: 24 }
+  ],
+  funnel: [
+    { stage: "Impressions", value: 188000 },
+    { stage: "Clicks", value: 4820 },
+    { stage: "Leads", value: 64 }
+  ],
+  heatmap: {
+    weeks: ["W-5","W-4","W-3","W-2","W-1","W0"],
+    rows: [
+      { kw: "what is a marketing OS", pos: [21,19,17,14,11,9] },
+      { kw: "AEO guide",              pos: [28,26,24,19,16,14] },
+      { kw: "brand voice consistency",pos: [13,12,12,11,12,11] },
+      { kw: "content brief generator",pos: [34,31,29,26,24,22] },
+      { kw: "campaign mgmt tool",     pos: [15,15,16,17,18,19] },
+      { kw: "marketing workflow",     pos: [25,22,20,18,15,13] }
+    ]
+  },
+  qaSummary: "QA full run Jul 11: 2 critical, 5 warnings. Plan status: ON TRACK. Full scorecard in QA report.",
+  ledger: [
+    { item: "Upload 6 images for 2 drafted posts (production sheets ready)", owner: "Specialist", deadline: "Jul 16", age: 9, status: "overdue" },
+    { item: "Send 3 personalized outreach drafts (PERSONALIZE blocks pending)", owner: "Specialist", deadline: "Jul 18", age: 6, status: "due" },
+    { item: "Sign off prune list: 5 pages proposed for consolidation", owner: "Specialist", deadline: "Jul 20", age: 3, status: "due" },
+    { item: "Resolve 4 [VERIFY] stat markers in AEO pillar page", owner: "Specialist", deadline: "Jul 15", age: 11, status: "overdue" }
+  ],
+  actions: [
+    { text: "<b>Unblock the 2 image-pending posts.</b> They cover page-2 keywords; every week unpublished is a week of lost recrawl momentum." },
+    { text: "<b>Refresh 'campaign management tool' post.</b> Only decliner in the tracked set; competitor shipped an update Jul 2." },
+    { text: "<b>Close the outreach gap.</b> 2 of 5 sends done for the second straight period; if capacity is the issue, cut the target to 3 and keep it honest." },
+    { text: "<b>Double down on the AEO cluster.</b> Fastest position velocity and all 3 new AI citations came from it." }
+  ],
+  pivots: [
+    { signal: "Organic sessions vs phase projection", threshold: "> 30% below plan", current: "8% below", status: "ok", rec: "Hold course" },
+    { signal: "Outreach execution rate", threshold: "< 50% of target, 2 periods", current: "40%, period 2", status: "triggered", rec: "Reduce target or reassign sends; review in next plan cycle" },
+    { signal: "QA pass rate", threshold: "< 75%", current: "86%", status: "ok", rec: "Hold course" },
+    { signal: "Avg position trend", threshold: "declining 2 periods", current: "improving", status: "ok", rec: "Hold course" }
+  ]
+};
+/* ============ end REPORT_DATA ============ */
+
+const $ = id => document.getElementById(id);
+const S = (w,h) => `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg">`;
+const PAL = ["var(--accent)","var(--accent-2)","var(--good)","var(--warn)","var(--bad)"];
+
+/* Header, verdict, KPIs */
+$("r-title").textContent = REPORT_DATA.brand + " · Bi-Weekly SEO Report";
+$("r-period").textContent = REPORT_DATA.period;
+$("next-date").textContent = REPORT_DATA.nextReport;
+(function scoreRing(){
+  const s = REPORT_DATA.healthScore, r = 26, c = 2*Math.PI*r;
+  $("score-ring").innerHTML = `<svg width="72" height="72" viewBox="0 0 72 72">
+    <circle cx="36" cy="36" r="${r}" fill="none" stroke="var(--color-border-tertiary)" stroke-width="7"/>
+    <circle cx="36" cy="36" r="${r}" fill="none" stroke="${s>=75?'var(--good)':s>=50?'var(--warn)':'var(--bad)'}" stroke-width="7"
+      stroke-dasharray="${c*s/100} ${c}" stroke-linecap="round" transform="rotate(-90 36 36)"/>
+    <text x="36" y="41" text-anchor="middle" class="num">${s}</text></svg>
+    <div style="font-size:11px;color:var(--color-text-tertiary)">Health</div>`;
+})();
+$("verdict").className = "verdict " + REPORT_DATA.verdict.level;
+$("verdict").innerHTML = REPORT_DATA.verdict.text;
+$("kpis").innerHTML = REPORT_DATA.kpis.map(k => {
+  const good = k.invert ? k.delta > 0 : k.delta > 0; // invert=true: positive delta means position improved (moved up)
+  const cls = k.delta === 0 ? "flat" : good ? "up" : "down";
+  const arrow = k.delta === 0 ? "→" : (k.delta > 0 ? "▲" : "▼");
+  return `<div class="kpi"><div class="label">${k.label}</div><div class="value">${k.value}</div>
+    <div class="delta ${cls}">${arrow} ${Math.abs(k.delta)}${k.unit} vs last period</div></div>`;
+}).join("");
+
+/* Line chart */
+(function line(){
+  const d = REPORT_DATA.traffic, W = 860, H = 240, P = 34;
+  const x = i => P + i * (W - 2*P) / (d.labels.length - 1);
+  const path = (arr) => {
+    const max = Math.max(...arr) * 1.08;
+    return arr.map((v,i)=>`${i?"L":"M"}${x(i).toFixed(1)},${(H-P-(v/max)*(H-2*P)).toFixed(1)}`).join(" ");
+  };
+  let g = S(W,H);
+  for (let i=0;i<4;i++){ const y = P + i*(H-2*P)/3; g += `<line x1="${P}" y1="${y}" x2="${W-P}" y2="${y}" stroke="var(--color-border-tertiary)" stroke-width="1"/>`; }
+  g += `<path d="${path(d.impressions)}" fill="none" stroke="var(--accent-2)" stroke-width="2.5" stroke-dasharray="5 4" stroke-linecap="round"/>`;
+  g += `<path d="${path(d.sessions)}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round"/>`;
+  d.sessions.forEach((v,i)=>{ const max=Math.max(...d.sessions)*1.08;
+    g += `<circle cx="${x(i)}" cy="${H-P-(v/max)*(H-2*P)}" r="4" fill="var(--accent)"/>`; });
+  d.labels.forEach((l,i)=> g += `<text x="${x(i)}" y="${H-8}" font-size="11" text-anchor="middle" fill="var(--color-text-tertiary)">${l}</text>`);
+  $("chart-traffic").innerHTML = g + "</svg>";
+})();
+
+/* Slope chart */
+(function slope(){
+  const d = REPORT_DATA.keywordSlope, W = 420, H = 60 + 0 + 230, P = 40, L = 120, R = W - 120;
+  const maxPos = Math.max(...d.flatMap(k=>[k.start,k.end])) + 4;
+  const y = p => 30 + (p / maxPos) * (H - 70);
+  let g = S(W,H);
+  g += `<text x="${L}" y="16" font-size="12" text-anchor="middle" fill="var(--color-text-tertiary)">Start</text>`;
+  g += `<text x="${R}" y="16" font-size="12" text-anchor="middle" fill="var(--color-text-tertiary)">End</text>`;
+  d.forEach(k => {
+    const up = k.end < k.start, col = up ? "var(--good)" : "var(--bad)";
+    g += `<line x1="${L}" y1="${y(k.start)}" x2="${R}" y2="${y(k.end)}" stroke="${col}" stroke-width="2.5" opacity="0.85"/>`;
+    g += `<circle cx="${L}" cy="${y(k.start)}" r="4.5" fill="var(--color-text-tertiary)"/>`;
+    g += `<circle cx="${R}" cy="${y(k.end)}" r="4.5" fill="${col}"/>`;
+    g += `<text x="${L-10}" y="${y(k.start)+4}" font-size="11" text-anchor="end" fill="var(--color-text-secondary)">#${k.start}</text>`;
+    g += `<text x="${R+10}" y="${y(k.end)+4}" font-size="11" fill="var(--color-text-secondary)">#${k.end} ${k.kw.length>20?k.kw.slice(0,19)+"…":k.kw}</text>`;
+  });
+  $("chart-slope").innerHTML = g + "</svg>";
+})();
+
+/* Movers table */
+$("movers-table").innerHTML = "<tr><th>Keyword</th><th>Move</th><th>Driver</th></tr>" +
+  REPORT_DATA.movers.map(m => {
+    const up = m.to < m.from;
+    return `<tr><td>${m.kw}</td><td class="${up?'up':'down'}" style="white-space:nowrap">#${m.from} → #${m.to}</td><td>${m.note}</td></tr>`;
+  }).join("");
+
+/* Dumbbell */
+(function dumbbell(){
+  const d = REPORT_DATA.dumbbell, W = 860, rowH = 44, P = 250, H = d.length*rowH + 40;
+  const maxPos = Math.max(...d.flatMap(k=>[k.before,k.after])) + 5;
+  const x = p => P + (1 - p/maxPos) * (W - P - 30); /* position 1 at far right: right = better */
+  let g = S(W,H);
+  g += `<text x="${W-30}" y="14" font-size="11" text-anchor="end" fill="var(--color-text-tertiary)">position #1 →</text>`;
+  d.forEach((k,i) => {
+    const cy = 34 + i*rowH;
+    g += `<text x="${P-14}" y="${cy+4}" font-size="12.5" text-anchor="end" fill="var(--color-text-secondary)">${k.label}</text>`;
+    g += `<line x1="${x(k.before)}" y1="${cy}" x2="${x(k.after)}" y2="${cy}" stroke="var(--color-border-secondary)" stroke-width="3"/>`;
+    g += `<circle cx="${x(k.before)}" cy="${cy}" r="6" fill="var(--color-text-tertiary)"/>`;
+    g += `<circle cx="${x(k.after)}" cy="${cy}" r="6" fill="var(--good)"/>`;
+    g += `<text x="${x(k.after)+12}" y="${cy+4}" font-size="11.5" fill="var(--good)">#${k.after}</text>`;
+  });
+  $("chart-dumbbell").innerHTML = g + "</svg>";
+})();
+
+/* Bullet charts */
+(function bullets(){
+  const d = REPORT_DATA.bullets, W = 860, rowH = 52, P = 210, H = d.length*rowH + 10;
+  let g = S(W,H);
+  d.forEach((b,i) => {
+    const y0 = 10 + i*rowH, bw = W - P - 60, bx = P;
+    const w = v => (v / b.max) * bw;
+    const met = b.actual >= b.target;
+    g += `<text x="${P-14}" y="${y0+20}" font-size="12.5" text-anchor="end" fill="var(--color-text-secondary)">${b.label}</text>`;
+    g += `<rect x="${bx}" y="${y0+6}" width="${bw}" height="20" rx="5" fill="var(--color-background-tertiary)" stroke="var(--color-border-tertiary)" stroke-width="0.5"/>`;
+    g += `<rect x="${bx}" y="${y0+6}" width="${w(b.actual)}" height="20" rx="5" fill="${met?'var(--good)':'var(--accent)'}"/>`;
+    g += `<line x1="${bx+w(b.target)}" y1="${y0+1}" x2="${bx+w(b.target)}" y2="${y0+31}" stroke="var(--color-text-primary)" stroke-width="2.5"/>`;
+    g += `<text x="${bx+bw+12}" y="${y0+20}" font-size="12.5" fill="${met?'var(--good)':'var(--warn)'}" font-weight="600">${b.actual}/${b.target}</text>`;
+  });
+  $("chart-bullets").innerHTML = g + "</svg>";
+})();
+
+/* Stacked columns */
+(function stacked(){
+  const d = REPORT_DATA.stacked, W = 400, H = 240, P = 36, colW = 70;
+  const totals = d.labels.map((_,i)=> d.series.reduce((a,s)=>a+s.data[i],0));
+  const maxT = Math.max(...totals) * 1.15;
+  let g = S(W,H);
+  d.labels.forEach((lab,i) => {
+    const cx = P + 60 + i * 180;
+    let yCursor = H - P;
+    d.series.forEach((s,si) => {
+      const h = (s.data[i] / maxT) * (H - 2*P);
+      if (s.data[i] > 0) {
+        g += `<rect x="${cx-colW/2}" y="${yCursor-h}" width="${colW}" height="${h}" fill="${PAL[si%PAL.length]}" rx="3"/>`;
+        if (h > 16) g += `<text x="${cx}" y="${yCursor-h/2+4}" font-size="12" text-anchor="middle" fill="#fff" font-weight="600">${s.data[i]}</text>`;
+      }
+      yCursor -= h + 2;
+    });
+    g += `<text x="${cx}" y="${H-10}" font-size="12" text-anchor="middle" fill="var(--color-text-tertiary)">${lab} · ${totals[i]} posts</text>`;
+  });
+  $("chart-stacked").innerHTML = g + "</svg>";
+  $("stacked-legend").innerHTML = d.series.map((s,i)=>`<span style="--c:${PAL[i%PAL.length]}">${s.name}</span>`).join("");
+})();
+
+/* Donut */
+(function donut(){
+  const d = REPORT_DATA.pipeline, total = d.reduce((a,s)=>a+s.value,0);
+  const r = 62, c = 2*Math.PI*r; let offset = 0;
+  let g = `<svg viewBox="0 0 200 180" style="max-width:260px;margin:0 auto">`;
+  d.forEach((s,i) => {
+    const frac = s.value/total;
+    g += `<circle cx="100" cy="90" r="${r}" fill="none" stroke="${PAL[i%PAL.length]}" stroke-width="26"
+      stroke-dasharray="${(frac*c).toFixed(1)} ${c}" stroke-dashoffset="${(-offset*c).toFixed(1)}" transform="rotate(-90 100 90)"/>`;
+    offset += frac;
+  });
+  g += `<text x="100" y="86" text-anchor="middle" font-size="22" font-weight="600" fill="var(--color-text-primary)">${total}</text>`;
+  g += `<text x="100" y="104" text-anchor="middle" font-size="11" fill="var(--color-text-tertiary)">keywords</text></svg>`;
+  $("chart-donut").innerHTML = g;
+  $("donut-legend").innerHTML = d.map((s,i)=>`<span style="--c:${PAL[i%PAL.length]}">${s.label} · ${s.value}</span>`).join("");
+})();
+
+/* Funnel */
+(function funnel(){
+  const d = REPORT_DATA.funnel, W = 860, stageH = 62, H = d.length*stageH + 10;
+  const maxV = d[0].value;
+  let g = S(W,H);
+  d.forEach((s,i) => {
+    const wTop = Math.max(0.14, (s.value/maxV)) * (W - 300);
+    const wBot = i < d.length-1 ? Math.max(0.14, (d[i+1].value/maxV)) * (W - 300) : wTop * 0.9;
+    const y0 = 6 + i*stageH, cxm = 300 + (W-300)/2 - 150;
+    const x1 = cxm - wTop/2 + 150, x2 = cxm + wTop/2 + 150, x3 = cxm + wBot/2 + 150, x4 = cxm - wBot/2 + 150;
+    g += `<polygon points="${x1},${y0} ${x2},${y0} ${x3},${y0+stageH-10} ${x4},${y0+stageH-10}" fill="${PAL[i%PAL.length]}" opacity="0.9"/>`;
+    g += `<text x="14" y="${y0+26}" font-size="13" fill="var(--color-text-primary)" font-weight="600">${s.stage}</text>`;
+    g += `<text x="14" y="${y0+44}" font-size="12" fill="var(--color-text-secondary)">${s.value.toLocaleString()}${i>0?` · ${(100*s.value/d[i-1].value).toFixed(1)}% of prior stage`:""}</text>`;
+  });
+  $("chart-funnel").innerHTML = g + "</svg>";
+})();
+
+/* Heatmap */
+(function heatmap(){
+  const d = REPORT_DATA.heatmap;
+  const color = p => p < 10 ? "var(--good)" : p <= 20 ? "var(--warn)" : "var(--bad)";
+  let html = `<div class="heat" style="grid-template-columns: 170px repeat(${d.weeks.length}, 1fr)">`;
+  html += `<div></div>` + d.weeks.map(w=>`<div class="collabel">${w}</div>`).join("");
+  d.rows.forEach(r => {
+    html += `<div class="rowlabel">${r.kw}</div>` + r.pos.map(p=>`<div class="cell" style="background:${color(p)}">${p}</div>`).join("");
+  });
+  $("chart-heatmap").innerHTML = html + "</div>";
+})();
+
+/* QA + Ledger */
+$("qa-line").textContent = REPORT_DATA.qaSummary;
+$("ledger-table").innerHTML = "<tr><th>Blocking item</th><th>Owner</th><th>Deadline</th><th>Age</th><th>Status</th></tr>" +
+  REPORT_DATA.ledger.sort((a,b)=> (a.status==="overdue"?-1:1) - (b.status==="overdue"?-1:1)).map(l =>
+    `<tr><td>${l.item}</td><td>${l.owner}</td><td>${l.deadline}</td><td>${l.age}d</td><td><span class="pill ${l.status}">${l.status.toUpperCase()}</span></td></tr>`).join("");
+
+/* Actions + pivots */
+$("actions").innerHTML = REPORT_DATA.actions.map(a=>`<li>${a.text}</li>`).join("");
+$("pivot-table").innerHTML = "<tr><th>Signal</th><th>Pivot threshold</th><th>Current</th><th>Status</th><th>Recommendation</th></tr>" +
+  REPORT_DATA.pivots.map(p=>`<tr><td>${p.signal}</td><td>${p.threshold}</td><td>${p.current}</td><td><span class="pill ${p.status}">${p.status.toUpperCase()}</span></td><td>${p.rec}</td></tr>`).join("");
+</script>
+</body>
+</html>

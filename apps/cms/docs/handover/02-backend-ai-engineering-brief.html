@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Agentic CMS · Backend and AI engineering brief</title>
+<link rel="stylesheet" href="brief.css" />
+</head>
+<body>
+
+<div class="cover">
+	<div class="orb o1"></div><div class="orb o2"></div><div class="orb o3"></div>
+	<div class="kicker">The Utopia Studio · Engineering handover</div>
+	<div class="shell">
+		<div class="mark">✳</div>
+		<h1>Backend and AI<br />engineering brief</h1>
+		<p class="lede">How to replace the browser-only prototype with a real control plane: Convex as the backend, harness agents behind a spend-capped inference fence, and a strict per-site tenancy model. Built in ten handoffs without changing what the UI shows.</p>
+		<div class="meta">
+			<div><b>Control plane</b><span>Convex + Workflow</span></div>
+			<div><b>Models</b><span>Anthropic direct</span></div>
+			<div><b>Autonomy</b><span>L3 · exception queue</span></div>
+			<div><b>Phases</b><span>B0 → B9</span></div>
+		</div>
+	</div>
+</div>
+
+<section>
+	<div class="eyebrow">01 · Starting point</div>
+	<h2>What exists and what replaces it</h2>
+	<p class="lead">The frontend is complete. Its data lives in <code>src/lib/store.tsx</code> with timers standing in for agents. The backend replaces the store behind the same hooks, so <code>src/features/**</code> doesn't change.</p>
+	<table>
+		<thead><tr><th>Prototype today</th><th>Backend replacement</th></tr></thead>
+		<tbody>
+			<tr><td>localStorage state, cross-tab sync</td><td>Convex tables (41 drafted) and live queries</td></tr>
+			<tr><td>"Pick a person" sign-in, per-tab user</td><td>Clerk with Organizations: one org = one workspace</td></tr>
+			<tr><td>Timers simulating agent jobs</td><td>Workflow and Workpool components, crons</td></tr>
+			<tr><td>Next.js API routes for connections, templates, visual agent (localhost only)</td><td>Convex Node actions; the API routes are deleted</td></tr>
+			<tr><td>Template bundles and keys in <code>.data/</code> on disk</td><td>R2 storage; per-site <code>secrets</code> table with AES-256-GCM and key versions</td></tr>
+			<tr><td>Simulated merge requests</td><td>GitHub App (installation tokens, path allowlist, webhooks); GitLab app</td></tr>
+			<tr><td>Seeded traffic and KAS</td><td>Daily Google Search Console import</td></tr>
+		</tbody>
+	</table>
+	<div class="callout agent"><strong>Reference docs in the repo:</strong> <code>docs/engineering-blueprint.md</code> (stack and constraints) · <code>docs/backend/README.md</code> (design) · <code>schema.md</code> and <code>convex-schema.draft.ts</code> (tables, typechecks) · <code>api-map.md</code> (every store action → Convex function) · <code>handoffs/00–09</code>.</div>
+</section>
+
+<section class="page">
+	<div class="eyebrow">02 · Stack</div>
+	<h2>Framework defaults, with justified departures</h2>
+	<table>
+		<thead><tr><th>Layer</th><th>Choice</th><th>Note</th></tr></thead>
+		<tbody>
+			<tr><td>Shell and deploy</td><td>Next.js 15 App Router on Vercel; Convex prod</td><td>Framework default</td></tr>
+			<tr><td>Auth</td><td>Clerk with Organizations</td><td>Site roles live in Convex; Clerk has no per-resource roles</td></tr>
+			<tr><td>Control plane</td><td>Convex, own deployment at <code>apps/cms/convex</code></td><td>Decision D1</td></tr>
+			<tr><td>Durable jobs</td><td>Workflow, Workpool, crons</td><td>Replaces the PRD's Postgres + queue (C2)</td></tr>
+			<tr><td>Storage</td><td>Convex R2 component; <code>sharp</code> in Node actions</td><td>Bundles up to 50 MB / 2,000 files (C3)</td></tr>
+			<tr><td>Models</td><td>Anthropic API direct; OpenRouter as fallback adapter</td><td>Harness pins Anthropic IDs and uses structured outputs (C1, D2)</td></tr>
+			<tr><td>Money and inference</td><td><code>@studio/effect-critical</code>, new <code>cappedInference</code></td><td>Framework rule: Effect fences money and inference</td></tr>
+			<tr><td>Billing</td><td>Polar subscriptions + Autumn credits; site ledger is truth</td><td>Billing unit is decision D3</td></tr>
+			<tr><td>Runtime agents</td><td><code>@studio/ai-runtime</code> budgets only, no sandbox</td><td>Agents never execute code (C6)</td></tr>
+			<tr><td>MCP</td><td>HTTP MCP only (Streamable HTTP, SSE fallback)</td><td>No stdio for customer servers (C5)</td></tr>
+			<tr><td>Web tools</td><td>Parallel → Firecrawl → Browserbase</td><td>Fact sourcing and research, cheapest first</td></tr>
+			<tr><td>Observability</td><td>Langfuse, Sentry, PostHog, audit table</td><td>One Langfuse trace per run</td></tr>
+			<tr><td>Review and security</td><td>Rams, Greptile + greploop, Aikido</td><td>Aikido mandatory before pilot: repo write + secrets</td></tr>
+		</tbody>
+	</table>
+</section>
+
+<section class="page">
+	<div class="eyebrow">03 · Architecture</div>
+	<h2>Layering</h2>
+	<div class="stack">
+		<div class="layer"><b>Application</b><span><code>apps/cms/convex/*</code>: access checks (<code>requireSiteRole</code>), post state machine (<code>posts.transition</code>), gate and autopost decisions (reused from <code>logic.ts</code>), audit, notifications.</span></div>
+		<div class="layer"><b>Capabilities</b><span><code>@studio/seo-harness</code> (roster, routing, skills) · <code>@studio/web-tools</code> · <code>@studio/storage</code> R2 port · <code>src/render</code> renderer · pure parts of the visual agent.</span></div>
+		<div class="layer agent"><b>Effect fence</b><span><code>cappedInference</code> for all text and image spend · spend ledger debit, credit, reconcile · message delivery (v1.1).</span></div>
+		<div class="layer ink"><b>Platform</b><span>Convex (+ Workflow, Workpool, R2, Rate Limiter, Autumn, Polar) · Clerk · Vercel · Anthropic · image providers · GitHub/GitLab · Google · Langfuse · Sentry · PostHog.</span></div>
+	</div>
+	<p style="margin-block-start: 3mm">Call shape everywhere: <strong>action → Effect program → mutation</strong>. Actions orchestrate and return typed results; one internal mutation persists each step. The browser only ever calls Convex functions with the Clerk token.</p>
+
+	<h3>Tenancy and isolation</h3>
+	<p>Workspace = Clerk organisation. Site roles are Convex <code>memberships</code>. Effective role: workspace owner or admin → admin on every site; otherwise the membership role; otherwise no access. Every public site function is registered through a wrapper that calls one helper first:</p>
+	<div class="card sunken nobreak" style="font: 7.8pt/1.5 var(--mono); color: var(--c-ink); white-space: pre; margin-block-end: 3mm">requireSiteRole(ctx, siteId, permission)
+  1  identity from the Clerk token             → "Not authenticated"
+  2  user row, not suspended
+  3  site row                                  → "Not found" (same as no access)
+  4  site.workspaceId = token's active org
+  5  role = effectiveRole(workspace role, site membership)
+  6  PERMISSIONS[permission] includes role     → FORBIDDEN + the UI's lock reason</div>
+	<table>
+		<thead><tr><th>#</th><th>Isolation rule</th></tr></thead>
+		<tbody>
+			<tr><td>I1</td><td>Every public site function takes <code>siteId</code> first and checks access before any read</td></tr>
+			<tr><td>I2</td><td>Child records are read through their parent, after checking the parent belongs to the site</td></tr>
+			<tr><td>I3</td><td>Tenant tables are only queried by a <code>by_site</code> index; no whole-table reads</td></tr>
+			<tr><td>I4</td><td>Agent context is built from one site only; a step refuses input from another site</td></tr>
+			<tr><td>I5</td><td>R2 keys are prefixed <code>sites/&lt;siteId&gt;/</code>; URLs minted only after the access check</td></tr>
+			<tr><td>I6</td><td>Secrets decrypt only inside internal actions and never reach prompts, logs, audit or Langfuse</td></tr>
+			<tr><td>I7</td><td>Webhooks resolve the tenant from the provider payload, never from the URL</td></tr>
+			<tr><td>I8</td><td>"Doesn't exist" and "not yours" return the same error</td></tr>
+		</tbody>
+	</table>
+</section>
+
+<section class="page">
+	<div class="eyebrow">04 · Post lifecycle</div>
+	<h2>A chain of short workflows, not one long one</h2>
+	<p>States and transitions stay exactly as in <code>logic.ts</code>. A human pause (review, merge) is a row state, not a sleeping workflow. Only <code>posts.transition(postId, from, to)</code> moves a post, and it checks <code>from</code>, so a late step can't undo what a person already did.</p>
+	<div class="flow">
+		<div class="step human"><b>approveIdea</b>Access check, idea → briefed, audit</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>postPipeline</b>Draft, optimise, fan out visual agent per image slot (Workpool)</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>autopostGate</b>evaluateGate → fixes → re-evaluate → ship or hold</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>shipPost</b>Render → branch <code>content/&lt;slug&gt;</code> → commit → open PR</div>
+		<div class="arrow">→</div>
+		<div class="step pass"><b>Webhooks</b>CI green → auto-merge → live → KAS after 24 h</div>
+	</div>
+	<div class="grid g2">
+		<div class="card"><h4>Holds</h4><p>Autopost off, no repo, no confirmed template or it can't render the post, over cap, provider failure, an image slot for a person, an unfixable hard check. Each writes an "Autopost held" ledger item and notifies specialists.</p></div>
+		<div class="card"><h4>Scheduling</h4><p>One cron ticks every 5 minutes over per-site schedule rows (in the site's timezone, pausable). The Haiku orchestrator is replaced by deterministic code (D6). "Run now" uses the same workflow as the cron.</p></div>
+	</div>
+</section>
+
+<section>
+	<div class="eyebrow">05 · AI engineering</div>
+	<h2>Agent execution model</h2>
+	<table>
+		<thead><tr><th>Concept</th><th>Implementation</th></tr></thead>
+		<tbody>
+			<tr><td>Agent = workflow step</td><td>A Node action <code>agents.&lt;id&gt;.run({ siteId, runId, inputs })</code>: builds single-site context, calls the model through <code>cappedInference</code>, validates the structured output and returns it. The next mutation persists it.</td></tr>
+			<tr><td>CMS agent</td><td>Not an LLM loop. It is the workflows, <code>posts.transition</code> and <code>gitNode.*</code> (the only repo writer). It calls a model only for autopost fixes, at the workhorse tier.</td></tr>
+			<tr><td>Prompts</td><td>Each <code>skills/&lt;id&gt;/SKILL.md</code> compiled to <code>skills.generated.ts</code> at build time (Convex can't read package files at runtime). System prompt = skill + site brand pack + guardrails. Skill hash stored on the run.</td></tr>
+			<tr><td>Structured outputs</td><td>A zod schema per agent artefact (writer: blocks, facts, image sheet, word count; optimizer: gate checks; swarm: keyword rows), via Anthropic structured outputs, validated again on the server.</td></tr>
+			<tr><td>Tier routing</td><td>Per-site <code>modelRouting</code> (mechanical · writing · strategy · pillar pages) → <code>fast</code> Haiku 4.5 · <code>workhorse</code> Sonnet 5 · <code>strongest</code> Opus 5.5. Verify IDs before deploy.</td></tr>
+			<tr><td>Escalation</td><td>Static from the harness config (writer → strongest for pillar and money pages; report → strongest on pivot). Dynamic (D7): invalid output → retry once → one tier up if the cap allows → else fail and hold.</td></tr>
+			<tr><td>Budgets</td><td><code>assertWithinBudget</code> before every turn of a multi-turn step; <code>maxTurns</code> set explicitly per agent.</td></tr>
+			<tr><td>Tools</td><td>Web research cheapest-first; image providers through HTTP MCP or APIs. No code execution, so no sandbox. Agent SVG goes through <code>sanitizeSvg()</code>.</td></tr>
+			<tr><td>Guardrails</td><td>Fact markers for unsourced claims, regulated disclaimers, no invented credentials. Images: no real people, no living-artist styles, no watermarks, licence check and provenance, estimate before running.</td></tr>
+		</tbody>
+	</table>
+</section>
+
+<section class="page">
+	<div class="eyebrow">06 · The inference fence</div>
+	<h2>Every paid call goes through one program</h2>
+	<div class="flow">
+		<div class="step"><b>Estimate</b><code>estimateRun</code> per kind and site</div>
+		<div class="arrow">→</div>
+		<div class="step human"><b>Cap check</b>Allowed · warn at 80% · refused (post holds)</div>
+		<div class="arrow">→</div>
+		<div class="step"><b>Rate limit</b>Per site and per workspace</div>
+		<div class="arrow">→</div>
+		<div class="step"><b>Autumn check</b>Entity = site</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Debit estimate</b>Idempotency key built on the server</div>
+		<div class="arrow">→</div>
+		<div class="step agent"><b>Call + retry</b>Bounded backoff on 429, 5xx, timeouts</div>
+		<div class="arrow">→</div>
+		<div class="step pass"><b>Settle</b>Credit the difference or debit overage once; refund on failure</div>
+	</div>
+	<ul>
+		<li>Two monthly budgets per site: text and image, in USD, set by an admin. Over cap refuses with a message; nothing is billed silently.</li>
+		<li>Ledger truth is <code>spendEntries</code> in integer micro-USD. Autumn is the commercial meter, reconciled daily.</li>
+		<li>Customer-supplied provider keys are still estimated and capped, but debited as zero provider cost plus any CMS fee (D15).</li>
+	</ul>
+
+	<h3>Observability</h3>
+	<table>
+		<thead><tr><th>Signal</th><th>Content</th></tr></thead>
+		<tbody>
+			<tr><td>Langfuse</td><td>One trace per run, spans per model or tool call; tagged site, workspace, agent, tier, skill hash. No secrets, no personal data.</td></tr>
+			<tr><td>Sentry</td><td>Server and client errors tagged with site, run and workflow</td></tr>
+			<tr><td>PostHog</td><td><code>idea_approved</code>, <code>post_shipped</code>, <code>post_held</code> (reason), <code>mr_merged</code> (autopost), <code>run_refused_over_cap</code>, <code>slot_filled</code> (route)</td></tr>
+			<tr><td>Audit</td><td>Append-only, customer-facing: "who approved this claim" is one query</td></tr>
+			<tr><td>Runs</td><td>Cost, tokens, model and status per run, for per-client cost reporting</td></tr>
+		</tbody>
+	</table>
+
+	<h3>Failure handling</h3>
+	<table>
+		<thead><tr><th>Failure</th><th>Behaviour</th></tr></thead>
+		<tbody>
+			<tr><td>Model call fails</td><td>Bounded retry inside the fence → refund → run failed → post holds "Provider failure"</td></tr>
+			<tr><td>Invalid structured output</td><td>Retry once, escalate one tier, else fail as above</td></tr>
+			<tr><td>Image provider fails</td><td>Retry once, try the next route, else hold the slot</td></tr>
+			<tr><td>Template can't render</td><td>Hold "Template can't render", ledger item for the developer</td></tr>
+			<tr><td>Base branch moved</td><td>Rebase re-renders from the current template; a conflict notifies the developer; never force onto base</td></tr>
+			<tr><td>CI red</td><td>MR stays open with CI detail on the timeline; autopost doesn't merge</td></tr>
+			<tr><td>Webhook replayed or out of order</td><td>Deduplicated by delivery ID; stale head SHAs ignored</td></tr>
+			<tr><td>Search Console token expired</td><td>Shows "reconnect"; KAS shows a data gap, never zeros</td></tr>
+		</tbody>
+	</table>
+</section>
+
+<section class="page">
+	<div class="eyebrow">07 · Build order</div>
+	<h2>Ten handoffs</h2>
+	<p>Each handoff in <code>docs/backend/handoffs/</code> is self-contained for a builder agent: goal, inputs to read, files to create, acceptance tests and exit criteria. Run them through the compound-engineering loop.</p>
+	<table>
+		<thead><tr><th>Phase</th><th>Handoff</th><th>Depends on</th><th>Exit</th></tr></thead>
+		<tbody>
+			<tr><td>B0</td><td>Setup: accounts, env tiers, keys</td><td>—</td><td>Three tiers provisioned; <code>.env.example</code> and env matrix merged</td></tr>
+			<tr><td>B1</td><td>Foundations and tenancy</td><td>B0</td><td>Isolation sweep green; workspace, site, team and settings on Convex</td></tr>
+			<tr><td>B2</td><td>Post lifecycle workflow</td><td>B1</td><td>Every state edge tested with stub agents</td></tr>
+			<tr><td>B3</td><td>Agents and models</td><td>B2</td><td>Real agents behind the fence; staging eval recorded</td></tr>
+			<tr><td>B4</td><td>Visual agent and assets</td><td>B1–B3</td><td>Four image routes from Convex; Next.js API routes removed</td></tr>
+			<tr><td>B5</td><td>Templates and renderer</td><td>B1, B4</td><td>Fidelity holds; HTML, MDX and JSON golden files</td></tr>
+			<tr><td>B6</td><td>Git and merge</td><td>B2, B4, B5</td><td>Approve → PR → green CI → live on staging</td></tr>
+			<tr><td>B7</td><td>Search Console and KAS</td><td>B1, B2, B4</td><td>Real trajectory; KAS within 24 h of merge</td></tr>
+			<tr><td>B8</td><td>Spend and billing</td><td>B1</td><td>Caps hold under concurrency; daily reconcile</td></tr>
+			<tr><td>B9</td><td>Hardening and pilot</td><td>B1–B8</td><td>Aikido clear; pilot exit criteria met</td></tr>
+		</tbody>
+	</table>
+	<p class="small">Parallel after B2: B3, B7 and B8 together. B4 needs B3's gateway. B5 parsing can start after B1. B6 follows B5.</p>
+
+	<h3>Environment tiers</h3>
+	<div class="grid g2">
+		<div class="card"><h4>A · Boot</h4><p>Convex deployment and URL; Clerk issuer, publishable and secret keys, webhook secret; frontend URL. Clerk JWT template <code>convex</code>, Organizations on.</p></div>
+		<div class="card"><h4>B · Money</h4><p>Polar access token, organisation ID, webhook secret, server; Autumn secret key.</p></div>
+		<div class="card"><h4>C · AI jobs</h4><p><code>ANTHROPIC_API_KEY</code>; Langfuse keys and URL; <code>CMS_SECRETS_KEY_V1</code> and <code>CMS_SECRETS_KEY_CURRENT</code> for key rotation.</p></div>
+		<div class="card"><h4>D/E · Observability and integrations</h4><p>PostHog, Sentry; Parallel, Firecrawl, Browserbase; GitHub App; Google OAuth; R2 credentials.</p></div>
+	</div>
+	<p class="small">Every server key lives in Convex env; Next.js only holds public keys and Clerk. Per-client keys go in the encrypted <code>secrets</code> table.</p>
+
+</section>
+
+<section class="page">
+	<div class="eyebrow">08 · Decisions</div>
+	<h2>Open decisions</h2>
+	<table>
+		<thead><tr><th>#</th><th>Decision</th><th>Recommendation</th><th>Blocks</th></tr></thead>
+		<tbody>
+			<tr><td>D1</td><td>Own Convex deployment or share apps/web's</td><td>Own</td><td>B1</td></tr>
+			<tr><td>D2</td><td>Anthropic direct or via OpenRouter</td><td>Direct; OpenRouter as fallback</td><td>B3</td></tr>
+			<tr><td>D3</td><td>Bill per site or per workspace</td><td>Workspace plan with seats + per-site subscription item</td><td>B8</td></tr>
+			<tr><td>D4</td><td>Autumn customer mapping</td><td>Customer = workspace, entity = site</td><td>B8</td></tr>
+			<tr><td>D5</td><td>Who merges on green CI</td><td>The CMS, from the webhook (re-checks the gate)</td><td>B6</td></tr>
+			<tr><td>D7</td><td>Dynamic escalation</td><td>Retry, then one tier up within cap</td><td>B3</td></tr>
+			<tr><td>D8</td><td>Path scope enforcement</td><td>CMS allowlist plus branch protection in the repo</td><td>B6</td></tr>
+			<tr><td>D14</td><td>Image licensing policy</td><td>Product call, per provider</td><td>Paid pilot</td></tr>
+			<tr><td>D15</td><td>Cost model and customer-key billing</td><td>Product call</td><td>B8</td></tr>
+		</tbody>
+	</table>
+	<p class="small">The full list (D1–D17) is in <code>docs/backend/README.md</code> §15. Still missing for the venture commit: a signed eval-first spec (L3 autonomy and cost-per-post budget) and the problem scorecard.</p>
+</section>
+
+</body>
+</html>
