@@ -76,7 +76,7 @@ export function writerUserPrompt(b: IWriterBrief): string {
 		b.intent ? `Search intent: ${b.intent}` : "",
 		`Content type: ${b.contentType}`,
 		b.pillar ? `Pillar: ${b.pillar}` : "",
-		`Word target: about ${b.wordTarget} words`,
+		`Word target: ${b.wordTarget} words of body text (stay within 10% of it; count before you finish)`,
 		b.styleKeywords.length ? `Image style keywords: ${b.styleKeywords.join(", ")}` : "",
 		`Hero image route: ${b.heroProvider}`,
 		b.regulated ? `Regulated topic: ${b.regulated} (the CMS appends the disclaimer; be careful with claims)` : "",
