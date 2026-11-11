@@ -79,6 +79,7 @@ export function LivePreview({ postId, device: deviceProp = "desktop", embedded =
 				parseHtml: browserParse,
 				mappings: manifest.mappings,
 				baseHref: source.baseHref ?? undefined,
+				rootHref: source.rootHref ?? null,
 				publishedAt,
 			});
 		} catch (e) {

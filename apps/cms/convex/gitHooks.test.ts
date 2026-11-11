@@ -72,3 +72,20 @@ test("uninstalling the app disconnects the repo", async () => {
 	const conns = await t.run((ctx) => ctx.db.query("repoConnections").collect());
 	expect(conns[0]!.status).toBe("removed");
 });
+
+test("an install proved for one site serves its installer's other sites in the same workspace only", async () => {
+	const { t, site, other } = await world();
+	const ids = await t.run(async (ctx) => {
+		const owner = (await ctx.db.query("users").collect())[0]!._id;
+		const someone = await ctx.db.insert("users", { clerkUserId: "s", tokenIdentifier: "x|s", name: "S", initials: "S", email: "s@x.co", avatarHue: 2, status: "active" });
+		const ws2 = await ctx.db.insert("workspaces", { clerkOrgId: "org_2", name: "W2", slug: "w2", plan: "pilot", seats: 5, createdAt: 0 });
+		const far = await ctx.db.insert("sites", { ...(await ctx.db.get(other))!, _id: undefined, _creationTime: undefined, workspaceId: ws2, slug: "far" } as never);
+		await ctx.db.insert("gitInstallations", { siteId: site, host: "github", installationId: "181", createdBy: owner, createdAt: 0 });
+		return { owner, someone, far };
+	});
+	const can = (siteId: typeof site, userId: typeof ids.owner) => t.query(internal.gitConnect.installationFor, { siteId, userId, installationId: "181" });
+	expect(await can(site, ids.someone)).toBe(true); // completed for this site: anyone allowed to connect here
+	expect(await can(other, ids.owner)).toBe(true); // the installer's sibling site
+	expect(await can(other, ids.someone)).toBe(false); // not someone else's
+	expect(await can(ids.far, ids.owner)).toBe(false); // never across workspaces
+});

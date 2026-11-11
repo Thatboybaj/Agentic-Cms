@@ -1,12 +1,30 @@
 "use client";
 // SiteGate: SiteScope for /s/[site]/… plus the DS states shown when the slug doesn't resolve to a site the
 // current person can open (not found · no access · signed out). Rendered inside the app shell's content column.
+import { useConvexAuth, useQuery } from "convex/react";
 import { useEffect, type ReactNode } from "react";
 import { Button, Callout, Card, EmptyState } from "@/ds";
+import { SITE_ON_CONVEX } from "@/features/shared/site-source";
 import { WORKSPACE_ROUTES } from "@/lib/routes";
-import { SiteScope, type ISiteStatus } from "@/lib/store";
+import { SiteScope, useAdoptSite, type ISiteStatus } from "@/lib/store";
+import type { TRole } from "@/lib/types";
+import { api } from "../../../../convex/_generated/api";
+
+/** A site created on the backend after the prototype seed (sites.add) joins the local store, so its pages open. */
+function useAdoptLive(slug: string) {
+	const { isAuthenticated } = useConvexAuth();
+	const r = useQuery(api.sites.bySlug, isAuthenticated ? { slug } : "skip");
+	const adopt = useAdoptSite();
+	useEffect(() => {
+		if (r?.status === "ok") adopt({ role: r.site.role as TRole, slug: r.site.slug, name: r.site.name, domain: r.site.domain, icon: r.site.icon, status: r.site.status, ...(typeof r.site.accent === "number" ? { accent: r.site.accent } : {}) });
+	}, [r, adopt]);
+}
+
+/** SITE_ON_CONVEX is a build-time constant, so the hook order is stable. */
+const useAdopt: (slug: string) => void = SITE_ON_CONVEX ? useAdoptLive : () => {};
 
 export function SiteGate({ slug, children }: { slug: string; children: ReactNode }) {
+	useAdopt(slug);
 	return (
 		<SiteScope slug={slug} fallback={(status) => <SiteStatusState status={status} />}>
 			<RememberSite slug={slug} />

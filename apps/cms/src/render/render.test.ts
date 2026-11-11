@@ -295,3 +295,20 @@ describe("bundle helpers", () => {
 		expect(resolveInBundle("post.html", "/assets/a.png")).toBe("assets/a.png");
 	});
 });
+
+describe("applyPreviewBase", async () => {
+	const { applyPreviewBase } = await import("./render");
+	it("points root-relative CSS and images at the bundle root, leaves the rest alone", () => {
+		const doc = new DOMParser().parseFromString(`<html><head><link rel="stylesheet" href="/styles.css?v=5"><link rel="preconnect" href="https://fonts.googleapis.com"></head><body><img src="/assets/a.webp" srcset="/assets/a.webp 1x, /assets/a@2x.webp 2x"><img src="rel.png"><img src="//cdn.x/y.png"><a href="/services">S</a></body></html>`, "text/html") as unknown as Document;
+		applyPreviewBase(doc, "https://x.site/tpl/m1/blog/", "https://x.site/tpl/m1/");
+		const imgs = Array.from(doc.querySelectorAll("img"));
+		expect(doc.querySelector('link[rel="stylesheet"]')!.getAttribute("href")).toBe("https://x.site/tpl/m1/styles.css?v=5");
+		expect(doc.querySelector('link[rel="preconnect"]')!.getAttribute("href")).toBe("https://fonts.googleapis.com");
+		expect(imgs[0]!.getAttribute("src")).toBe("https://x.site/tpl/m1/assets/a.webp");
+		expect(imgs[0]!.getAttribute("srcset")).toBe("https://x.site/tpl/m1/assets/a.webp 1x, https://x.site/tpl/m1/assets/a@2x.webp 2x");
+		expect(imgs[1]!.getAttribute("src")).toBe("rel.png"); // the <base> handles relative URLs
+		expect(imgs[2]!.getAttribute("src")).toBe("//cdn.x/y.png");
+		expect(doc.querySelector("a")!.getAttribute("href")).toBe("/services");
+		expect(doc.querySelector("base")!.getAttribute("href")).toBe("https://x.site/tpl/m1/blog/");
+	});
+});

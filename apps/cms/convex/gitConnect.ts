@@ -4,7 +4,7 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { siteAction, siteMutation, siteQuery } from "./lib/functions";
 import { signState } from "./lib/github";
@@ -15,12 +15,31 @@ import type { IScan } from "./gitNode";
 type TResult = { ok: true; url?: string } | { ok: false; reason: string };
 const NOT_CONFIGURED = "The GitHub App isn't set up on this deployment yet · create it from Connect a site → Repo";
 
+/**
+ * Installations this person may use on this site: the ones completed for it (signed state → /github/setup), plus
+ * ones they completed themselves for another site in the same workspace. GitHub won't run the setup round-trip
+ * again for an app that's already installed, so a second site reuses the install its owner already proved.
+ */
+async function usableInstallations(ctx: QueryCtx, siteId: Id<"sites">, userId: Id<"users">) {
+	const site = await ctx.db.get(siteId);
+	if (!site) return [];
+	const out = new Map<string, { installationId: string; account: string | null }>();
+	for (const i of await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(20)) out.set(i.installationId, { installationId: i.installationId, account: i.account ?? null });
+	for (const other of await ctx.db.query("sites").withIndex("by_workspace", (q) => q.eq("workspaceId", site.workspaceId)).take(500)) {
+		if (other._id === siteId) continue;
+		for (const i of await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", other._id)).take(20)) {
+			if (i.createdBy === userId && !out.has(i.installationId)) out.set(i.installationId, { installationId: i.installationId, account: i.account ?? null });
+		}
+	}
+	return [...out.values()];
+}
+
 export const status = siteQuery({
 	permission: "plan.view",
 	args: {},
 	handler: async (ctx, { siteId }) => ({
 		configured: (await githubConfig(ctx)) !== null,
-		installations: (await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(10)).map((i) => ({ installationId: i.installationId, account: i.account ?? null })),
+		installations: await usableInstallations(ctx, siteId, ctx.access.user._id),
 	}),
 });
 
@@ -48,13 +67,13 @@ export const beginAppManifest = siteMutation({
 	},
 });
 
-async function ownInstallation(ctx: { runQuery: (q: typeof internal.gitConnect.installationFor, a: { siteId: Id<"sites">; installationId: string }) => Promise<boolean> }, siteId: Id<"sites">, installationId: string) {
-	return ctx.runQuery(internal.gitConnect.installationFor, { siteId, installationId });
+async function ownInstallation(ctx: { runQuery: (q: typeof internal.gitConnect.installationFor, a: { siteId: Id<"sites">; userId: Id<"users">; installationId: string }) => Promise<boolean>; access: { userId: Id<"users"> } }, siteId: Id<"sites">, installationId: string) {
+	return ctx.runQuery(internal.gitConnect.installationFor, { siteId, userId: ctx.access.userId, installationId });
 }
 
 export const installationFor = internalQuery({
-	args: { siteId: v.id("sites"), installationId: v.string() },
-	handler: async (ctx, { siteId, installationId }) => (await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(20)).some((i) => i.installationId === installationId),
+	args: { siteId: v.id("sites"), userId: v.id("users"), installationId: v.string() },
+	handler: async (ctx, { siteId, userId, installationId }) => (await usableInstallations(ctx, siteId, userId)).some((i) => i.installationId === installationId),
 });
 
 export const installRepos = siteAction({
@@ -127,6 +146,9 @@ export const writeConnection = internalMutation({
 		const site = (await ctx.db.get(a.siteId))!;
 		const user = (await ctx.db.get(a.userId))!;
 		for (const c of await ctx.db.query("repoConnections").withIndex("by_site", (q) => q.eq("siteId", a.siteId)).take(10)) if (c.status === "active") await ctx.db.patch(c._id, { status: "removed" });
+		// An installation reused from a sibling site is recorded for this site too (webhooks + later checks find it here).
+		const rows = await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", a.siteId)).take(20);
+		if (!rows.some((i) => i.installationId === a.installationId)) await ctx.db.insert("gitInstallations", { siteId: a.siteId, host: "github", installationId: a.installationId, account: a.installedAs, createdBy: a.userId, createdAt: Date.now() });
 		await ctx.db.insert("repoConnections", { workspaceId: site.workspaceId, siteId: a.siteId, host: "github", repo: a.repo, baseBranch: a.baseBranch, contentDir: a.contentDir, assetDir: a.assetDir, branchPattern: a.branchPattern, installedAs: a.installedAs, installationId: a.installationId, ...(a.indexFiles?.length ? { indexFiles: a.indexFiles } : {}), status: "active", live: true, connectedBy: a.userId, connectedAt: Date.now() });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId: a.siteId, actor: user, action: "connected repo", target: a.repo, detail: `Writes only to ${a.contentDir} and ${a.assetDir} · never pushes to ${a.baseBranch}` });
 	},

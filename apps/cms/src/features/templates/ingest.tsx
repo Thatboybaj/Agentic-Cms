@@ -349,7 +349,7 @@ function ConfirmStep({ manifest: m, canAct, action }: { manifest: ITemplateManif
 			src.status === "loading" ? (
 				<Skeleton className="m-6 h-[420px]" radius={16} />
 			) : (
-				<SampleFrame manifest={m} html={m.sampleHtml} baseHref={src.baseHref} className="min-h-[440px] flex-1" />
+				<SampleFrame manifest={m} html={m.sampleHtml} baseHref={src.baseHref} rootHref={src.rootHref ?? null} className="min-h-[440px] flex-1" />
 			)
 		) : (
 			<SourceCodeFrame html={m.sampleHtml} mode="source" highlights={realSourceHighlights(m)} />

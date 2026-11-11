@@ -1348,6 +1348,43 @@ class CmsStore {
 		this.publish();
 	}
 
+	/**
+	 * Adds a site the backend knows but this store doesn't (one created after the seed, e.g. through sites.add), so
+	 * /s/<slug> resolves. Identity only, with empty site data: the site's real content comes from Convex. No-op when
+	 * the slug is already here.
+	 */
+	adoptSite(site: Pick<ISite, "slug" | "name" | "domain" | "icon" | "status"> & { industry?: string; accent?: number; role?: TRole }) {
+		const me = this.session.userId;
+		const id = this.state.sites.find((s) => s.slug === site.slug)?.id ?? site.slug;
+		const known = this.state.sites.some((s) => s.slug === site.slug);
+		const member = !me || !site.role || canAccessSite(this.state, me, id);
+		if (known && member) return;
+		this.set((d) => {
+			// The server already decided this person may open the site (sites.bySlug), so mirror that role here.
+			if (me && site.role && !canAccessSite(d, me, id)) d.memberships.push({ userId: me, siteId: id, role: site.role, addedAt: nowIso(), addedBy: "system" });
+			if (d.sites.some((s) => s.slug === site.slug)) return;
+			d.sites.push({
+				id: site.slug,
+				slug: site.slug,
+				name: site.name,
+				domain: site.domain,
+				industry: site.industry ?? "Other",
+				status: site.status,
+				createdAt: nowIso(),
+				accent: site.accent ?? hueFor(site.slug, 0),
+				icon: site.icon ?? "globe",
+				ageMonths: 0,
+				cadenceTarget: 2,
+				repo: null,
+				searchConsole: "missing",
+				rankSource: null,
+				budgets: { textUsd: 0, textCapUsd: 100, imageUsd: 0, imageCapUsd: 50 },
+				publishing: { autopost: true, autoMergeOnGreenCi: true },
+			});
+			d.data[site.slug] = emptySiteData();
+		});
+	}
+
 	setLastSite(siteId: string) {
 		if (this.session.lastSiteId === siteId) return;
 		this.session = { ...this.session, lastSiteId: siteId };
@@ -3116,6 +3153,12 @@ export function useToasts(): IToast[] {
 export function useToast(): (t: Omit<IToast, "id">) => void {
 	const store = useStore();
 	return useCallback((t: Omit<IToast, "id">) => store.toast(t), [store]);
+}
+
+/** store.adoptSite for code outside this file (SiteGate brings in sites created on the backend). */
+export function useAdoptSite(): CmsStore["adoptSite"] {
+	const store = useStore();
+	return useCallback((site) => store.adoptSite(site), [store]);
 }
 
 // ─── SiteScope ───────────────────────────────────────────────────────────────

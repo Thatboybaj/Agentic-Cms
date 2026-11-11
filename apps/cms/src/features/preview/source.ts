@@ -19,6 +19,8 @@ export interface ITemplateSource {
 	html: string | null;
 	/** Absolute base URL for the site's relative CSS/images, or null when the files weren't uploaded. */
 	baseHref: string | null;
+	/** The bundle root, for root-relative URLs ("/styles.css") that a <base> can't redirect. */
+	rootHref?: string | null;
 	samplePath: string | null;
 	origin: "upload" | "demo" | null;
 	/** Why assets may be missing (e.g. a single .html upload with relative CSS). */
@@ -30,10 +32,16 @@ const cache = new Map<string, Promise<ITemplateSource>>();
 
 const abs = (path: string) => (typeof window === "undefined" ? path : new URL(path, window.location.origin).toString());
 const encodePath = (p: string) => p.split("/").map(encodeURIComponent).join("/");
+/** "…/tpl/<id>/blog/" with sample "blog/sample-post.html" → "…/tpl/<id>/". */
+const rootOf = (base: string, samplePath?: string | null) => {
+	const dir = samplePath ? dirOf(samplePath) : "";
+	const d = dir && !dir.endsWith("/") ? `${dir}/` : dir;
+	return d && base.endsWith(d) ? base.slice(0, base.length - d.length) : base;
+};
 
 async function load(manifest: ITemplateManifest, siteId: string): Promise<ITemplateSource> {
 	// Convex: the sample came from storage and the bundle's files are served by the /tpl route.
-	if (manifest.sampleHtml && manifest.assetBase) return { status: "ready", html: manifest.sampleHtml, baseHref: manifest.assetBase, samplePath: manifest.samplePath ?? null, origin: "upload", note: null };
+	if (manifest.sampleHtml && manifest.assetBase) return { status: "ready", html: manifest.sampleHtml, baseHref: manifest.assetBase, rootHref: rootOf(manifest.assetBase, manifest.samplePath), samplePath: manifest.samplePath ?? null, origin: "upload", note: null };
 	if (manifest.sampleHtml) {
 		try {
 			const r = await fetch(`/api/templates/${encodeURIComponent(manifest.id)}`, { cache: "no-store" });
@@ -43,6 +51,7 @@ async function load(manifest: ITemplateManifest, siteId: string): Promise<ITempl
 				status: "ready",
 				html: manifest.sampleHtml,
 				baseHref: abs(`/api/templates/${encodeURIComponent(manifest.id)}/files/${encodePath(dirOf(bundle.samplePath))}`),
+				rootHref: abs(`/api/templates/${encodeURIComponent(manifest.id)}/files/`),
 				samplePath: bundle.samplePath,
 				origin: "upload",
 				note: null,

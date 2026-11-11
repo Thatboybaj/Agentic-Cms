@@ -7,7 +7,7 @@ import type { ISourceHighlight } from "@/ds";
 import type { ITemplateManifest, ITemplateMapping } from "@/lib/types";
 import { SiteFrame } from "@/features/preview/SiteFrame";
 import { browserParse } from "@/features/preview/source";
-import { stripUnsafe } from "@/render";
+import { applyPreviewBase, stripUnsafe } from "@/render";
 
 const HIGHLIGHT_ROLES: ITemplateMapping["role"][] = ["content-region", "heading", "list", "quote", "image", "table", "unclassified"];
 
@@ -34,7 +34,7 @@ function tokenColors() {
 	return { agent: v("--c-agent"), human: v("--c-human"), humanSoft: v("--c-human-soft"), ink: v("--c-ink"), onInk: v("--c-on-ink") };
 }
 
-export function highlightedSampleHtml(m: ITemplateManifest, html: string, baseHref: string | null): string {
+export function highlightedSampleHtml(m: ITemplateManifest, html: string, baseHref: string | null, rootHref?: string | null): string {
 	const doc = browserParse(html);
 	stripUnsafe(doc);
 	const seen = new Set<Element>();
@@ -62,18 +62,14 @@ export function highlightedSampleHtml(m: ITemplateManifest, html: string, baseHr
 [data-cms-tone=human]::before{background:var(--cms-human)}
 img[data-cms-hl]::before{display:none}`;
 	doc.head?.appendChild(style);
-	if (baseHref && doc.head) {
-		const base = doc.createElement("base");
-		base.setAttribute("href", baseHref);
-		doc.head.insertBefore(base, doc.head.firstChild);
-	}
+	if (baseHref) applyPreviewBase(doc, baseHref, rootHref);
 	return `<!doctype html>\n${doc.documentElement.outerHTML}`;
 }
 
-export function SampleFrame({ manifest, html, baseHref, className }: { manifest: ITemplateManifest; html: string; baseHref: string | null; className?: string }) {
+export function SampleFrame({ manifest, html, baseHref, rootHref, className }: { manifest: ITemplateManifest; html: string; baseHref: string | null; rootHref?: string | null; className?: string }) {
 	const [ready, setReady] = useState(false);
 	useEffect(() => setReady(true), []);
-	const doc = useMemo(() => (ready ? highlightedSampleHtml(manifest, html, baseHref) : ""), [ready, manifest, html, baseHref]);
+	const doc = useMemo(() => (ready ? highlightedSampleHtml(manifest, html, baseHref, rootHref) : ""), [ready, manifest, html, baseHref, rootHref]);
 	if (!doc) return null;
 	return <SiteFrame html={doc} width={1024} title={`Uploaded sample post with manifest v${manifest.version} highlights`} className={className} />;
 }

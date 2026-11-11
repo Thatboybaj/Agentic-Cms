@@ -26,6 +26,8 @@ export interface IRenderInput {
 	mappings?: ITemplateMapping[];
 	/** Preview only: base URL the template's relative CSS/images resolve against. */
 	baseHref?: string;
+	/** Preview only: the bundle root that root-relative URLs ("/styles.css") resolve against. */
+	rootHref?: string | null;
 	/** Publish date (ISO). Defaults to keeping the sample's date. */
 	publishedAt?: string;
 	/** Author display name. Defaults to the sample's author (the site's default byline). */
@@ -538,13 +540,34 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		} else warnings.push("FAQPage schema not emitted · the template has no JSON-LD block to follow");
 	}
 
-	if (mode === "preview" && input.baseHref && doc.head) {
-		const base = doc.createElement("base");
-		base.setAttribute("href", input.baseHref);
-		doc.head.insertBefore(base, doc.head.firstChild);
-	}
+	if (mode === "preview" && input.baseHref) applyPreviewBase(doc, input.baseHref, input.rootHref);
 	if (stats.placeholders) warnings.push(`${stats.placeholders} image${stats.placeholders === 1 ? "" : "s"} without a final image yet · shown as labelled placeholders`);
 	return { html: serialize(doc), held, warnings, url, stats };
+}
+
+/**
+ * Preview only: makes the uploaded bundle's CSS and images load. A <base> covers relative URLs ("styles.css");
+ * root-relative ones ("/styles.css", "/assets/x.webp", what most static sites use) ignore <base>, so they're pointed
+ * at the bundle root. Published HTML keeps the site's own URLs untouched.
+ */
+export function applyPreviewBase(doc: Document, baseHref: string, rootHref?: string | null) {
+	if (rootHref) {
+		const root = rootHref.endsWith("/") ? rootHref : `${rootHref}/`;
+		const fix = (u: string) => (u.startsWith("/") && !u.startsWith("//") ? root + u.slice(1) : u);
+		for (const el of Array.from(doc.querySelectorAll("link[href], img[src], img[srcset], source[src], source[srcset], video[src], video[poster], audio[src]"))) {
+			for (const a of ["href", "src", "poster"]) {
+				const v = el.getAttribute(a);
+				if (v) el.setAttribute(a, fix(v));
+			}
+			const set = el.getAttribute("srcset");
+			if (set) el.setAttribute("srcset", set.split(",").map((part) => part.trim().replace(/^\S+/, (u) => fix(u))).join(", "));
+		}
+	}
+	if (doc.head) {
+		const base = doc.createElement("base");
+		base.setAttribute("href", baseHref);
+		doc.head.insertBefore(base, doc.head.firstChild);
+	}
 }
 
 /** JSON in the sample's own formatting: same base indent, same indent unit. */
