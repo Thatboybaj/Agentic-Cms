@@ -48,6 +48,8 @@ export interface ISiteActions {
 	generateNow(postId: string): TMaybeAsync<TResult>;
 	movePostToWeek(postId: string, week: number): TMaybeAsync<TResult>;
 	runNow(kind: TRunKind): TMaybeAsync<TResult>;
+	/** Convex: starts Google OAuth (redirects); demo: simulated connect. */
+	connectSearchConsole(siteId: string): TMaybeAsync<TResult>;
 	confirmManifest(manifestId: string): TMaybeAsync<TResult>;
 	mapTemplateItem(manifestId: string, mappingId: string, role: ITemplateManifest["mappings"][number]["role"], label?: string): TMaybeAsync<TResult>;
 	setOutputFormat(manifestId: string, output: ITemplateManifest["output"]): TMaybeAsync<TResult>;
@@ -161,6 +163,7 @@ function useLiveSite(): ISiteCms {
 		generateNow: useMutation(api.posts.generateNow),
 		moveToWeek: useMutation(api.plan.moveToWeek),
 		runNow: useMutation(api.schedules.runNow),
+		beginGsc: useMutation(api.gsc.beginOAuth),
 		confirmManifest: useMutation(api.templates.confirm),
 		mapTemplateItem: useMutation(api.templates.mapItem),
 		setOutputFormat: useMutation(api.templates.setOutput),
@@ -278,6 +281,12 @@ function useLiveSite(): ISiteCms {
 			generateNow: (postId) => run(() => m.generateNow({ siteId: s, postId: asId(postId) }), { text: "Generating · the writer has started", tone: "agent" }),
 			movePostToWeek: (postId, week) => run(() => m.moveToWeek({ siteId: s, postId: asId(postId), week }), { text: `Rescheduled to W${week}` }),
 			runNow: (kind) => run(() => m.runNow({ siteId: s, kind }), { text: "Run started", tone: "agent" }),
+			connectSearchConsole: () =>
+				run(async () => {
+					const r = await m.beginGsc({ siteId: s });
+					if (r.ok && r.url) window.location.assign(r.url);
+					return r;
+				}),
 			confirmManifest: (manifestId) => run(() => m.confirmManifest({ siteId: s, manifestId: manifestId as Id<"templateManifests"> }), { text: "Manifest confirmed · new posts render into it", tone: "pass" }),
 			mapTemplateItem: (manifestId, mappingId, role, label) => run(() => m.mapTemplateItem({ siteId: s, manifestId: manifestId as Id<"templateManifests">, mappingId, role, ...(label ? { label } : {}) })),
 			setOutputFormat: (manifestId, output) => run(() => m.setOutputFormat({ siteId: s, manifestId: manifestId as Id<"templateManifests">, output })),

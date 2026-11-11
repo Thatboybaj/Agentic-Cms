@@ -3,7 +3,8 @@
 // and the before/after of the last merge ("prove a post did something").
 import { Callout, Chip, KeyValue, Sheet, SourceNote, Sparkline, Timeline, type ITimelineItem } from "@/ds";
 import { fmtDate, fmtDateTime, fmtDelta, fmtInt, fmtShare, INTENT_LABEL, postKas, postUrl, round1 } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IKeyword } from "@/lib/types";
 import { clsx } from "clsx";
 import Link from "next/link";
@@ -35,7 +36,7 @@ export function KeywordSheet({ keyword, onClose }: { keyword: IKeyword | undefin
 
 function KeywordDetail({ k }: { k: IKeyword }) {
 	const { slug } = useSite();
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const w = weightBreakdown(k, data);
 	const effect = lastMergeEffect(k, data);
 	const history = keywordHistory(k, data);

@@ -26,7 +26,8 @@ import {
 } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { concentration, DEFAULT_CTR_CURVE, fmtDay, fmtDelta, fmtInt, fmtShare, fmtSignedPct, orphanWeight, pillarDistribution, RUN_META } from "@/lib/logic";
-import { useCms, useLedger, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteLedger } from "@/features/shared/site-source";
 import type { IKeyword, IWeekPoint } from "@/lib/types";
 import { clsx } from "clsx";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -39,7 +40,7 @@ const SC_NOTE = "Search Console · lags 2–3 days · modeled CTR curve";
 
 /** Search Console missing → explicit gap + Connect for developer/admin; everyone else sees why they can't. */
 function ScGap({ what, compact }: { what: string; compact?: boolean }) {
-	const { site, actions, can, why } = useCms();
+	const { site, actions, can, why } = useSiteCms();
 	const label = site.searchConsole === "expired" ? "Search Console access expired" : "Search Console not connected";
 	const allowed = can("searchConsole.connect");
 	const reason = why("searchConsole.connect");
@@ -77,7 +78,7 @@ function ScGap({ what, compact }: { what: string; compact?: boolean }) {
 // ---- Trajectory -------------------------------------------------------------
 
 function TrajectoryCard({ range }: { range: TRange }) {
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const [metric, setMetric] = useState<TMetric>("sessions");
 	const [table, setTable] = useState(false);
 	const { points, wanted, short } = pointsFor(data.trajectory, range);
@@ -174,7 +175,7 @@ function TrajectoryCard({ range }: { range: TRange }) {
 // ---- Plan status ------------------------------------------------------------
 
 function PlanStatusCard() {
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	return (
 		<Card padding="lg" className="flex flex-col gap-3 rounded-3xl lg:w-[340px] lg:shrink-0 max-md:bg-transparent max-md:p-0">
 			<h2 className="font-display text-lg max-md:sr-only">Plan status</h2>
@@ -190,7 +191,7 @@ function PlanStatusCard() {
 // ---- KAS -------------------------------------------------------------------
 
 function KasCard({ onSelect }: { onSelect: (id: string) => void }) {
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const snaps = snapshotsOf(data);
 	const [snap, setSnap] = useState("latest");
 	const [all, setAll] = useState(false);
@@ -284,7 +285,7 @@ function KasCard({ onSelect }: { onSelect: (id: string) => void }) {
 // ---- Pillar distribution ----------------------------------------------------
 
 function PillarCard() {
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const dist = pillarDistribution(data.keywords, data.pillars);
 	const unearned = dist.filter((d) => d.claimedButUnearned);
 	const swarm = data.schedules.find((s) => s.kind === "keyword-swarm");
@@ -324,7 +325,7 @@ function PillarCard() {
 // ---- Derived indicators ------------------------------------------------------
 
 function Indicators() {
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const ranking = data.keywords.filter((k) => k.position !== null && k.kasShare > 0);
 	if (site.searchConsole !== "connected" || !ranking.length)
 		return (
@@ -376,7 +377,7 @@ type TPerfKey = "post" | "position" | "impressions" | "clicks" | "kas";
 
 function PerformanceCard() {
 	const { slug } = useSite();
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const [filter, setFilter] = useState<"all" | "page2">("all");
 	const [sort, setSort] = useState<IDataTableSort>({ key: "kas", dir: "desc" });
 	const rows = useMemo(() => performanceRows(data), [data]);
@@ -482,7 +483,7 @@ function PerformanceCard() {
 // ---- Honest limit + ledger -----------------------------------------------------
 
 function HonestLimit() {
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const curve = data.ctrCurve ?? DEFAULT_CTR_CURVE;
 	const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
 	return (
@@ -509,7 +510,7 @@ function HonestLimit() {
 
 function LedgerStrip() {
 	const { slug } = useSite();
-	const ledger = useLedger().slice(0, 3);
+	const ledger = useSiteLedger().slice(0, 3);
 	return (
 		<Card padding="lg" className="flex flex-col gap-2.5 rounded-3xl">
 			<CardHeader title="Human ledger" meta={`${ledger.length} open`} href={sitePath(slug, "/runs")} />
@@ -522,7 +523,7 @@ function LedgerStrip() {
 
 export function SeoDashboard() {
 	const { slug } = useSite();
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const router = useRouter();
 	const pathname = usePathname();
 	const params = useSearchParams();

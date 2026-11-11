@@ -2,7 +2,8 @@
 // S14 /seo/reports — every stored bi-weekly edition + reader (?edition=n). Stored data only; nothing back-filled.
 import { Button, Callout, Card, Chip, DataGap, EmptyState, KasTable, LedgerItem, PageHeader, Section, Select, SourceNote, StatTile, StatusLight, TrajectoryChart } from "@/ds";
 import { fmtDateTime, fmtDay, fmtInt, fmtSignedPct } from "@/lib/logic";
-import { useCms, useLedger, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteLedger } from "@/features/shared/site-source";
 import type { IReportEdition } from "@/lib/types";
 import { clsx } from "clsx";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -38,8 +39,8 @@ function EditionRow({ e, active, onOpen }: { e: IReportEdition; active: boolean;
 }
 
 function Reader({ e, latest }: { e: IReportEdition; latest: boolean }) {
-	const { data } = useCms();
-	const ledger = useLedger();
+	const { data } = useSiteCms();
+	const ledger = useSiteLedger();
 	const points = frozenPoints(data.trajectory, e.publishedAt);
 	const gap = headlineGap(points);
 	// KAS snapshot as stored at publish time (the latest snapshot not after the edition).
@@ -129,7 +130,7 @@ function Reader({ e, latest }: { e: IReportEdition; latest: boolean }) {
 
 export function SeoReports() {
 	const { slug } = useSite();
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const router = useRouter();
 	const pathname = usePathname();
 	const params = useSearchParams();

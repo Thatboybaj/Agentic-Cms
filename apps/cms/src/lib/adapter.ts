@@ -90,10 +90,10 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		runs,
 		schedules,
 		ledger: b.ledger.map((l) => ({ id: l._id, title: l.title, owner: l.owner, createdAt: iso(l.createdAt)!, ageDays: Math.max(0, Math.floor((now - l.createdAt) / DAY_MS)), downstream: l.downstream, ...(l.postId ? { postId: l.postId } : {}), ...(l.slotId ? { slotId: l.slotId } : {}), done: l.done, ...(l.kind ? { kind: l.kind } : {}) })),
-		trajectory: [],
+		trajectory: b.trajectory.map((w) => ({ week: `W${w.isoWeek.split("-W")[1]}`, sessions: w.sessions, impressions: w.impressions, projected: w.projected })),
 		planStatus: [],
-		reports: [],
-		kasSnapshots: [],
+		reports: b.reports.map((r) => ({ id: r._id, n: r.n, period: r.period, publishedAt: iso(r.publishedAt)!, headline: r.headline, pivotTriggers: r.pivotTriggers })),
+		kasSnapshots: b.kasSnapshots.map((k) => ({ id: k._id, at: iso(k.at)!, trigger: k.trigger, label: k.label, ...(k.mrId ? { mrId: k.mrId } : {}), ...(k.postId ? { postId: k.postId } : {}), concentration: k.concentration, shares: k.shares.map((s) => ({ keywordId: s.keywordId as string, share: s.share, position: s.position })) })),
 		audit: b.audit.map((a) => ({ id: a.id, at: iso(a.at)!, actor: a.actor, action: a.action, target: a.target, ...(a.detail ? { detail: a.detail } : {}) })),
 		// Stored hrefs are site-relative ("/merge-requests"); the page navigates to the full path.
 		notifications: b.notifications.map((n) => ({ id: n.id, at: iso(n.at)!, tone: n.tone, title: n.title, body: n.body, read: n.read, ...(n.href ? { href: n.href.startsWith("/s/") ? n.href : sitePath(b.site.slug, n.href) } : {}) })),

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Button, Card, CardHeader, Chip, DataGap, KeyValue, RoleGate, ScopeNote, SourceNote, TextField } from "@/ds";
 import { PERMISSIONS } from "@/lib/logic";
 import { useCms, useSite } from "@/lib/store";
+import { SITE_ON_CONVEX, useSiteCms } from "@/features/shared/site-source";
+import { LiveSearchConsoleCard } from "./gsc-live";
 import type { IRepoConnection } from "@/lib/types";
 import { LockLine, LockNote, SaveBar, sameRecord } from "./shared";
 import { sitePath } from "@/lib/routes";
@@ -21,10 +23,12 @@ function pathError(v: string): string | undefined {
 
 export function SiteRepoTab() {
 	const { slug } = useSite();
-	const { site, role, actions, can } = useCms();
+	const { actions } = useCms(); // demo-store edits (backend off)
+	const { site, role, can } = useSiteCms();
 	const repo = site.repo;
 	const [draft, setDraft] = useState<TDraft | null>(repo ? pick(repo) : null);
-	const edit = can("repo.connect");
+	// Convex: paths are set when the repo is connected through the GitHub App (Connect a site); not edited here.
+	const edit = can("repo.connect") && !SITE_ON_CONVEX;
 	const dirty = !!repo && !!draft && !sameRecord(draft, pick(repo));
 	const errors = draft ? { contentDir: pathError(draft.contentDir), assetDir: pathError(draft.assetDir), baseBranch: draft.baseBranch.trim() ? undefined : "Required", branchPattern: draft.branchPattern.includes("{slug}") ? undefined : "Include {slug} so each post gets its own branch" } : {};
 	const valid = !Object.values(errors).some(Boolean);
@@ -86,6 +90,9 @@ export function SiteRepoTab() {
 				</Card>
 				<div className="flex flex-col gap-4">
 					{repo && <ScopeNote repo={draft && valid ? { ...repo, ...draft } : repo} />}
+					{SITE_ON_CONVEX ? (
+						<LiveSearchConsoleCard role={role} />
+					) : (
 					<Card className="flex flex-col gap-3">
 						<CardHeader icon="GoogleLogo" title="Search Console" />
 						{site.searchConsole === "connected" ? (
@@ -112,6 +119,7 @@ export function SiteRepoTab() {
 							</>
 						)}
 					</Card>
+					)}
 					<Card className="flex flex-col gap-3">
 						<CardHeader icon="ChartBar" title="Rank data" />
 						{site.rankSource ? (

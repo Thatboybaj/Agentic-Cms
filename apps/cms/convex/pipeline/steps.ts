@@ -240,6 +240,14 @@ export const runKindStep = internalAction({
 	args: { siteId: v.id("sites"), kind: v.string(), siteName: v.string(), searchConsole: v.string(), rankSource: v.union(v.string(), v.null()), industry: v.string(), runId: v.optional(v.id("runs")), trigger: v.optional(v.string()) },
 	returns: vRunArtifact,
 	handler: async (ctx, a): Promise<TRunArtifact> => {
+		// KAS is deterministic and free: always real (convex/kas.ts), a data gap without Search Console.
+		if (a.kind === "kas-recalc") {
+			const r = await ctx.runMutation(internal.kas.recalc, { siteId: a.siteId, trigger: a.trigger === "scheduled" ? "weekly" : "manual" });
+			return { status: "succeeded", output: r.ok ? r.label : r.reason, ideas: [] };
+		}
+		// Search Console agents (no model, no spend): real when the property is connected; their data gap otherwise.
+		if (a.kind === "technical-monitor" && a.searchConsole === "connected") return await ctx.runAction(internal.gscAgents.monitor, { siteId: a.siteId });
+		if (a.kind === "biweekly-report" && a.searchConsole === "connected" && a.runId) return await ctx.runAction(internal.gscAgents.report, { siteId: a.siteId, runId: a.runId });
 		if (a.runId && LIVE_KINDS.has(a.kind) && scheduledLive(a.trigger)) return await ctx.runAction(internal.agents.scheduled.run, { siteId: a.siteId, runId: a.runId, kind: a.kind });
 		const none = [] as { term: string; intent: "informational" | "commercial" | "transactional" | "navigational"; difficulty: number; evidence: string }[];
 		switch (a.kind) {

@@ -45,6 +45,10 @@ export const bundle = siteQuery({
 		const runs = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", siteId)).order("desc").take(50);
 		// The signed-in user's notifications for this site (newest first); never anyone else's.
 		const notifications = (await ctx.db.query("notifications").withIndex("by_user_site", (q) => q.eq("userId", ctx.access.user._id).eq("siteId", siteId)).order("desc").take(60)).map((n) => ({ id: n._id, at: n.at, tone: n.tone, title: n.title, body: n.body, href: n.href, read: n.read }));
+		// SEO data (handoff 07): weekly roll-ups, KAS snapshots, report editions. Missing weeks stay missing.
+		const trajectory = (await ctx.db.query("trafficWeekly").withIndex("by_site_week", (q) => q.eq("siteId", siteId)).order("desc").take(26)).reverse();
+		const kasSnapshots = await ctx.db.query("kasSnapshots").withIndex("by_site_at", (q) => q.eq("siteId", siteId)).order("desc").take(12);
+		const reports = await ctx.db.query("reports").withIndex("by_site_n", (q) => q.eq("siteId", siteId)).order("desc").take(12);
 		const manifest = await activeManifest(ctx, siteId);
 		const repo = await activeRepo(ctx, siteId);
 		// People on the site (names + effective roles) for "who does this" copy; never emails.
@@ -71,6 +75,9 @@ export const bundle = siteQuery({
 			ledger,
 			runs,
 			notifications,
+			trajectory,
+			kasSnapshots,
+			reports,
 			manifest,
 			members,
 			meId: ctx.access.user._id,

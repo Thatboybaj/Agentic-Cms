@@ -92,6 +92,30 @@ export const githubWebhook = httpAction(async (ctx, req) => {
 	return Response.json(r);
 });
 
+/** Google OAuth callback (Search Console): single-use state, PKCE exchange, scope check, sealed tokens. */
+export const googleCallback = httpAction(async (ctx, req) => {
+	const url = new URL(req.url);
+	const front = process.env.FRONTEND_URL ?? "";
+	const state = url.searchParams.get("state");
+	const code = url.searchParams.get("code");
+	if (!state) return new Response("Missing state", { status: 400 });
+	const s = await ctx.runMutation(internal.gsc.consumeState, { state });
+	if (!s) return new Response("This sign-in link expired or was already used · start again from the CMS", { status: 400 });
+	if (!code) return Response.redirect(`${front}${s.redirectTo}${s.redirectTo.includes("?") ? "&" : "?"}gsc=denied`, 302);
+	const res = await fetch("https://oauth2.googleapis.com/token", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ code, client_id: process.env.GOOGLE_CLIENT_ID ?? "", client_secret: process.env.GOOGLE_CLIENT_SECRET ?? "", redirect_uri: `${process.env.CONVEX_SITE_URL}/oauth/google/callback`, grant_type: "authorization_code", code_verifier: s.verifier }) });
+	if (!res.ok) return Response.redirect(`${front}${s.redirectTo}${s.redirectTo.includes("?") ? "&" : "?"}gsc=failed`, 302);
+	const t = (await res.json()) as { access_token: string; refresh_token?: string; expires_in: number; scope?: string; id_token?: string };
+	let email: string | undefined;
+	try {
+		email = t.id_token ? (JSON.parse(atob(t.id_token.split(".")[1]!.replace(/-/g, "+").replace(/_/g, "/"))) as { email?: string }).email : undefined;
+	} catch {
+		email = undefined;
+	}
+	const r = await ctx.runMutation(internal.gsc.storeTokens, { siteId: s.siteId, userId: s.userId, accessToken: t.access_token, ...(t.refresh_token ? { refreshToken: t.refresh_token } : {}), expiresIn: t.expires_in, scopes: (t.scope ?? "").split(" ").filter(Boolean), ...(email ? { email } : {}) });
+	return Response.redirect(`${front}${s.redirectTo}${s.redirectTo.includes("?") ? "&" : "?"}gsc=${r.ok ? "connected" : "missing-scope"}`, 302);
+});
+
+http.route({ path: "/oauth/google/callback", method: "GET", handler: googleCallback });
 http.route({ path: "/github/setup", method: "GET", handler: githubSetup });
 http.route({ path: "/github/webhook", method: "POST", handler: githubWebhook });
 
