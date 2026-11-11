@@ -50,6 +50,8 @@ export interface ISiteActions {
 	runNow(kind: TRunKind): TMaybeAsync<TResult>;
 	/** Convex: starts Google OAuth (redirects); demo: simulated connect. */
 	connectSearchConsole(siteId: string): TMaybeAsync<TResult>;
+	setBudget(kind: "text" | "image", capUsd: number): TMaybeAsync<TResult>;
+	setModelRouting(task: keyof ISiteData["modelRouting"], tier: "fast" | "workhorse" | "strongest"): TMaybeAsync<TResult>;
 	confirmManifest(manifestId: string): TMaybeAsync<TResult>;
 	mapTemplateItem(manifestId: string, mappingId: string, role: ITemplateManifest["mappings"][number]["role"], label?: string): TMaybeAsync<TResult>;
 	setOutputFormat(manifestId: string, output: ITemplateManifest["output"]): TMaybeAsync<TResult>;
@@ -164,6 +166,8 @@ function useLiveSite(): ISiteCms {
 		moveToWeek: useMutation(api.plan.moveToWeek),
 		runNow: useMutation(api.schedules.runNow),
 		beginGsc: useMutation(api.gsc.beginOAuth),
+		setBudget: useMutation(api.billing.setBudget),
+		setModelRouting: useMutation(api.billing.setModelRouting),
 		confirmManifest: useMutation(api.templates.confirm),
 		mapTemplateItem: useMutation(api.templates.mapItem),
 		setOutputFormat: useMutation(api.templates.setOutput),
@@ -281,6 +285,8 @@ function useLiveSite(): ISiteCms {
 			generateNow: (postId) => run(() => m.generateNow({ siteId: s, postId: asId(postId) }), { text: "Generating · the writer has started", tone: "agent" }),
 			movePostToWeek: (postId, week) => run(() => m.moveToWeek({ siteId: s, postId: asId(postId), week }), { text: `Rescheduled to W${week}` }),
 			runNow: (kind) => run(() => m.runNow({ siteId: s, kind }), { text: "Run started", tone: "agent" }),
+			setBudget: (kind, capUsd) => run(() => m.setBudget({ siteId: s, budget: kind, capUsd }), { text: (kind === "text" ? "Text" : "Image") + " cap set to " + "\u0024" + capUsd.toFixed(2) + " / month" }),
+			setModelRouting: (task, tier) => run(() => m.setModelRouting({ siteId: s, task: task === "pillar-pages" ? "pillarPages" : (task as "mechanical" | "writing" | "strategy"), tier })),
 			connectSearchConsole: () =>
 				run(async () => {
 					const r = await m.beginGsc({ siteId: s });

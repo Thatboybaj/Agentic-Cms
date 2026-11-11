@@ -16,6 +16,7 @@ import { nextAtFor } from "./lib/defaults";
 import { siteMutation, siteQuery } from "./lib/functions";
 import { createRun, finishRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
+import { NOT_ENTITLED, siteEntitled } from "./billing";
 import { vRunArtifact } from "./pipeline/steps";
 import { isoWeek, startGeneration } from "./posts";
 import { workflow } from "./workflows/manager";
@@ -28,6 +29,8 @@ const SCHEDULED_KINDS = new Set<TRunKind>(["keyword-swarm", "technical-monitor",
 
 /** Cap check → run row → scheduledRun workflow. Returns the run id, or the refusal. */
 async function startScheduledRun(ctx: MutationCtx, site: Doc<"sites">, kind: TRunKind, opts: { trigger: "scheduled" | "manual"; idempotencyKey: string; user?: Doc<"users"> }): Promise<TResult> {
+	// Unentitled sites (BILLING_ENFORCED + no active subscription) read fine but run nothing.
+	if (!(await siteEntitled(ctx, site._id))) return { ok: false, reason: NOT_ENTITLED };
 	const est = estimateRun(kind, capSite(site));
 	const cap = checkCap(capSite(site), kind, est);
 	const base = { site, kind, trigger: opts.trigger, estimate: est, idempotencyKey: opts.idempotencyKey, output: "Queued", ...(opts.user ? { triggeredBy: opts.user._id } : {}) };

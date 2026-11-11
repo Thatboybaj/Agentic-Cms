@@ -5,6 +5,7 @@ import { internal } from "./_generated/api";
 import type { Id } from "./_generated/dataModel";
 import { httpAction } from "./_generated/server";
 import { verifyState, verifyWebhook } from "./lib/github";
+import { verifyPolar } from "./billing";
 
 const http = httpRouter();
 
@@ -115,6 +116,24 @@ export const googleCallback = httpAction(async (ctx, req) => {
 	return Response.redirect(`${front}${s.redirectTo}${s.redirectTo.includes("?") ? "&" : "?"}gsc=${r.ok ? "connected" : "missing-scope"}`, 302);
 });
 
+/** Polar subscription webhooks (Standard Webhooks signature; replays deduped). */
+export const polarWebhook = httpAction(async (ctx, req) => {
+	const secret = process.env.POLAR_WEBHOOK_SECRET;
+	if (!secret) return new Response("Webhook not configured", { status: 500 });
+	const body = await req.text();
+	const id = req.headers.get("webhook-id");
+	if (!(await verifyPolar(secret, { id, timestamp: req.headers.get("webhook-timestamp"), signature: req.headers.get("webhook-signature") }, body))) return new Response("Invalid signature", { status: 403 });
+	let event: { type?: string; data?: unknown };
+	try {
+		event = JSON.parse(body) as typeof event;
+	} catch {
+		return new Response("Bad JSON", { status: 400 });
+	}
+	const r = await ctx.runMutation(internal.billing.onPolarEvent, { deliveryId: id!, type: event.type ?? "", data: event.data ?? null });
+	return Response.json(r);
+});
+
+http.route({ path: "/polar/webhook", method: "POST", handler: polarWebhook });
 http.route({ path: "/oauth/google/callback", method: "GET", handler: googleCallback });
 http.route({ path: "/github/setup", method: "GET", handler: githubSetup });
 http.route({ path: "/github/webhook", method: "POST", handler: githubWebhook });

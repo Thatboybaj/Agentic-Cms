@@ -4,7 +4,7 @@
 import { useState } from "react";
 import { Card, CardHeader, Chip, DataTable, Select, SourceNote, type IDataTableColumn, type ISelectOption } from "@/ds";
 import { TIER_LABEL } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { ISiteData, TModelTier } from "@/lib/types";
 import { LockLine, LockNote, SaveBar, sameRecord } from "./shared";
 
@@ -21,7 +21,7 @@ const TASKS: TRow[] = [
 const TIERS: ISelectOption<TModelTier>[] = (["fast", "workhorse", "strongest"] as TModelTier[]).map((t) => ({ value: t, label: TIER_LABEL[t] }));
 
 export function ModelRoutingTab() {
-	const { data, actions, can } = useCms();
+	const { data, actions, can } = useSiteCms();
 	const admin = can("routing.set");
 	const [draft, setDraft] = useState(data.modelRouting);
 	const dirty = !sameRecord(draft, data.modelRouting);

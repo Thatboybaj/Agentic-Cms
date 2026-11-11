@@ -15,6 +15,7 @@ import { siteMutation, siteQuery } from "./lib/functions";
 import { notify, siteAudience, siteAudienceWith } from "./lib/notify";
 import { createRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
+import { NOT_ENTITLED, siteEntitled } from "./billing";
 import { workflow } from "./workflows/manager";
 
 type TResult = { ok: true; id?: string } | { ok: false; reason: string };
@@ -119,6 +120,7 @@ export const addIdea = siteMutation({
 /** Starts postPipeline for a briefed/decaying post after a cap check. Refused → run row, audit, notify (+ ledger under autopost). */
 export async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, by: { user?: Doc<"users">; trigger: "manual" | "workflow" }): Promise<TResult> {
 	if (post.workflowId) return fail("Already generating · wait for the current run to finish");
+	if (!(await siteEntitled(ctx, site._id))) return fail(NOT_ENTITLED);
 	const strong = post.strongModel || post.contentType === "pillar" || post.contentType === "money-page";
 	const est = estimateRun("post-generation", capSite(site), { strongModel: strong });
 	const cap = checkCap(capSite(site), "post-generation", est);

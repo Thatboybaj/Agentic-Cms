@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { BudgetCard, Card, CardHeader, KeyValue, PROVIDER_LABEL, PROVIDER_ROUTE, Select, SourceNote, TextField, Toggle, type ISelectOption } from "@/ds";
 import { fmtUsd } from "@/lib/logic";
-import { useCms, useStats } from "@/lib/store";
+import { SITE_ON_CONVEX, useSiteCms, useSiteStats } from "@/features/shared/site-source";
+import { LiveSpendCard } from "./spend-live";
 import type { ISiteData, TProvider, TSlotType } from "@/lib/types";
 import { resetDay } from "../runs/run-plan";
 import { LockLine, LockNote, SaveBar, sameRecord } from "./shared";
@@ -41,8 +42,8 @@ function pinOf(r: TRouting): TPin {
 const capError = (v: string) => (/^\d+(\.\d{1,2})?$/.test(v.trim()) ? undefined : "Enter a monthly cap in dollars, like 150");
 
 export function ProvidersTab() {
-	const { site, data, actions, can } = useCms();
-	const stats = useStats();
+	const { site, data, actions, can } = useSiteCms();
+	const stats = useSiteStats();
 	const admin = can("budget.set");
 	const routeAdmin = can("routing.set");
 	const savedCaps = { text: String(site.budgets.textCapUsd), image: String(site.budgets.imageCapUsd) };
@@ -80,6 +81,7 @@ export function ProvidersTab() {
 				Runs above the cap are refused, not billed. Admins get an alert at 80%.
 			</SaveBar>
 			<LockNote perm="budget.set" title="Only an agency admin can change budgets and routing." />
+			{SITE_ON_CONVEX && can("budget.set") && <LiveSpendCard />}
 			<div className="grid grid-cols-[minmax(0,1fr)] gap-4 lg:grid-cols-2">
 				<div className="flex flex-col gap-4">
 					<div className="grid gap-4 sm:grid-cols-2">

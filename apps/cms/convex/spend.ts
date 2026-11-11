@@ -6,6 +6,7 @@ import { v } from "convex/values";
 import { internalMutation, type MutationCtx } from "./_generated/server";
 import type { Doc } from "./_generated/dataModel";
 import { spendMonth } from "./lib/defaults";
+import { notify, siteAudienceWith } from "./lib/notify";
 
 const vBudget = v.union(v.literal("text"), v.literal("image"));
 type TBudget = "text" | "image";
@@ -40,6 +41,8 @@ export const hold = internalMutation({
 		const amount = Math.max(0, Math.ceil(microUsd));
 		if (spent + amount > cap) return { ok: false, message: `Refused: this call could cost up to ${fmt(amount)} and the ${budget} budget has ${fmt(Math.max(0, cap - spent))} left of ${fmt(cap)}.` };
 		const after = await bump(ctx, site, budget, month, amount);
+		// Crossing 80% of the cap: tell the admins once this month (the run still goes ahead; over the cap it can't).
+		if (spent < cap * 0.8 && after >= cap * 0.8) await notify(ctx, { workspaceId: site.workspaceId, siteId, userIds: await siteAudienceWith(ctx, site, "budget.set"), tone: "human", title: `${budget === "text" ? "Text" : "Image"} budget at 80% of cap`, body: `${fmt(after)} of ${fmt(cap)} this month. Runs over the cap are refused.`, href: "/settings", dedupeKey: `cap80:${siteId}:${month}:${budget}` });
 		await ctx.db.insert("spendEntries", { workspaceId: site.workspaceId, siteId, budget, month, type: "debit", amountMicroUsd: amount, reason: "hold", idempotencyKey: key, ...(runId ? { runId } : {}), spentAfterMicroUsd: after, createdAt: Date.now() });
 		return { ok: true };
 	},
