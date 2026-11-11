@@ -1,13 +1,14 @@
 "use client";
 // Real sign-in (Clerk) shown when the backend is enabled (src/lib/backend.tsx). Signed out → Clerk's sign-in.
 // Signed in without an active organization → pick or create one (the workspace). Signed in with one → what Convex
-// knows about this person and workspace. The demo picker below it still drives the pages until the store adapter lands.
+// knows about this person and workspace, and "Continue to sites" (the shell bridges into the demo data for the
+// site pages that aren't on Convex yet). The demo picker below stays for demo-only use.
 
 import { OrganizationList, OrganizationSwitcher, SignIn as ClerkSignIn, useAuth, UserButton } from "@clerk/nextjs";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useState } from "react";
-import { Button, Card, Callout, Chip, Skeleton, WORKSPACE_ROLE_LABEL } from "@/ds";
+import { Button, Card, Callout, Chip, Icon, Skeleton, WORKSPACE_ROLE_LABEL } from "@/ds";
 import { ROLE_LABEL } from "@/lib/logic";
 import type { TRole } from "@/lib/types";
 import { api } from "../../../convex/_generated/api";
@@ -107,6 +108,9 @@ export function BackendPanel() {
 				<>
 					<OrganizationSwitcher hidePersonal afterSelectOrganizationUrl="/sign-in" afterCreateOrganizationUrl="/sign-in" />
 					<WorkspaceStatus />
+					<Button variant="primary" href="/sites" fullWidth trailing={<Icon name="ArrowRight" size={16} className="rtl:-scale-x-100" />}>
+						Continue to sites
+					</Button>
 				</>
 			) : (
 				<>

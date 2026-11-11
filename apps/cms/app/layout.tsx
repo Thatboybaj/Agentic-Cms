@@ -20,7 +20,8 @@ export default function RootLayout({ children }: { children: ReactNode }) {
 				<link rel="preconnect" href="https://fonts.googleapis.com" />
 				<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500&display=swap" />
 			</head>
-			<body>
+			{/* suppressHydrationWarning: browser extensions (e.g. Grammarly) add attributes to <body> before React loads. */}
+			<body suppressHydrationWarning>
 				<BackendProvider>{children}</BackendProvider>
 			</body>
 		</html>

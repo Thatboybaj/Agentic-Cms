@@ -280,6 +280,8 @@ export interface IPageWorkspaceActions {
 	inviteUsers: (emails: string[], workspaceRole: TWorkspaceRole, siteRoles: Record<string, TRole>, fallbackSiteId?: string) => TMaybeAsync<TResult>;
 	setMembership: (userId: string, siteId: string, role: TRole | null) => TMaybeAsync<TResult>;
 	setWorkspaceRole: (userId: string, role: TWorkspaceRole) => TMaybeAsync<TResult>;
+	/** Store: clears the demo person. Convex: signs out of Clerk (and returns to /sign-in). */
+	signOut: () => void;
 	/** Convex only: pending invites are listed as people; the demo store has no revoke. */
 	revokeInvite?: (userId: string) => TMaybeAsync<TResult>;
 }

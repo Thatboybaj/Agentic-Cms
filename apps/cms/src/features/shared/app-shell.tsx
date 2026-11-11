@@ -33,7 +33,20 @@ import {
 	type TWash,
 } from "@/ds";
 import { AddSiteSheet } from "@/features/workspace/add-site-sheet";
-import { useInboxRows, useShellToasts, useSitePresence, useSiteRows, useSiteSearch, useWorkspaceActions, useWorkspaceView, type ISiteRow } from "@/features/workspace/data";
+import {
+	PAGES_ON_CONVEX,
+	useInboxRows,
+	usePageSiteRows,
+	usePageWorkspaceActions,
+	usePageWorkspaceView,
+	useShellToasts,
+	useSitePresence,
+	useSiteRows,
+	useSiteSearch,
+	useWorkspaceActions,
+	useWorkspaceView,
+	type ISiteRow,
+} from "@/features/workspace/data";
 import { CmsProvider } from "@/lib/store";
 import { siteSlugFromPath, sitePath, stripSite, WORKSPACE_ROUTES } from "@/lib/routes";
 
@@ -134,14 +147,35 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 	const path = usePathname();
 	const router = useRouter();
 	const slug = siteSlugFromPath(path);
-	const { workspace, me, users, myWorkspaceRole, canAddSite, addSiteWhy, signedIn } = useWorkspaceView();
-	const { signInAs, signOut, resetDemo } = useWorkspaceActions();
-	const rows = useSiteRows();
+	// Workspace identity, switcher and the account menu come from the page data source (Convex when the backend is
+	// on). Inside a site, search, presence, agents and unread still come from the demo store: those pages aren't
+	// ported yet, so we look the store's copy of the site up by slug.
+	const storeView = useWorkspaceView();
+	const pageView = usePageWorkspaceView();
+	const { workspace, me, users, myWorkspaceRole, canAddSite, addSiteWhy } = pageView;
+	const signedIn = PAGES_ON_CONVEX ? pageView.signedIn : storeView.signedIn;
+	const { signInAs, signOut: storeSignOut, resetDemo } = useWorkspaceActions();
+	const { signOut: pageSignOut } = usePageWorkspaceActions();
+	const storeRows = useSiteRows();
+	const rows = usePageSiteRows();
 	const inbox = useInboxRows();
 	const row = slug ? rows.find((r) => r.slug === slug) : undefined;
-	const search = useSiteSearch(row?.id);
+	const storeRow = slug ? storeRows.find((r) => r.slug === slug) : undefined;
+	const search = useSiteSearch(storeRow?.id);
 	// Everyone else on this site right now (any page); the tooltip names them.
-	const here = useSitePresence(row?.id);
+	const here = useSitePresence(storeRow?.id);
+	const signOut = () => {
+		storeSignOut();
+		if (PAGES_ON_CONVEX) pageSignOut();
+	};
+
+	// Bridge (until the site pages move to Convex): a real sign-in also enters the demo data as its owner, so
+	// /s/<site> pages open without picking a demo person. Real access is still enforced by Convex on live pages.
+	useEffect(() => {
+		if (!PAGES_ON_CONVEX || !pageView.signedIn || pageView.loading || storeView.signedIn) return;
+		const owner = storeView.users.find((u) => storeView.workspaceRoles[u.id] === "owner" && u.status === "active");
+		if (owner) signInAs(owner.id);
+	}, [pageView.signedIn, pageView.loading, storeView.signedIn, storeView.users, storeView.workspaceRoles, signInAs]);
 	const [palette, setPalette] = useState(false);
 	const [adding, setAdding] = useState(false);
 
@@ -231,7 +265,8 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 		router.push(sitePath(target.slug, slug ? carryPath(sub) : target.status === "onboarding" ? "/onboarding" : "/plan"));
 	};
 
-	const others = users.filter((u) => u.id !== me.id && u.status === "active");
+	// Demo person switching only makes sense on demo data; with the backend on, people are real accounts.
+	const others = PAGES_ON_CONVEX ? [] : users.filter((u) => u.id !== me.id && u.status === "active");
 	/** Me + "Switch user" (demo of multiple people) + account + sign out. On mobile it also carries the routes the
 	 *  5-slot tab bar can't fit (the "More" of the IA). */
 	const accountMenu = (side: "top" | "bottom", withNav = false) => (
@@ -352,7 +387,7 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 
 	const footer = slug ? (
 		<>
-			<RailButton href={sitePath(slug, "/runs")} icon="ClockCounterClockwise" label="Runs & ledger" active={sub.startsWith("/runs")} dot={row && row.overdue > 0 ? "human" : undefined} />
+			<RailButton href={sitePath(slug, "/runs")} icon="ClockCounterClockwise" label="Runs & ledger" active={sub.startsWith("/runs")} dot={storeRow && storeRow.overdue > 0 ? "human" : undefined} />
 			<RailButton href={sitePath(slug, "/settings")} icon="GearSix" label="Settings" active={sub.startsWith("/settings")} />
 			{accountMenu("top")}
 		</>
@@ -417,7 +452,7 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 				<div className="flex-1 max-sm:hidden" />
 				{slug && <PresenceBadge people={here} where={`on ${row?.name ?? "this site"} now`} className="max-md:hidden" />}
 				<AgentStatusPill
-					running={slug ? (row?.agentsRunning ?? 0) : rows.reduce((a, r) => a + r.agentsRunning, 0)}
+					running={slug ? (storeRow?.agentsRunning ?? 0) : rows.reduce((a, r) => a + r.agentsRunning, 0)}
 					onClick={slug ? () => router.push(sitePath(slug, "/runs")) : undefined}
 					className="max-md:hidden"
 				/>
@@ -425,9 +460,9 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 					<>
 						<IconButton
 							icon="BellSimple"
-							label={`Notifications${row?.unread ? ` · ${row.unread} unread` : ""}`}
+							label={`Notifications${storeRow?.unread ? ` · ${storeRow.unread} unread` : ""}`}
 							variant="white"
-							dot={row?.unread ? "block" : undefined}
+							dot={storeRow?.unread ? "block" : undefined}
 							href={`${sitePath(slug, "/runs")}#notifications`}
 							className="max-sm:hidden"
 						/>
