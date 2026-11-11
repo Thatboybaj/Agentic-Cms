@@ -1,0 +1,21 @@
+{
+  /* Convex functions typecheck config. `@/*` resolves src/render's type-only imports (backend README §2). */
+  "compilerOptions": {
+    "allowJs": true,
+    "strict": true,
+    "moduleResolution": "Bundler",
+    "jsx": "react-jsx",
+    "skipLibCheck": true,
+    "allowSyntheticDefaultImports": true,
+    "target": "ESNext",
+    "lib": ["ES2021", "dom"],
+    "forceConsistentCasingInFileNames": true,
+    "module": "ESNext",
+    "isolatedModules": true,
+    "noEmit": true,
+    "baseUrl": ".",
+    "paths": { "@/*": ["../src/*"] }
+  },
+  "include": ["./**/*", "../types/import-meta-glob.d.ts"],
+  "exclude": ["./_generated"]
+}

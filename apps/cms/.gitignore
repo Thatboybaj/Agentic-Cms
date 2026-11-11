@@ -6,3 +6,9 @@ next-env.d.ts
 
 # Connections storage (provider secrets) — never commit
 .data/
+
+.env.local
+
+# Convex local anonymous deployment state
+.convex/
+.env*.local

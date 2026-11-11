@@ -46,7 +46,7 @@ Scope: **W** = workspace-level · **T** = tenant (site) scoped · **G** = global
 
 | Table | From | Scope | Key fields | Indexes | Derived / cache |
 |---|---|---|---|---|---|
-| `sites` | `ISite` + per-site settings on `ISiteData` | T (is the tenant) | `workspaceId`, `slug`, `name`, `domain`, `industry`, `icon`, `accent?`, `status`, `cadenceTarget`, `searchConsole`, `rankSource`, `budgetCaps`, `spend`, `publishing`, `routing`, `modelRouting`, `brandPack`, `ctrCurve?`, `liveBaseline`, `timezone` | `by_workspace`, `by_workspace_slug` | `ISite.budgets.textUsd/imageUsd` ← `spend.textMicroUsd/imageMicroUsd ÷ 1e6` (written by `spend.debit`); `ageMonths` ← `siteStartedAt`; `searchConsole` ← `oauthConnections.status` |
+| `sites` | `ISite` + per-site settings on `ISiteData` | T (is the tenant) | `workspaceId`, `slug`, `name`, `domain`, `industry`, `icon`, `accent?`, `status`, `cadenceTarget`, `searchConsole`, `rankSource`, `budgetCaps`, `spend`, `publishing`, `routing`, `modelRouting`, `brandPack`, `ctrCurve?`, `liveBaseline`, `timezone` | `by_workspace`, `by_workspace_slug` | `ISite.budgets.textUsd/imageUsd` ← `spend.textMicroUsd/imageMicroUsd ÷ 1e6` (written by `spend.debit`); `ageMonths` ← `siteStartedAt`; `searchConsole` ← `oauthConnections.status`; `modelRouting.pillarPages` ↔ types.ts `"pillar-pages"` (Convex field names allow only letters, digits and `_`; mapped in the adapter) |
 | `repoConnections` | `IRepoConnection` (`ISite.repo`) | T | `host`, `repo`, `baseBranch`, `contentDir`, `assetDir`, `branchPattern`, `installedAs`, `installationId`, `indexFiles?`, `status` | `by_site`, `by_installation`, `by_repo` | none |
 
 `ISite.repo` becomes a join (`repoConnections.by_site`, status `active`). Kept separate so the GitHub webhook can resolve a site from `(host, installationId)` / `(host, repo)` without scanning sites.
@@ -115,7 +115,7 @@ The existing `apps/web/convex/schema.ts` `wallets`/`walletTransactions` are keye
 | `oauthConnections` | apps/web `googleConnections` | T | `status`, `scopes[]`, `propertyUri?`, token secret ids, `accessTokenExpiresAt?`, `lastImportAt?`, `lastImportedDate?` | `by_site_provider` | Search Console |
 | `oauthStates` | apps/web `googleOAuthStates` | T | `stateHash`, `userId`, `codeVerifierEncrypted`, `redirectTo`, `expiresAt`, `consumedAt?` | `by_stateHash` | single use |
 | `presence` | `IPresence` | W/T | `userId`, `sessionId`, `siteId?`, `path`, `at` | `by_site_at`, `by_user_session`, `by_at` | TTL cron |
-| `editLocks` | `IPost.editingBy` | T | `postId`, `userId`, `sessionId`, `since`, `heartbeatAt` | `by_post`, `by_heartbeat` | soft lock, TTL cron |
+| `editLocks` | `IPost.editingBy` | T | `postId`, `userId`, `sessionId`, `since`, `heartbeatAt` | `by_post`, `by_heartbeat`, `by_user` | soft lock, TTL cron |
 | `siteSubscriptions` | Polar per site | T | `polarSubscriptionId`, `polarProductId?`, `status`, `currentPeriodEnd?` | `by_site`, `by_polarSubscription` | open decision D3 |
 | `webhookEvents` | n/a | G | `source`, `deliveryId`, `type`, `status`, `siteId?`, `error?` | `by_source_delivery` | idempotent intake |
 

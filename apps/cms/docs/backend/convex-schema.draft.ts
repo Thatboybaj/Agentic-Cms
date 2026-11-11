@@ -146,7 +146,7 @@ const vModelRouting = v.object({
 	mechanical: vModelTier,
 	writing: vModelTier,
 	strategy: vModelTier,
-	"pillar-pages": vModelTier,
+	pillarPages: vModelTier, // types.ts key "pillar-pages"; Convex field names allow only [A-Za-z0-9_], the adapter maps it
 });
 
 const vBrandPack = v.object({
@@ -895,7 +895,8 @@ export default defineSchema({
 		heartbeatAt: v.number(),
 	})
 		.index("by_post", ["postId"])
-		.index("by_heartbeat", ["heartbeatAt"]),
+		.index("by_heartbeat", ["heartbeatAt"])
+		.index("by_user", ["userId"]), // release a removed member's locks (clerkSync)
 
 	// ── Billing & webhooks ────────────────────────────────────────────────────
 
