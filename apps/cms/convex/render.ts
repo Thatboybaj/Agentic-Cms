@@ -4,7 +4,7 @@
 // held for a developer. Returns null when the site's confirmed manifest has no stored template file (seeded demo
 // manifests), so pipeline/steps.renderStep can keep its stub there.
 import { v, type Infer } from "convex/values";
-import { renderPost } from "../src/render";
+import { renderPost, servedPath } from "../src/render";
 import { serialize } from "../src/render/serialize";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
@@ -38,7 +38,7 @@ export const publish = internalAction({
 		const contentDir = trimSlashes(repo?.contentDir ?? "content/blog");
 		const assetDir = trimSlashes(repo?.assetDir ?? "public/images/blog");
 		if (d.manifest.output === "component") return { held: ["Component output isn't supported yet · pick HTML, MDX or JSON"], post: { path: "", content: "" }, assets: [], manifestVersion: d.manifest.version, url: r.url };
-		const out = serialize({ output: d.manifest.output, post: { ...d.post, ...(d.metaDescription ? { metaDescription: d.metaDescription } : {}), keyword: d.keyword }, slots: d.slots, html: r.html, assetPath: `/${assetDir.replace(/^public\//, "")}`, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), url: r.url });
+		const out = serialize({ output: d.manifest.output, post: { ...d.post, ...(d.metaDescription ? { metaDescription: d.metaDescription } : {}), keyword: d.keyword }, slots: d.slots, html: r.html, assetPath: servedPath(assetDir), publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), url: r.url });
 		return {
 			held: r.held.map((h) => h.reason),
 			post: { path: `${contentDir}/${d.post.slug}.${out.ext}`, content: out.content },

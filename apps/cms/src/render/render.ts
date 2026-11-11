@@ -121,10 +121,13 @@ export function postUrlFromTemplate(canonical: string | null | undefined, domain
 	return `https://${domain}/blog/${slug}`;
 }
 
-const publicAssetDir = (site: IRenderInput["site"]) => {
-	const dir = site.repo?.assetDir?.replace(/^\/+|\/+$/g, "") ?? "images/blog";
-	return `/${dir.replace(/^public\//, "")}`;
-};
+/**
+ * The URL a repo folder is served at: the static web root (public/ for Next.js and Astro, dist/ for a plain built
+ * site, static/ for Hugo and SvelteKit) isn't part of the URL. "dist/assets/blog" → "/assets/blog".
+ */
+export const servedPath = (dir: string) => `/${dir.replace(/^\/+|\/+$/g, "").replace(/^(public|dist|static)(\/|$)/, "")}`.replace(/(.)\/$/, "$1");
+
+const publicAssetDir = (site: IRenderInput["site"]) => servedPath(site.repo?.assetDir ?? "images/blog");
 
 /** Whitespace before the first child element ("\n\t\t\t"), so inserted nodes keep the sample's formatting. */
 function indentOf(el: Element): string | null {

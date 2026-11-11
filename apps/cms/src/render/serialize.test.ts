@@ -78,3 +78,15 @@ describe("server bundle reader", () => {
 		expect(() => readBundle("zip", "x.zip", zipSync({ "a.css": strToU8("x") }))).toThrow(/No HTML file/);
 	});
 });
+
+describe("servedPath", async () => {
+	const { servedPath } = await import("./render");
+	it("drops the static web root folder from URLs", () => {
+		expect(servedPath("public/images/blog")).toBe("/images/blog");
+		expect(servedPath("dist/assets/blog/")).toBe("/assets/blog");
+		expect(servedPath("static/img")).toBe("/img");
+		expect(servedPath("images/blog")).toBe("/images/blog");
+		expect(servedPath("distribution/x")).toBe("/distribution/x");
+		expect(servedPath("dist")).toBe("/");
+	});
+});
