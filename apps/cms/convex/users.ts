@@ -1,4 +1,6 @@
 // Users: lazy upsert on first authenticated call (Clerk webhooks can lag: handoff 01 step 4).
+import { v } from "convex/values";
+import { internalQuery } from "./_generated/server";
 import { identityMutation, identityQuery } from "./lib/functions";
 
 /** "Tolu Adeyemi" → "TA"; one word → first two letters. */
@@ -48,4 +50,10 @@ export const me = identityQuery({
 			.query("users")
 			.withIndex("by_token", (q) => q.eq("tokenIdentifier", ctx.identity.tokenIdentifier))
 			.unique(),
+});
+
+/** Display name for audit/provenance lines written from actions (never an email). */
+export const nameOf = internalQuery({
+	args: { userId: v.id("users") },
+	handler: async (ctx, { userId }) => (await ctx.db.get(userId))?.name ?? "A teammate",
 });

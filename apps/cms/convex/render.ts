@@ -33,7 +33,7 @@ export const publish = internalAction({
 		const blob = await ctx.storage.get(d.sampleStorageId);
 		if (!blob) return null;
 		const manifestHtml = decodeText(new Uint8Array(await blob.arrayBuffer()));
-		const r = renderPost({ manifestHtml, post: d.post, slots: d.slots, site: d.site, ...(d.pillarName ? { pillarName: d.pillarName } : {}), mode: "publish", parseHtml: linkedomParse, mappings: d.manifest.mappings, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}) });
+		const r = renderPost({ manifestHtml, post: d.post, slots: d.slots, site: d.site, ...(d.pillarName ? { pillarName: d.pillarName } : {}), mode: "publish", variants: false, parseHtml: linkedomParse, mappings: d.manifest.mappings, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}) });
 		const repo = d.site.repo;
 		const contentDir = trimSlashes(repo?.contentDir ?? "content/blog");
 		const assetDir = trimSlashes(repo?.assetDir ?? "public/images/blog");

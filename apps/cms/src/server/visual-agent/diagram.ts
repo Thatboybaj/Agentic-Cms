@@ -1,11 +1,11 @@
-import "server-only";
 // Diagram + chart routes (SKILL Step 4). With an Anthropic connection, Claude draws the SVG (structured output,
 // SVG only), which is then sanitized and fact-checked (every number in its text must appear in the post); anything
 // that fails falls back to the deterministic template diagram. Charts are only ever the inline SVG from svg.ts.
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
-import { getSecret, type IConnection } from "../connections";
+import type { IConnection } from "../../features/connections/catalog";
+import { getSecret } from "./deps";
 import { brandColors, chartSvg, deterministicDiagrams, sanitizeSvg, stepsFor } from "./svg";
 import type { IAgentBrandPack, IPostExcerpt, TAgentSlot } from "./types";
 

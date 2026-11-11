@@ -97,11 +97,17 @@ export const draftStep = internalAction({
 
 export const vFillSlotOutput = v.object({ ok: v.boolean(), candidates: v.number(), note: v.string(), costUsd: v.number() });
 
-/** STUB (04): visual-asset agent for one slot. Returns how many candidates it produced. */
+/**
+ * Visual-asset agent for one slot. Live (CMS_AGENTS=live): agents/visual.fill stores real candidates itself (the
+ * slot leaves "generating", so the callers' placeholder writers no-op). Stub: how many placeholders to make.
+ */
 export const fillSlotStep = internalAction({
-	args: { siteId: v.id("sites"), slotId: v.id("imageSlots"), provider: v.string() },
+	args: { siteId: v.id("sites"), slotId: v.id("imageSlots"), provider: v.string(), runId: v.optional(v.id("runs")), override: v.optional(v.union(v.literal("generate"), v.literal("diagram"), v.literal("source"))) },
 	returns: vFillSlotOutput,
-	handler: async (_ctx, { provider }) => ({ ok: true, candidates: provider === "inline-svg" ? 1 : 3, note: `stub ${provider}`, costUsd: 0 }),
+	handler: async (ctx, { siteId, slotId, provider, runId, override }): Promise<Infer<typeof vFillSlotOutput>> => {
+		if (live()) return await ctx.runAction(internal.agents.visual.fill, { siteId, slotId, ...(runId ? { runId } : {}), ...(override ? { override } : {}) });
+		return { ok: true, candidates: provider === "inline-svg" ? 1 : 3, note: `stub ${provider}`, costUsd: 0 };
+	},
 });
 
 // ─── Autopost gate + ship (handoff 02 steps 5–6) ───────────────────────────────

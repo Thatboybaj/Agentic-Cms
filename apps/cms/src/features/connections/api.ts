@@ -113,3 +113,69 @@ export function useConnections(siteId: string): IUseConnections {
 
 	return { connections, storage, loading, error, testing, refresh, save, remove, test };
 }
+
+// ─── Convex (handoff 04) ─────────────────────────────────────────────────────
+
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
+import { SITE_ON_CONVEX } from "@/features/shared/site-source";
+import { useSite } from "@/lib/store";
+import { api } from "../../../convex/_generated/api";
+import type { Id } from "../../../convex/_generated/dataModel";
+
+/** Same contract as the local hook; rows come live from Convex and keys are sealed server-side per tenant. */
+function useLiveConnections(_siteId: string): IUseConnections {
+	const { slug } = useSite();
+	const { isAuthenticated } = useConvexAuth();
+	const resolved = useQuery(api.sites.bySlug, isAuthenticated ? { slug } : "skip");
+	const siteId = resolved?.status === "ok" ? (resolved.site._id as Id<"sites">) : undefined;
+	const rows = useQuery(api.connections.list, siteId ? { siteId } : "skip");
+	const upsert = useMutation(api.connections.upsert);
+	const removeM = useMutation(api.connections.remove);
+	const testA = useAction(api.connections.test);
+	const [testing, setTesting] = useState<ReadonlySet<string>>(new Set());
+	const need = () => {
+		if (!siteId) throw new Error("Still loading the site");
+		return siteId;
+	};
+	const find = (id: string) => rows?.connections.find((c) => c.id === id);
+	const save = useCallback(
+		async (input: IConnectionInput, secret?: string | null) => {
+			const sid = need();
+			const { siteId: _ignored, command: _c, args: _a, ...rest } = input;
+			const r = await upsert({ siteId: sid, ...(rest as Omit<IConnectionInput, "siteId" | "command" | "args">), ...(input.id ? { id: input.id as Id<"connections"> } : {}), ...(secret !== undefined ? { secret } : {}) } as never);
+			if (!r.ok) throw new Error(r.reason);
+			return (find(r.id ?? "") ?? ({ id: r.id, ...input, hasSecret: !!secret, status: "untested", usedFor: input.usedFor ?? [], enabled: input.enabled ?? true, kind: "mcp", label: input.label ?? "", createdAt: new Date().toISOString() } as IConnection));
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[siteId, upsert, rows],
+	);
+	const remove = useCallback(
+		async (id: string) => {
+			const r = await removeM({ siteId: need(), id: id as Id<"connections"> });
+			if (!r.ok) throw new Error(r.reason);
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[siteId, removeM],
+	);
+	const test = useCallback(
+		async (id: string) => {
+			setTesting((s) => new Set(s).add(id));
+			try {
+				const r = await testA({ siteId: need(), id: id as Id<"connections"> });
+				if (!r.ok) throw new Error(r.reason);
+				return find(id)!;
+			} finally {
+				setTesting((s) => {
+					const n = new Set(s);
+					n.delete(id);
+					return n;
+				});
+			}
+		},
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+		[siteId, testA, rows],
+	);
+	return { connections: rows?.connections ?? [], storage: rows?.storage ?? null, loading: rows === undefined, error: null, testing, refresh: async () => undefined, save, remove, test };
+}
+
+export const useSiteConnections: (siteId: string) => IUseConnections = SITE_ON_CONVEX ? useLiveConnections : useConnections;

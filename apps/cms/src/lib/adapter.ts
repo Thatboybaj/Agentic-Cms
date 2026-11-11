@@ -43,7 +43,7 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		filename: x.filename, alt: x.alt, prompt: x.prompt, styleKeywords: x.styleKeywords, provider: x.provider, model: x.model, status: x.status, estimateUsd: x.estimateUsd,
 		candidates: b.candidates
 			.filter((c) => c.slotId === x._id)
-			.map((c) => ({ id: c._id, label: c.label, hue: c.hue, selected: c.selected, ...(c.source?.sourceUrl ? { url: c.source.sourceUrl } : {}), ...(c.source ? { source: c.source } : {}) })),
+			.map((c) => ({ id: c._id, label: c.label, hue: c.hue, selected: c.selected, ...("assetUrl" in c && c.assetUrl ? { url: c.assetUrl } : c.source?.sourceUrl ? { url: c.source.sourceUrl } : {}), ...(c.source ? { source: c.source } : {}) })),
 		...(x.generatedAt ? { generatedAt: iso(x.generatedAt) } : {}),
 		...(x.humanPinned ? { humanPinned: true } : {}),
 	}));

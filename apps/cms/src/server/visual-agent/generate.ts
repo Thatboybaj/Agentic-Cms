@@ -1,8 +1,8 @@
-import "server-only";
 // Generate route: image APIs (OpenAI images, Replicate, fal) over HTTP, and image MCP servers (Higgsfield / custom)
 // through callMcpTool. Keys come from getSecret() and go only into request headers — never into prompts, results,
 // errors or logs. Every failure is a short sentence (GenerateError) so run.ts can fall through to the next route.
-import { callMcpTool, getSecret, type IConnection } from "../connections";
+import type { IConnection } from "../../features/connections/catalog";
+import { callMcpTool, getSecret } from "./deps";
 import { withMcpClient, type IMcpTarget } from "../mcp";
 
 export const API_TIMEOUT_MS = 120_000;

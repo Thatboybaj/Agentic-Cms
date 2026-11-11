@@ -1,4 +1,3 @@
-import "server-only";
 // MCP client plumbing (@modelcontextprotocol/sdk 1.x): Streamable HTTP with SSE fallback, or stdio (opt-in).
 // Secret forms: "token" → Authorization: Bearer token · "Header-Name: value" → that header ·
 // stdio: "ENV_NAME=value" → passed to the spawned process's environment.

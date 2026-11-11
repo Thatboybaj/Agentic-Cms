@@ -1,4 +1,3 @@
-import "server-only";
 // Real, lightweight auth/reachability checks per API provider. Each returns ok + optional note, or throws a
 // ConnectionError with a short human sentence. Secrets go only into request headers — never into messages or logs.
 import type { TConnectionProvider } from "../features/connections/catalog";

@@ -5,7 +5,7 @@
 // it is the demo store, exactly as before. BACKEND_ENABLED is a build-time constant, so each exported binding picks
 // one implementation for the app's lifetime (hook order never changes).
 
-import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { useAction, useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toPlanData } from "@/lib/adapter";
@@ -77,7 +77,9 @@ export interface ISiteActions {
 	pickCandidate(slotId: string, candidateId: string): TMaybeAsync<TResult>;
 	useCandidate(slotId: string): TMaybeAsync<TResult>;
 	markHumanOnly(slotId: string): TMaybeAsync<TResult>;
-	regenerateSlot(slotId: string, prompt?: string): TMaybeAsync<TResult>;
+	regenerateSlot(slotId: string, prompt?: string, override?: "generate" | "diagram" | "source"): TMaybeAsync<TResult>;
+	/** Convex only: upload the file itself (checked, converted and stored server-side). */
+	uploadOwnFile?: (slotId: string, file: File) => Promise<TResult>;
 	uploadOwn(slotId: string, fileName: string): TMaybeAsync<TResult>;
 	setSlotCandidates(slotId: string, candidates: ICandidate[], meta?: { provider: TProvider; model?: string }): TMaybeAsync<TResult>;
 	setRouting(slotType: TSlotType, provider: TProvider): TMaybeAsync<TResult>;
@@ -149,6 +151,7 @@ function useLiveSite(): ISiteCms {
 	const focusId = focus && bundle?.posts.some((p) => p._id === focus.postId) ? (focus.postId as Id<"posts">) : undefined;
 	const detail = useQuery(api.postEdits.detail, siteId && focusId ? { siteId, postId: focusId } : "skip");
 	const toast = useToast();
+	const attachUpload = useAction(api.assetsNode.attachUpload);
 
 	const m = {
 		addIdea: useMutation(api.posts.addIdea),
@@ -190,6 +193,7 @@ function useLiveSite(): ISiteCms {
 		regenerateSlot: useMutation(api.slots.regenerateSlot),
 		uploadOwn: useMutation(api.slots.uploadOwn),
 		setSlotCandidates: useMutation(api.slots.setSlotCandidates),
+		slotUploadUrl: useMutation(api.slots.uploadUrl),
 		setRouting: useMutation(api.slots.setRouting),
 		mergeMr: useMutation(api.git.mergeMr),
 		rebaseMr: useMutation(api.git.rebaseMr),
@@ -316,7 +320,15 @@ function useLiveSite(): ISiteCms {
 			pickCandidate: (slotId, candidateId) => run(() => m.pickCandidate({ siteId: s, slotId: asId<"imageSlots">(slotId), candidateId: asId<"candidates">(candidateId) })),
 			useCandidate: (slotId) => run(() => m.useCandidate({ siteId: s, slotId: asId<"imageSlots">(slotId) }), { text: "Selected · it ships with the post", tone: "pass" }),
 			markHumanOnly: (slotId) => run(() => m.markHumanOnly({ siteId: s, slotId: asId<"imageSlots">(slotId) }), { text: "Sent to your task queue with the brief attached · the post holds in Needs assets", tone: "human" }),
-			regenerateSlot: (slotId, prompt) => run(() => m.regenerateSlot({ siteId: s, slotId: asId<"imageSlots">(slotId), ...(prompt ? { prompt } : {}) }), { text: "Regenerating", tone: "agent" }),
+			regenerateSlot: (slotId, prompt, override) => run(() => m.regenerateSlot({ siteId: s, slotId: asId<"imageSlots">(slotId), ...(prompt ? { prompt } : {}), ...(override ? { override } : {}) }), { text: "The visual agent is on it", tone: "agent" }),
+			uploadOwnFile: (slotId, file) =>
+				run(async () => {
+					const url = await m.slotUploadUrl({ siteId: s });
+					const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
+					if (!res.ok) return { ok: false, reason: `Upload failed (${res.status})` };
+					const { storageId } = (await res.json()) as { storageId: string };
+					return attachUpload({ siteId: s, slotId: asId<"imageSlots">(slotId), storageId: storageId as Id<"_storage">, fileName: file.name });
+				}, { text: "Uploaded · it ships with the post", tone: "pass" }),
 			uploadOwn: (slotId, fileName) => run(() => m.uploadOwn({ siteId: s, slotId: asId<"imageSlots">(slotId), fileName }), { text: "Upload recorded · the file is stored when image storage lands", tone: "pass" }),
 			setSlotCandidates: (slotId, candidates, meta) =>
 				run(() =>
@@ -340,7 +352,7 @@ function useLiveSite(): ISiteCms {
 			},
 		};
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- mutation functions are stable
-	}, [siteId, mapped?.site.publishing.autopost, versionOf, toast]);
+	}, [siteId, mapped?.site.publishing.autopost, versionOf, toast, attachUpload]);
 
 	return useMemo<ISiteCms>(() => {
 		if (!mapped) {

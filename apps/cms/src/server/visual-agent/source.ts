@@ -1,9 +1,9 @@
-import "server-only";
 // Source route (SKILL Step 5): openly licensed images from Openverse, Wikimedia Commons, or the site's connected
 // stock API (Unsplash / Pexels). No scraping. Records license, creator, attribution, source page and license URL for
 // every candidate. Refuses NC (commercial sites) and ND (assets get cropped) unless the brand pack allows them, and
 // — best effort, from tags/titles — images that look like identifiable people, watermarks or logos.
-import { getSecret, type IConnection } from "../connections";
+import type { IConnection } from "../../features/connections/catalog";
+import { getSecret } from "./deps";
 import { acceptLicense, isRelevant, looksUnsafe, queriesFor, rankByShape, type IRawImage } from "./source-filter";
 import type { IAgentBrandPack, IAgentCandidate, TAgentSlot } from "./types";
 

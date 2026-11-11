@@ -1,10 +1,10 @@
-import "server-only";
 // runVisualAgent — one slot, one decision, 2–4 candidates with provenance, or a hold with a reason.
 // Walks the route plan from route.ts: on provider failure retry once, then try the next route, else hold
 // (SKILL "Failure handling"). Refuses a paid route over the remaining image cap (SKILL "Spend"). Each attempt is
 // logged by route/provider/outcome only — never prompts' secrets (there are none) or keys.
 import type { TProvider } from "../../lib/types";
-import { getConnectionForSite, listConnections, type IConnection } from "../connections";
+import type { IConnection } from "../../features/connections/catalog";
+import { getConnectionForSite, listConnections } from "./deps";
 import { DiagramError, drawChart, drawDiagram } from "./diagram";
 import { generate, GenerateError } from "./generate";
 import { buildPrompt } from "./prompt";

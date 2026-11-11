@@ -101,7 +101,7 @@ export function UploadSheet({ slot, open, onClose }: { slot: IImageSlot | undefi
 						disabled={!file || !!small || !alt.trim()}
 						onClick={async () => {
 							if (!file) return;
-							const r = await actions.uploadOwn(slot.id, file.name);
+							const r = actions.uploadOwnFile ? await actions.uploadOwnFile(slot.id, file) : await actions.uploadOwn(slot.id, file.name);
 							if (r.ok) onClose();
 						}}
 					>

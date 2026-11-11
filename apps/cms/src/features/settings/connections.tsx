@@ -30,7 +30,7 @@ import {
 import { ROLE_LABEL } from "@/lib/logic";
 import { useCms } from "@/lib/store";
 import type { TRole } from "@/lib/types";
-import { useConnections, type IUseConnections } from "../connections/api";
+import { useSiteConnections as useConnections, type IUseConnections } from "../connections/api";
 import {
 	KIND_GROUPS,
 	PROVIDERS,

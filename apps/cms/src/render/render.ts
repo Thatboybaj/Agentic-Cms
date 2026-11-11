@@ -30,6 +30,8 @@ export interface IRenderInput {
 	publishedAt?: string;
 	/** Author display name. Defaults to the sample's author (the site's default byline). */
 	author?: string;
+	/** Publish: whether per-width variant files exist (default true). False → one src, no srcset (never reference files the MR doesn't carry). */
+	variants?: boolean;
 }
 
 export interface IRenderResult {
@@ -204,6 +206,9 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		const base = slot.filename.replace(/\.[a-z0-9]+$/i, "");
 		const dir = publicAssetDir(site);
 		const publishSrc = (w?: number) => `${dir}/${base}${w ? `-${w}` : ""}.${slot.format}`;
+		if (mode === "publish" && input.variants === false) {
+			return { src: publishSrc(), srcset: null, placeholder: !chosen, absolute: `https://${site.domain}${publishSrc()}` };
+		}
 		if (mode === "publish") {
 			const top = pattern.widths.length ? Math.max(...pattern.widths.filter((w) => pattern.descriptor === "w")) : 0;
 			return {

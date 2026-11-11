@@ -105,7 +105,10 @@ export const vCandidateSource = v.object({
 	license: v.optional(v.string()),
 	attribution: v.optional(v.string()),
 	sourceUrl: v.optional(v.string()),
+	licenseUrl: v.optional(v.string()),
 	creator: v.optional(v.string()),
+	/** How the agent made it ("Numbers taken verbatim from the post"). */
+	note: v.optional(v.string()),
 });
 
 export const vTemplateMapping = v.object({

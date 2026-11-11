@@ -8,7 +8,8 @@ import { AgentBadge, Button, Callout, Chip, Icon, LockedAction, Select, Skeleton
 import { isFilled } from "@/lib/logic";
 import { useSiteCms } from "@/features/shared/site-source";
 import type { IImageSlot, IPost } from "@/lib/types";
-import { useConnections, type IConnection } from "@/features/connections";
+import { useSiteConnections as useConnections, type IConnection } from "@/features/connections";
+import { SITE_ON_CONVEX } from "@/features/shared/site-source";
 import { availableOverrides, chooseRoute, onlyWebSources } from "@/server/visual-agent/route";
 import type { IRouteDecision } from "@/server/visual-agent/types";
 import { agentBrandPack, agentSlot, excerptOf, remainingImageUsd, runVisualAgentApi, type IVisualAgentResult, type TRouteOverride } from "./api";
@@ -62,6 +63,12 @@ export function VisualAgentProvider({ post, children }: { post: IPost; children:
 			setBusy((b) => new Set(b).add(slot.id));
 			setRuns((r) => ({ ...r, [slot.id]: {} }));
 			try {
+				if (SITE_ON_CONVEX) {
+					// Convex: the agent runs server-side and writes the slot (candidates, selection or hold); the page updates live.
+					const r = await actions.regenerateSlot(slot.id, undefined, o[slot.id]);
+					setRuns((x) => ({ ...x, [slot.id]: r.ok ? {} : { error: r.reason } }));
+					return;
+				}
 				const result = await runVisualAgentApi({ siteId: s.id, slot: agentSlot(slot), post: excerptOf(p, keyword), brandPack: brand, estimateCapUsd: remainingImageUsd(s), override: o[slot.id] });
 				let applyError: string | undefined;
 				// Charts are never stored as candidates (the store refuses them); the preview stays in the panel.

@@ -28,7 +28,12 @@ export const bundle = siteQuery({
 		const candidates = [];
 		for (const s of slots) {
 			if (s.status !== "candidates" && s.status !== "selected") continue;
-			candidates.push(...(await ctx.db.query("candidates").withIndex("by_slot", (q) => q.eq("slotId", s._id)).take(12)));
+			for (const c of await ctx.db.query("candidates").withIndex("by_slot", (q) => q.eq("slotId", s._id)).take(12)) {
+				// Stored candidates show from Convex storage (the file the MR will carry), not the provider's URL.
+				const asset = c.assetId ? await ctx.db.get(c.assetId) : null;
+				const assetUrl = asset?.storageId && asset.siteId === siteId ? await ctx.storage.getUrl(asset.storageId) : null;
+				candidates.push({ ...c, ...(assetUrl ? { assetUrl } : {}) });
+			}
 		}
 		// Recent site activity (MR timelines, editor activity outside the focused post).
 		const audit = (await ctx.db.query("auditEvents").withIndex("by_site_at", (q) => q.eq("siteId", siteId)).order("desc").take(150)).map((a) => ({ id: a._id, at: a.at, actor: a.actor, action: a.action, target: a.target, detail: a.detail, postId: a.postId }));

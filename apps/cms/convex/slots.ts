@@ -133,8 +133,8 @@ export const markHumanOnly = siteMutation({
 
 export const regenerateSlot = siteMutation({
 	permission: "asset.manage",
-	args: { slotId: v.id("imageSlots"), prompt: v.optional(v.string()) },
-	handler: async (ctx, { siteId, slotId, prompt }): Promise<TResult> => {
+	args: { slotId: v.id("imageSlots"), prompt: v.optional(v.string()), override: v.optional(v.union(v.literal("generate"), v.literal("diagram"), v.literal("source"))) },
+	handler: async (ctx, { siteId, slotId, prompt, override }): Promise<TResult> => {
 		const { site, user } = ctx.access;
 		if (site.status === "paused") return fail("This site is paused · resume it to run agents");
 		const slot = await slotInSite(ctx, siteId, slotId);
@@ -156,7 +156,7 @@ export const regenerateSlot = siteMutation({
 		await closeSlotLedger(ctx, siteId, slot);
 		const runId = await createRun(ctx, base);
 		await ctx.db.patch(runId, { slotId });
-		await ctx.scheduler.runAfter(0, internal.slots.generate, { siteId, slotId, runId, provider });
+		await ctx.scheduler.runAfter(0, internal.slots.generate, { siteId, slotId, runId, provider, ...(override ? { override } : {}) });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId: slot.postId, actor: user, action: "regenerated slot", target: slot.name, detail: `${model} · est. ${fmtUsd(est.usd)}${prompt?.trim() ? " · edited prompt" : ""}` });
 		return { ok: true };
 	},
@@ -233,19 +233,24 @@ async function onCandidates(ctx: MutationCtx, site: Doc<"sites">, slotId: Id<"im
 }
 
 export const generate = internalAction({
-	args: { siteId: v.id("sites"), slotId: v.id("imageSlots"), runId: v.id("runs"), provider: v.string() },
+	args: { siteId: v.id("sites"), slotId: v.id("imageSlots"), runId: v.id("runs"), provider: v.string(), override: v.optional(v.union(v.literal("generate"), v.literal("diagram"), v.literal("source"))) },
 	handler: async (ctx, a) => {
-		const out = await ctx.runAction(internal.pipeline.steps.fillSlotStep, { siteId: a.siteId, slotId: a.slotId, provider: a.provider });
+		const out = await ctx.runAction(internal.pipeline.steps.fillSlotStep, { siteId: a.siteId, slotId: a.slotId, provider: a.provider, runId: a.runId, ...(a.override ? { override: a.override } : {}) });
 		await ctx.runMutation(internal.slots.candidatesReady, { siteId: a.siteId, slotId: a.slotId, runId: a.runId, ok: out.ok, count: out.candidates, note: out.note });
 	},
 });
 
 export const candidatesReady = internalMutation({
 	args: { siteId: v.id("sites"), slotId: v.id("imageSlots"), runId: v.id("runs"), ok: v.boolean(), count: v.number(), note: v.string() },
-	handler: async (ctx, { siteId, slotId, runId, ok, count }) => {
+	handler: async (ctx, { siteId, slotId, runId, ok, count, note }) => {
 		const slot = await ctx.db.get(slotId);
 		const site = await ctx.db.get(siteId);
-		if (!slot || !site || slot.siteId !== siteId || slot.status !== "generating") return;
+		if (!slot || !site || slot.siteId !== siteId) return;
+		if (slot.status !== "generating") {
+			// The live agent already wrote the slot (candidates, selection or hold): settle the run with its note.
+			await finishRun(ctx, runId, { status: ok ? "succeeded" : "failed", output: ok ? `${count} candidate${count === 1 ? "" : "s"}` : note.slice(0, 200) });
+			return;
+		}
 		if (!ok) {
 			await ctx.db.patch(slotId, { status: "failed" });
 			await finishRun(ctx, runId, { status: "failed", output: "Image provider failed" });
@@ -257,4 +262,11 @@ export const candidatesReady = internalMutation({
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId: slot.postId, actor: { system: VISUAL_AGENT }, action: "returned candidates", target: slot.name, detail: `${count} · ${slot.provider === "inline-svg" ? "diagram" : "generated"} · ${slot.provider} · ${slot.model}` });
 		await onCandidates(ctx, site, slotId);
 	},
+});
+
+/** Signed upload URL for a person's own image (assetsNode.attachUpload checks and stores it). */
+export const uploadUrl = siteMutation({
+	permission: "asset.manage",
+	args: {},
+	handler: async (ctx) => ctx.storage.generateUploadUrl(),
 });
