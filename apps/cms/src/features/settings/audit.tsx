@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import { AgentBadge, Button, Card, CardHeader, DataTable, EmptyState, PaginationDots, Select, SourceNote, TextField, Timeline, type IDataTableColumn, type TIconName } from "@/ds";
 import { fmtDateTime } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IAuditEvent, TTone } from "@/lib/types";
 
 const PAGE = 10;
@@ -23,7 +23,7 @@ function iconFor(action: string): { icon: TIconName; tone: TTone } {
 }
 
 export function AuditTab() {
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const [actor, setActor] = useState<string>(ALL);
 	const [action, setAction] = useState<string>(ALL);
 	const [q, setQ] = useState("");

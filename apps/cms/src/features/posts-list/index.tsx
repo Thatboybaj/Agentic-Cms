@@ -28,7 +28,8 @@ import { NewIdeaSheet } from "@/features/plan/new-idea-sheet";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { addDays, now } from "@/lib/clock";
 import { fmtDateTime, POST_STATES, STATE_OWNER } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IPost, TPostState } from "@/lib/types";
 import { sitePath } from "@/lib/routes";
 
@@ -60,7 +61,7 @@ export function PostsList() {
 	const { slug } = useSite();
 	const params = useSearchParams();
 	const router = useRouter();
-	const { data, state, role } = useCms();
+	const { data, state, role } = useSiteCms();
 	const counts = useCountsWithBaseline();
 	const demo = params.get("demo");
 	const initialState = params.get("state");
@@ -231,7 +232,7 @@ export function PostsList() {
 
 /** Totals with the pre-CMS live baseline folded in (same rule as the plan's StatStrip). */
 function useCountsWithBaseline() {
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	return useMemo(() => {
 		const live = data.liveBaseline + data.posts.filter((p) => p.state === "live").length;
 		return { total: data.posts.length + data.liveBaseline, live };

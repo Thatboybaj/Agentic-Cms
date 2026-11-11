@@ -36,8 +36,19 @@ export const list = workspaceQuery({
 				.withIndex("by_site_at", (q) => q.eq("siteId", site._id))
 				.order("desc")
 				.first();
+			// What needs people on this site, counted from rows (bounded reads).
+			const now = Date.now();
+			const recentRuns = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", site._id).gte("startedAt", now - 6 * 3_600_000)).take(200);
+			const agentsRunning = recentRuns.filter((r) => r.status === "running" || r.status === "queued").length;
+			const unread = (await ctx.db.query("notifications").withIndex("by_user_site", (q) => q.eq("userId", user._id).eq("siteId", site._id)).order("desc").take(200)).filter((n) => !n.read).length;
+			const openLedger = await ctx.db.query("ledgerItems").withIndex("by_site_done", (q) => q.eq("siteId", site._id).eq("done", false)).take(300);
+			const held = openLedger.filter((l) => l.kind === "autopost-hold" || l.kind === "autopost-refused").length;
+			const overdue = openLedger.filter((l) => now - l.createdAt >= 7 * 86_400_000).length;
+			const failingCi = (await ctx.db.query("mergeRequests").withIndex("by_site_status", (q) => q.eq("siteId", site._id).eq("status", "open")).take(200)).filter((m) => m.ci === "failing").length;
+			const humanOnly = (await ctx.db.query("imageSlots").withIndex("by_site_status", (q) => q.eq("siteId", site._id).eq("status", "human-only")).take(PER_STATE_CAP)).length;
 			rows.push({
 				siteId: site._id,
+				attention: { agentsRunning, unread, held, overdue, failingCi, humanOnly },
 				slug: site.slug,
 				name: site.name,
 				domain: site.domain,

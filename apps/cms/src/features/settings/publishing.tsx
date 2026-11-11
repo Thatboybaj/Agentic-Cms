@@ -5,7 +5,7 @@
 import { clsx } from "clsx";
 import { Callout, Card, CardHeader, Chip, Icon, SourceNote, Toggle, type TIconName } from "@/ds";
 import { publishingSteps } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import { LockLine } from "./shared";
 
 const OWNER_META: Record<"human" | "agent" | "developer", { icon: TIconName; label: string; tone: "human" | "agent" | "neutral" }> = {
@@ -22,7 +22,7 @@ const GUARDRAILS: { icon: TIconName; text: string }[] = [
 ];
 
 export function PublishingSettings() {
-	const { site, actions, can } = useCms();
+	const { site, actions, can } = useSiteCms();
 	const p = site.publishing ?? { autopost: false, autoMergeOnGreenCi: false };
 	const canAutopost = can("publishing.set");
 	const canMerge = can("publishing.autoMerge");

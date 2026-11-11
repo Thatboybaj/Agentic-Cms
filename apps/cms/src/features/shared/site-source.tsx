@@ -51,6 +51,8 @@ export interface ISiteActions {
 	/** Convex: starts Google OAuth (redirects); demo: simulated connect. */
 	connectSearchConsole(siteId: string): TMaybeAsync<TResult>;
 	setBudget(kind: "text" | "image", capUsd: number): TMaybeAsync<TResult>;
+	setAutopost(siteId: string, on: boolean): TMaybeAsync<TResult>;
+	setAutoMerge(siteId: string, on: boolean): TMaybeAsync<TResult>;
 	setModelRouting(task: keyof ISiteData["modelRouting"], tier: "fast" | "workhorse" | "strongest"): TMaybeAsync<TResult>;
 	confirmManifest(manifestId: string): TMaybeAsync<TResult>;
 	mapTemplateItem(manifestId: string, mappingId: string, role: ITemplateManifest["mappings"][number]["role"], label?: string): TMaybeAsync<TResult>;
@@ -167,6 +169,8 @@ function useLiveSite(): ISiteCms {
 		runNow: useMutation(api.schedules.runNow),
 		beginGsc: useMutation(api.gsc.beginOAuth),
 		setBudget: useMutation(api.billing.setBudget),
+		setAutopost: useMutation(api.billing.setAutopost),
+		setAutoMerge: useMutation(api.billing.setAutoMerge),
 		setModelRouting: useMutation(api.billing.setModelRouting),
 		confirmManifest: useMutation(api.templates.confirm),
 		mapTemplateItem: useMutation(api.templates.mapItem),
@@ -287,6 +291,8 @@ function useLiveSite(): ISiteCms {
 			runNow: (kind) => run(() => m.runNow({ siteId: s, kind }), { text: "Run started", tone: "agent" }),
 			setBudget: (kind, capUsd) => run(() => m.setBudget({ siteId: s, budget: kind, capUsd }), { text: (kind === "text" ? "Text" : "Image") + " cap set to " + "\u0024" + capUsd.toFixed(2) + " / month" }),
 			setModelRouting: (task, tier) => run(() => m.setModelRouting({ siteId: s, task: task === "pillar-pages" ? "pillarPages" : (task as "mechanical" | "writing" | "strategy"), tier })),
+			setAutopost: (_id, on) => run(() => m.setAutopost({ siteId: s, on }), { text: on ? "Autopost on · approved ideas ship without review" : "Autopost off · posts stop at In review", tone: on ? "agent" : "neutral" }),
+			setAutoMerge: (_id, on) => run(() => m.setAutoMerge({ siteId: s, on }), { text: on ? "Auto-merge on · autopost MRs merge on green CI" : "Auto-merge off · a developer merges every MR" }),
 			connectSearchConsole: () =>
 				run(async () => {
 					const r = await m.beginGsc({ siteId: s });

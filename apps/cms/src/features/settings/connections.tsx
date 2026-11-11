@@ -28,7 +28,7 @@ import {
 	type TIconName,
 } from "@/ds";
 import { ROLE_LABEL } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { TRole } from "@/lib/types";
 import { useSiteConnections as useConnections, type IUseConnections } from "../connections/api";
 import {
@@ -71,7 +71,7 @@ const EMPTY_GAP: Record<TConnectionKind, { label: string; reason: string }> = {
 };
 
 const useEditGate = () => {
-	const { role } = useCms();
+	const { role } = useSiteCms();
 	const canEdit = CONNECTION_EDIT_ROLES.includes(role);
 	const reason = `Your role (${ROLE_LABEL[role]}) can't change connections. Admins and developers can.`;
 	return { role, canEdit, reason };
@@ -80,7 +80,7 @@ const useEditGate = () => {
 // ---- Panel -----------------------------------------------------------------------
 
 export function ConnectionsSettings() {
-	const { site } = useCms();
+	const { site } = useSiteCms();
 	const { role, canEdit, reason } = useEditGate();
 	const conns = useConnections(site.id);
 	const [sheet, setSheet] = useState<{ open: boolean; n: number; provider?: TConnectionProvider; editing?: IConnection }>({ open: false, n: 0 });
@@ -591,7 +591,7 @@ function ConnectionSheet({ open, onClose, initialProvider, editing, conns }: { o
 
 /** Compact "3 connected · 1 failed" with a link to Settings → Connections. Fetches on its own. */
 export function ConnectionsSummary({ href: hrefProp, className }: { href?: string; className?: string }) {
-	const { site } = useCms();
+	const { site } = useSiteCms();
 	const href = hrefProp ?? sitePath(site.slug, "/settings?tab=connections");
 	const { connections, loading, error } = useConnections(site.id);
 	const enabled = connections.filter((c) => c.enabled);

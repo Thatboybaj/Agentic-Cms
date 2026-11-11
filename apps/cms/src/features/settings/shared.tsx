@@ -3,11 +3,11 @@
 import type { ReactNode } from "react";
 import { Button, Callout, Icon, RoleGate } from "@/ds";
 import { PERMISSIONS, type TPermission } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 
 /** One primary per tab: "Save changes", disabled until something changed. Locked roles see it disabled with the reason. */
 export function SaveBar({ perm, dirty, onSave, onDiscard, children }: { perm: TPermission; dirty: boolean; onSave: () => void; onDiscard: () => void; children: ReactNode }) {
-	const { role } = useCms();
+	const { role } = useSiteCms();
 	return (
 		<div className="flex flex-wrap items-center gap-x-3 gap-y-2 px-1">
 			<p className="min-w-0 flex-1 text-sm text-ink-3">{children}</p>
@@ -27,7 +27,7 @@ export function SaveBar({ perm, dirty, onSave, onDiscard, children }: { perm: TP
 
 /** Inline "why is this read-only" callout (never hide a gated control silently). */
 export function LockNote({ perm, title }: { perm: TPermission; title: string }) {
-	const { can, why } = useCms();
+	const { can, why } = useSiteCms();
 	if (can(perm)) return null;
 	return (
 		<Callout tone="neutral" icon="LockSimple" title={title}>
@@ -37,7 +37,7 @@ export function LockNote({ perm, title }: { perm: TPermission; title: string }) 
 }
 
 export function LockLine({ perm }: { perm: TPermission }) {
-	const { can, why } = useCms();
+	const { can, why } = useSiteCms();
 	if (can(perm)) return null;
 	return (
 		<span className="flex items-center gap-1 text-xs text-ink-3">

@@ -2,12 +2,12 @@
 // Settings · Brand pack — palette, voice, style keywords and regulated-topic disclaimers, injected into every prompt.
 // Palette swatches render the tenant's own brand values (client data), so they're the one inline style on this screen.
 import { Card, CardHeader, Chip, DataGap, SourceNote } from "@/ds";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 
 const TOPIC: Record<"health" | "finance" | "legal", string> = { health: "Health", finance: "Finance", legal: "Legal" };
 
 export function BrandTab() {
-	const { site, data } = useCms();
+	const { site, data } = useSiteCms();
 	const bp = data.brandPack;
 	const disclaimers = (Object.keys(bp.disclaimers) as (keyof typeof TOPIC)[]).filter((k) => bp.disclaimers[k]);
 

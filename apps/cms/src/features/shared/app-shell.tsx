@@ -452,7 +452,7 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 				<div className="flex-1 max-sm:hidden" />
 				{slug && <PresenceBadge people={here} where={`on ${row?.name ?? "this site"} now`} className="max-md:hidden" />}
 				<AgentStatusPill
-					running={slug ? (storeRow?.agentsRunning ?? 0) : rows.reduce((a, r) => a + r.agentsRunning, 0)}
+					running={slug ? ((PAGES_ON_CONVEX ? row : storeRow)?.agentsRunning ?? 0) : rows.reduce((a, r) => a + r.agentsRunning, 0)}
 					onClick={slug ? () => router.push(sitePath(slug, "/runs")) : undefined}
 					className="max-md:hidden"
 				/>
@@ -460,9 +460,9 @@ function Shell({ children, cta }: { children: ReactNode; cta?: ReactNode }) {
 					<>
 						<IconButton
 							icon="BellSimple"
-							label={`Notifications${storeRow?.unread ? ` · ${storeRow.unread} unread` : ""}`}
+							label={`Notifications${(PAGES_ON_CONVEX ? row : storeRow)?.unread ? ` · ${(PAGES_ON_CONVEX ? row : storeRow)!.unread} unread` : ""}`}
 							variant="white"
-							dot={storeRow?.unread ? "block" : undefined}
+							dot={(PAGES_ON_CONVEX ? row : storeRow)?.unread ? "block" : undefined}
 							href={`${sitePath(slug, "/runs")}#notifications`}
 							className="max-sm:hidden"
 						/>

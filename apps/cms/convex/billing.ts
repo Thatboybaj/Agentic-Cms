@@ -156,3 +156,30 @@ export const onPolarEvent = internalMutation({
 	},
 });
 
+
+// ─── Publishing (Settings → Publishing) ──────────────────────────────────────
+
+export const setAutopost = siteMutation({
+	permission: "publishing.set",
+	args: { on: v.boolean() },
+	handler: async (ctx, { siteId, on }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		if (site.publishing.autopost === on) return { ok: true };
+		await ctx.db.patch(siteId, { publishing: { ...site.publishing, autopost: on } });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: user, action: on ? "turned autopost on" : "turned autopost off", target: site.name, detail: on ? "Content ships without review · hard blocks still hold the post" : "Every post stops at In review for a person" });
+		return { ok: true };
+	},
+});
+
+export const setAutoMerge = siteMutation({
+	permission: "publishing.autoMerge",
+	args: { on: v.boolean() },
+	handler: async (ctx, { siteId, on }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		if (site.publishing.autoMergeOnGreenCi === on) return { ok: true };
+		if (on && !site.publishing.autopost) return { ok: false, reason: "Turn autopost on first: auto-merge only applies to autopost MRs" };
+		await ctx.db.patch(siteId, { publishing: { ...site.publishing, autoMergeOnGreenCi: on } });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: user, action: on ? "turned auto-merge on" : "turned auto-merge off", target: site.name, detail: on ? "Autopost MRs merge when the repo's CI passes" : "A developer merges every MR" });
+		return { ok: true };
+	},
+});

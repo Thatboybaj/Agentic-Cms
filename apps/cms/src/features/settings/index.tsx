@@ -4,7 +4,7 @@
 import { useSearchParams } from "next/navigation";
 import { Callout, PageHeader, Select, Tabs } from "@/ds";
 import { ROLE_LABEL } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import { AuditTab } from "./audit";
 import { BrandTab } from "./brand";
 import { ConnectionsSettings } from "./connections";
@@ -30,7 +30,7 @@ type TTab = (typeof TABS)[number]["id"];
 const isTab = (v: string | null): v is TTab => TABS.some((t) => t.id === v);
 
 export function SettingsScreen() {
-	const { site, role, why } = useCms();
+	const { site, role, why } = useSiteCms();
 	const params = useSearchParams();
 	const raw = params.get("tab");
 	const stakeholder = role === "stakeholder";

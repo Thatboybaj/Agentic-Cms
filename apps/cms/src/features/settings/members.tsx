@@ -2,7 +2,7 @@
 // Settings · Members & roles — who is on this site, and the PRD roles table (can do / cannot do). Permissions are per site.
 import { Avatar, Callout, Card, CardHeader, Chip, DataTable, EmptyState, type IDataTableColumn, type TIconName } from "@/ds";
 import { ROLE_LABEL } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IMember, TRole } from "@/lib/types";
 import { LockLine } from "./shared";
 
@@ -16,7 +16,7 @@ const ROLES: { role: TRole; job: string; can: string[]; cannot: string[] }[] = [
 ];
 
 export function MembersTab() {
-	const { state, me } = useCms();
+	const { state, me } = useSiteCms();
 	const members = state.members;
 
 	const columns: IDataTableColumn<IMember>[] = [
