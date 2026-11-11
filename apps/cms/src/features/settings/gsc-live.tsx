@@ -10,7 +10,8 @@ import type { TRole } from "@/lib/types";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 
-export function LiveSearchConsoleCard({ role }: { role: TRole }) {
+/** returnTo "onboarding": the same card inside the Connect a site wizard, and Google sends the person back there. */
+export function LiveSearchConsoleCard({ role, returnTo }: { role: TRole; returnTo?: "onboarding" }) {
 	const { slug } = useSite();
 	const { isAuthenticated } = useConvexAuth();
 	const resolved = useQuery(api.sites.bySlug, isAuthenticated ? { slug } : "skip");
@@ -37,7 +38,7 @@ export function LiveSearchConsoleCard({ role }: { role: TRole }) {
 	const connect = async () => {
 		if (!siteId) return;
 		setError(null);
-		const r = await begin({ siteId });
+		const r = await begin({ siteId, ...(returnTo ? { returnTo } : {}) });
 		if (!r.ok) return setError(r.reason);
 		if (r.url) window.location.assign(r.url);
 	};

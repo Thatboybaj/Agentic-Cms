@@ -23,7 +23,8 @@ import {
 	TextField,
 } from "@/ds";
 import { useCms, useSite } from "@/lib/store";
-import { useSiteCms } from "@/features/shared/site-source";
+import { SITE_ON_CONVEX, useSiteCms } from "@/features/shared/site-source";
+import { LiveSearchConsoleCard } from "@/features/settings/gsc-live";
 import { useLiveRepoConnect, type IRepoChoice } from "./live-repo";
 import type { IRepoConnection, ISite } from "@/lib/types";
 import { sitePath } from "@/lib/routes";
@@ -56,8 +57,11 @@ function Wizard() {
 	const { site, can, why, state } = useSiteCms();
 	const canConnect = can("repo.connect");
 	const resume = resumeAt?.siteId === site.id ? resumeAt.step : null;
-	const returning = typeof window !== "undefined" && (new URLSearchParams(window.location.search).has("installation") || new URLSearchParams(window.location.search).has("app"));
-	const [started, setStarted] = useState(!site.repo || resume !== null || returning);
+	const params = typeof window !== "undefined" ? new URLSearchParams(window.location.search) : null;
+	const returning = !!params && (params.has("installation") || params.has("app"));
+	// Back from Google (gsc.beginOAuth with returnTo "onboarding"): reopen the Search Console step.
+	const fromGoogle = !!params && params.has("gsc");
+	const [started, setStarted] = useState(!site.repo || resume !== null || returning || fromGoogle);
 	const [adding, setAdding] = useState(false);
 	const developer = state.members.find((m) => m.role === "developer")?.name ?? "a developer";
 
@@ -106,7 +110,7 @@ function Wizard() {
 	return (
 		<>
 			{header}
-			<Steps initial={adding ? 0 : (resume ?? (returning ? 1 : 0))} adding={adding} />
+			<Steps initial={adding ? 0 : (resume ?? (fromGoogle ? 3 : returning ? 1 : 0))} adding={adding} />
 		</>
 	);
 }
@@ -116,7 +120,7 @@ function Wizard() {
 function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 	const { slug } = useSite();
 	const { actions } = useCms(); // store-only actions (add site, Search Console demo)
-	const { site } = useSiteCms();
+	const { site, role } = useSiteCms();
 	const live = useLiveRepoConnect();
 	const [repos, setRepos] = useState<IRepoChoice[] | null>(null);
 	const [liveError, setLiveError] = useState<string | null>(null);
@@ -375,6 +379,19 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 		cta = (
 			<Button variant="primary" icon="ShieldCheck" loading={scanning} disabled={!!branchError} onClick={confirmPaths}>
 				Confirm paths
+			</Button>
+		);
+	} else if (step === 3 && SITE_ON_CONVEX) {
+		// Live: the real Google flow (read-only OAuth, property pick, nightly import), the same card as Settings.
+		body = (
+			<div className="flex flex-col gap-4">
+				<p className="text-md text-ink-2">Positions, impressions and indexing come from Google Search Console. Without it, rankings show as data gaps.</p>
+				<LiveSearchConsoleCard role={role} returnTo="onboarding" />
+			</div>
+		);
+		cta = (
+			<Button variant="primary" icon="ArrowRight" onClick={() => setStep(4)}>
+				Continue
 			</Button>
 		);
 	} else if (step === 3) {

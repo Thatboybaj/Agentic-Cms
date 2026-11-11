@@ -52,6 +52,24 @@ test("an OAuth state is consumed once, expires, and only redirects to the site's
 	expect(await t.mutation(internal.gsc.consumeState, { state: "never-issued" })).toBeNull();
 });
 
+test("Google returns to the site's settings or its onboarding wizard; anywhere else falls back to the sites list", async () => {
+	const { t, site, user } = await world();
+	const hashOf = async (s: string) => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(s))))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+	const issue = async (state: string, redirectTo: string) => {
+		const hash = await hashOf(state);
+		await t.run(async (ctx) => {
+			const sealed = await seal("v", aadFor(site, "oauth-state", hash));
+			await ctx.db.insert("oauthStates", { stateHash: hash, siteId: site, userId: user, provider: "google-search-console", codeVerifierEncrypted: sealed.ciphertext, redirectTo, expiresAt: Date.now() + 60_000 });
+		});
+	};
+	await issue("a", "/s/lumen/onboarding");
+	await issue("b", "https://evil.example/s/lumen/onboarding");
+	await issue("c", "/s/lumen/posts");
+	expect((await t.mutation(internal.gsc.consumeState, { state: "a" }))?.redirectTo).toBe("/s/lumen/onboarding");
+	expect((await t.mutation(internal.gsc.consumeState, { state: "b" }))?.redirectTo).toBe("/sites");
+	expect((await t.mutation(internal.gsc.consumeState, { state: "c" }))?.redirectTo).toBe("/sites");
+});
+
 test("imports are idempotent per (keyword, date) and keep unknown queries out", async () => {
 	const { t, site } = await world();
 	const rows = [

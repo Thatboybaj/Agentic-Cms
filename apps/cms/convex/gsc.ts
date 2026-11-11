@@ -41,14 +41,15 @@ export const status = siteQuery({
 
 export const beginOAuth = siteMutation({
 	permission: "searchConsole.connect",
-	args: {},
-	handler: async (ctx, { siteId }): Promise<TResult> => {
+	/** Where Google sends the person back: the site's Settings (default) or the onboarding wizard's Search Console step. */
+	args: { returnTo: v.optional(v.literal("onboarding")) },
+	handler: async (ctx, { siteId, returnTo }): Promise<TResult> => {
 		if (!configured()) return { ok: false, reason: NOT_CONFIGURED };
 		const state = randomUrlSafe();
 		const verifier = randomUrlSafe(48);
 		const stateHash = await sha256UrlSafe(state);
 		const sealed = await seal(verifier, aadFor(siteId, "oauth-state", stateHash));
-		await ctx.db.insert("oauthStates", { stateHash, siteId, userId: ctx.access.user._id, provider: PROVIDER, codeVerifierEncrypted: sealed.ciphertext, redirectTo: `/s/${ctx.access.site.slug}/settings?tab=site`, expiresAt: Date.now() + 10 * 60_000 });
+		await ctx.db.insert("oauthStates", { stateHash, siteId, userId: ctx.access.user._id, provider: PROVIDER, codeVerifierEncrypted: sealed.ciphertext, redirectTo: returnTo === "onboarding" ? `/s/${ctx.access.site.slug}/onboarding` : `/s/${ctx.access.site.slug}/settings?tab=site`, expiresAt: Date.now() + 10 * 60_000 });
 		const q = new URLSearchParams({ client_id: process.env.GOOGLE_CLIENT_ID!, redirect_uri: redirectUri(), response_type: "code", scope: `openid email ${SCOPE}`, access_type: "offline", prompt: "consent", include_granted_scopes: "false", state, code_challenge: await sha256UrlSafe(verifier), code_challenge_method: "S256" });
 		return { ok: true, url: `https://accounts.google.com/o/oauth2/v2/auth?${q}` };
 	},
@@ -64,7 +65,7 @@ export const consumeState = internalMutation({
 		await ctx.db.patch(row._id, { consumedAt: Date.now() });
 		const verifier = await open(row.codeVerifierEncrypted, aadFor(row.siteId, "oauth-state", stateHash));
 		// Only ever back to this site's own pages (no open redirect).
-		const redirectTo = /^\/s\/[a-z0-9-]+\/settings(\?[a-z=&-]*)?$/i.test(row.redirectTo) ? row.redirectTo : "/sites";
+		const redirectTo = /^\/s\/[a-z0-9-]+\/(settings|onboarding)(\?[a-z=&-]*)?$/i.test(row.redirectTo) ? row.redirectTo : "/sites";
 		return { siteId: row.siteId, userId: row.userId, verifier, redirectTo };
 	},
 });
