@@ -15,9 +15,11 @@ describe("keyword swarm guard", () => {
 });
 
 describe("QA scorecard", () => {
-	const d: IQaDigest = { siteName: "Lumen", mode: "light", findings: [{ key: "cadence", kind: "progress", status: "BEHIND", detail: "2 posts live in 30 days vs a target of 13" }], ledger: { open: 4, overdue: 1, blockers: 0, oldestDays: 9 }, cadence: { target: 13, liveLast30: 2 } };
+	const d: IQaDigest = { siteName: "Lumen", mode: "light", findings: [{ key: "cadence", kind: "progress", status: "BEHIND", detail: "2 posts live in 30 days vs a target of 13" }], ledger: { open: 4, overdue: 1, blockers: 0, oldestDays: 9 }, cadence: { target: 13, liveLast30: 2 }, counts: { total: 1, BEHIND: 1, needAction: 1 } };
 	test("uses the model's prose when every number is in the digest, else the plain card", () => {
 		expect(qaScorecard({ headline: "Behind cadence: 2 of 13", scorecardMd: "4 open, 1 overdue." }, d).fromModel).toBe(true);
+		expect(qaScorecard({ headline: "Behind", scorecardMd: "## Findings\n1. Cadence 2 of 13\n2. Ledger 4 open\n3. 1 overdue" }, d).fromModel).toBe(true);
+		expect(qaScorecard({ headline: "Behind", scorecardMd: "1. 40% behind" }, d).rejected).toEqual(["40"]);
 		const fallback = qaScorecard({ headline: "Behind by 40%", scorecardMd: "x" }, d);
 		expect(fallback.fromModel).toBe(false);
 		expect(fallback.md).toContain("**BEHIND** · 2 posts live in 30 days vs a target of 13");

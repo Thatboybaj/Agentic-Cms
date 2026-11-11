@@ -56,10 +56,13 @@ export const qaDigest = internalQuery({
 		for (const p of posts.filter((x) => x.state === "in-review" && days(x.stateChangedAt) >= 7)) findings.push({ key: `review:${p._id}`, kind: "progress", status: "BEHIND", detail: `${p.title} waiting in review ${days(p.stateChangedAt)} days`, ledger: { title: `Review ${p.title}`, downstream: `In review ${days(p.stateChangedAt)} days`, postId: p._id } });
 
 		// A · contract: every scheduled run happened.
+		// Last run per kind from the run log (manual and scheduled both count), excluding this sweep's own row.
+		const recentRuns = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", siteId)).order("desc").take(300);
+		const lastOf = (kind: string) => recentRuns.find((r) => r.kind === kind && r.status !== "running" && r.status !== "queued" && r.status !== "refused-over-cap")?.startedAt;
 		for (const s of await ctx.db.query("schedules").withIndex("by_site_kind", (q) => q.eq("siteId", siteId)).take(20)) {
 			const period = PERIOD[s.rule.split(":")[0] ?? ""];
-			if (!s.enabled || !period) continue;
-			const last = s.lastRunAt ?? site.createdAt;
+			if (!s.enabled || !period || s.kind === "qa-sweep") continue;
+			const last = Math.max(lastOf(s.kind) ?? 0, s.lastRunAt ?? 0) || site.createdAt;
 			if (now - last > period * 2) findings.push({ key: `missing:${s.kind}`, kind: "contract", status: "MISSING", detail: `${s.label} hasn't run in ${days(last)} days (${s.cadence})` });
 		}
 		const runs = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", siteId).gte("startedAt", now - 7 * DAY)).take(200);
@@ -80,7 +83,10 @@ export const qaDigest = internalQuery({
 		if (blockers) findings.push({ key: "ledger-blockers", kind: "ledger", status: "FAIL", detail: `${blockers} ledger item${blockers === 1 ? " is" : "s are"} 14+ days old (blockers)` });
 		const existingKeys = new Set(open.map((l) => l.dedupeKey).filter(Boolean));
 		for (const f of findings) if (f.ledger && existingKeys.has(`qa:${f.key}`)) delete f.ledger; // already on the ledger
-		return { digest: { siteName: site.name, mode, findings, ledger: { open: open.length, overdue, blockers, oldestDays: ages.length ? Math.max(...ages) : 0 }, cadence: { target, liveLast30 } }, modelRouting: site.modelRouting };
+		const counts: Record<string, number> = { total: findings.length };
+		for (const f of findings) counts[f.status] = (counts[f.status] ?? 0) + 1;
+		counts.needAction = findings.filter((f) => f.status === "FAIL" || f.status === "MISSING" || f.status === "BEHIND").length;
+		return { digest: { siteName: site.name, mode, counts, findings, ledger: { open: open.length, overdue, blockers, oldestDays: ages.length ? Math.max(...ages) : 0 }, cadence: { target, liveLast30 } }, modelRouting: site.modelRouting };
 	},
 });
 

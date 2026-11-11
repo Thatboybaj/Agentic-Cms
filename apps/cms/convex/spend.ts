@@ -67,7 +67,10 @@ export const recordUsage = internalMutation({
 	handler: async (ctx, a) => {
 		const run = await ctx.db.get(a.runId);
 		if (!run) return;
-		await ctx.db.patch(a.runId, { model: a.model, tier: a.tier, escalated: a.escalated, inputTokens: run.inputTokens + a.inputTokens, outputTokens: run.outputTokens + a.outputTokens, costUsd: Math.round((run.costUsd + a.costMicroUsd / 1e6) * 10000) / 10000 });
+		// A run with several calls (research + structuring) shows its highest tier and that tier's model.
+		const ORDER = ["fast", "workhorse", "strongest"];
+		const keep = run.tier && run.costUsd > 0 && ORDER.indexOf(run.tier) > ORDER.indexOf(a.tier);
+		await ctx.db.patch(a.runId, { ...(keep ? {} : { model: a.model, tier: a.tier }), escalated: (run.escalated ?? false) || a.escalated, inputTokens: run.inputTokens + a.inputTokens, outputTokens: run.outputTokens + a.outputTokens, costUsd: Math.round((run.costUsd + a.costMicroUsd / 1e6) * 10000) / 10000 });
 	},
 });
 

@@ -60,8 +60,11 @@ async function qa(ctx: ActionCtx, siteId: Id<"sites">, runId: Id<"runs">, mode: 
 		await recordFailure(ctx, runId, e); // the findings stand without the prose
 	}
 	const card = qaScorecard(out, d.digest);
+	if (card.rejected) console.log(`qa-sweep ${siteId}: model scorecard dropped, numbers not in the digest: ${card.rejected.join(", ")}`);
 	const ledger = d.digest.findings.filter((f) => f.ledger).map((f) => ({ key: `qa:${f.key}`, title: f.ledger!.title, downstream: f.ledger!.downstream, ...(f.ledger!.postId ? { postId: f.ledger!.postId as Id<"posts"> } : {}) }));
-	return { status: "succeeded", output: `${card.headline}${ledger.length ? ` · ${ledger.length} new on the ledger` : ""}`.slice(0, 200), ideas: none, ledger, artifacts: [{ kind: "scorecard_md", content: card.md }] };
+	return { status: "succeeded", output: `${card.headline}${ledger.length ? ` · ${ledger.length} new on the ledger` : ""}`.slice(0, 200), ideas: none, ledger, artifacts: [{ kind: "scorecard_md", content: card.rejected ? `${card.md}
+
+_Model prose dropped: it used numbers not in the findings (${card.rejected.join(", ")})._` : card.md }] };
 }
 
 async function refresh(ctx: ActionCtx, siteId: Id<"sites">): Promise<TRunArtifact> {

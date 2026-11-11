@@ -145,6 +145,8 @@ export interface IQaDigest {
 	findings: IQaFinding[];
 	ledger: { open: number; overdue: number; blockers: number; oldestDays: number };
 	cadence: { target: number; liveLast30: number };
+	/** Finding totals by status, so the scorecard can cite them (the number guard allows only digest numbers). */
+	counts: Record<string, number>;
 }
 
 export const QA_CONTRACT = [
@@ -157,7 +159,7 @@ export const QaOutput = z.object({ headline: z.string().describe("One line, unde
 const numsIn = (s: string) => new Set(s.match(/\d+(?:\.\d+)?/g) ?? []);
 
 /** The model's scorecard if every number in it is in the digest; otherwise the plain deterministic one. */
-export function qaScorecard(out: z.infer<typeof QaOutput> | null, d: IQaDigest): { headline: string; md: string; fromModel: boolean } {
+export function qaScorecard(out: z.infer<typeof QaOutput> | null, d: IQaDigest): { headline: string; md: string; fromModel: boolean; rejected?: string[] } {
 	const plain = () => {
 		const bad = d.findings.filter((f) => f.status === "FAIL" || f.status === "MISSING" || f.status === "BEHIND");
 		const headline = bad.length ? `${bad.length} finding${bad.length === 1 ? "" : "s"} need action · ${d.ledger.open} on the ledger` : `All contracts pass · ${d.ledger.open} on the ledger`;
@@ -165,8 +167,10 @@ export function qaScorecard(out: z.infer<typeof QaOutput> | null, d: IQaDigest):
 	};
 	if (!out) return plain();
 	const allowed = numsIn(JSON.stringify(d));
-	const invented = [...numsIn(`${out.headline} ${out.scorecardMd}`)].filter((n) => !allowed.has(n));
-	if (invented.length) return plain();
+	// Markdown structure isn't a claim: ordered-list markers and heading levels don't count as numbers.
+	const prose = `${out.headline}\n${out.scorecardMd}`.replace(/^\s*\d+[.)]\s/gm, "").replace(/^#+\s/gm, "");
+	const invented = [...numsIn(prose)].filter((n) => !allowed.has(n));
+	if (invented.length) return { ...plain(), rejected: invented };
 	return { headline: out.headline.trim().slice(0, 120), md: out.scorecardMd.trim(), fromModel: true };
 }
 

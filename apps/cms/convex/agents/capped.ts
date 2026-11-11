@@ -53,7 +53,8 @@ export async function cappedInference<T>(ledger: ILedger, transport: TTransport,
 				billed = addUsage(billed, res.usage);
 				const cost = costMicroUsd(req.model, billed);
 				await ledger.settle(idempotencyKey, cost);
-				return { ...res, usage: billed, costMicroUsd: cost, attempts: attempt };
+				// The harness id we asked for (the API answers with a dated snapshot id; runs record MODELS ids only).
+				return { ...res, model: req.model, usage: billed, costMicroUsd: cost, attempts: attempt };
 			} catch (e) {
 				const err = e instanceof InferenceError ? e : new InferenceError("unknown", String(e));
 				billed = addUsage(billed, err.usage);
