@@ -10,7 +10,8 @@ export const postPipeline = workflow
 		const begun = await step.runMutation(internal.pipeline.persist.beginDraft, { siteId: args.siteId, postId: args.postId });
 		if (begun.stop) return;
 
-		const draft = await step.runAction(internal.pipeline.steps.draftStep, { input: begun.input });
+		// No workflow-level retry: the agent retries retryable errors itself, and a blind re-run would pay twice.
+		const draft = await step.runAction(internal.pipeline.steps.draftStep, { input: begun.input, runId: args.runId }, { retry: false });
 		const saved = await step.runMutation(internal.pipeline.persist.saveDraft, { ...args, draft });
 		if (saved.stop) return;
 

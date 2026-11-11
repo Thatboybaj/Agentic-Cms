@@ -9,6 +9,14 @@
  */
 
 import type * as access from "../access.js";
+import type * as agents_capped from "../agents/capped.js";
+import type * as agents_gateway from "../agents/gateway.js";
+import type * as agents_models from "../agents/models.js";
+import type * as agents_pricing from "../agents/pricing.js";
+import type * as agents_run from "../agents/run.js";
+import type * as agents_sdk from "../agents/sdk.js";
+import type * as agents_writer from "../agents/writer.js";
+import type * as agents_writerCore from "../agents/writerCore.js";
 import type * as clerkApi from "../clerkApi.js";
 import type * as clerkSync from "../clerkSync.js";
 import type * as crons from "../crons.js";
@@ -42,6 +50,7 @@ import type * as review from "../review.js";
 import type * as schedules from "../schedules.js";
 import type * as sites from "../sites.js";
 import type * as slots from "../slots.js";
+import type * as spend from "../spend.js";
 import type * as users from "../users.js";
 import type * as workflows_autopostGate from "../workflows/autopostGate.js";
 import type * as workflows_manager from "../workflows/manager.js";
@@ -59,6 +68,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  "agents/capped": typeof agents_capped;
+  "agents/gateway": typeof agents_gateway;
+  "agents/models": typeof agents_models;
+  "agents/pricing": typeof agents_pricing;
+  "agents/run": typeof agents_run;
+  "agents/sdk": typeof agents_sdk;
+  "agents/writer": typeof agents_writer;
+  "agents/writerCore": typeof agents_writerCore;
   clerkApi: typeof clerkApi;
   clerkSync: typeof clerkSync;
   crons: typeof crons;
@@ -92,6 +109,7 @@ declare const fullApi: ApiFromModules<{
   schedules: typeof schedules;
   sites: typeof sites;
   slots: typeof slots;
+  spend: typeof spend;
   users: typeof users;
   "workflows/autopostGate": typeof workflows_autopostGate;
   "workflows/manager": typeof workflows_manager;

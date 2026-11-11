@@ -12,12 +12,26 @@
     "./skills/*": "./skills/*",
     "./templates/*": "./templates/*",
     "./harness-config.yaml": "./harness-config.yaml",
-    "./HARNESS.md": "./HARNESS.md"
+    "./HARNESS.md": "./HARNESS.md",
+    "./skills": {
+      "types": "./src/skills.generated.ts",
+      "default": "./src/skills.generated.ts"
+    }
   },
-  "files": ["src", "skills", "templates", "HARNESS.md", "HUMAN-TASKS.md", "README.md", "harness-config.yaml"],
+  "files": [
+    "src",
+    "skills",
+    "templates",
+    "HARNESS.md",
+    "HUMAN-TASKS.md",
+    "README.md",
+    "harness-config.yaml",
+    "scripts"
+  ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "build:skills": "node scripts/build-skills.mjs",
+    "typecheck": "node scripts/build-skills.mjs --check && tsc --noEmit",
+    "test": "node scripts/build-skills.mjs --check && vitest run"
   },
   "devDependencies": {
     "@types/node": "^20",

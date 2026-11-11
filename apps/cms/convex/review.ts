@@ -57,7 +57,8 @@ export const beginRevise = internalMutation({
 	handler: async (ctx, { siteId, postId }) => {
 		const post = await ctx.db.get(postId);
 		if (!post || post.siteId !== siteId || post.state !== "drafting" || !post.sendBackNote) return { stop: true as const };
-		return { stop: false as const, input: { siteId, postId, note: post.sendBackNote, blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), seoTitle: post.seoTitle } };
+		const site = await ctx.db.get(siteId);
+		return { stop: false as const, input: { siteId, postId, note: post.sendBackNote, blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), seoTitle: post.seoTitle, ...(site ? { modelRouting: site.modelRouting } : {}) } };
 	},
 });
 

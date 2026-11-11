@@ -1,9 +1,14 @@
-// Agent step seams (handoff 02 step "pipeline/steps.ts"). STUBS with the final interfaces: deterministic output, no
-// model or provider call. Handoff 03 replaces draftStep's body (blog writer + on-page optimizer), 04 replaces
-// fillSlotStep's body (visual-asset agent). The validators below are the contract: keep them when the bodies change.
+// Agent step seams (handoff 02 step "pipeline/steps.ts"). The validators below are the contract. draftStep and
+// reviseStep run the real blog writing agent (convex/agents/writer.ts, handoff 03) when the deployment sets
+// CMS_AGENTS=live; otherwise, and always in tests, they return the deterministic $0 stubs. 04 replaces fillSlotStep.
 // Steps are actions so they can call providers later; they never write tables (README §3): persist.ts does.
 import { v, type Infer } from "convex/values";
+import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
+
+const live = () => process.env.CMS_AGENTS === "live";
+const vTier = v.union(v.literal("fast"), v.literal("workhorse"), v.literal("strongest"));
+export const vModelRoutingIn = v.object({ mechanical: vTier, writing: vTier, strategy: vTier, pillarPages: vTier });
 
 export const vDraftInput = v.object({
 	siteId: v.id("sites"),
@@ -16,9 +21,19 @@ export const vDraftInput = v.object({
 	heroProvider: v.string(),
 	strongModel: v.boolean(),
 	wordTarget: v.number(),
+	// Single-site context for the writer (handoff 03 step 4): this site's records only, never secrets.
+	domain: v.optional(v.string()),
+	industry: v.optional(v.string()),
+	voice: v.optional(v.string()),
+	intent: v.optional(v.string()),
+	pillar: v.optional(v.string()),
+	regulated: v.optional(v.string()),
+	disclaimer: v.optional(v.string()),
+	internalLinks: v.optional(v.array(v.object({ title: v.string(), url: v.string() }))),
+	modelRouting: v.optional(vModelRoutingIn),
 });
 
-const vBlockOut = v.object({ id: v.string(), kind: v.union(v.literal("h2"), v.literal("h3"), v.literal("p"), v.literal("ul"), v.literal("faq")), text: v.string() });
+const vBlockOut = v.object({ id: v.string(), kind: v.union(v.literal("h2"), v.literal("h3"), v.literal("p"), v.literal("ul"), v.literal("faq"), v.literal("quote"), v.literal("disclaimer")), text: v.string() });
 const vSlotOut = v.object({
 	name: v.string(),
 	type: v.union(v.literal("hero"), v.literal("chart"), v.literal("diagram"), v.literal("lifestyle"), v.literal("screenshot"), v.literal("photo")),
@@ -45,11 +60,12 @@ export type TDraftOutput = Infer<typeof vDraftOutput>;
 const cap1 = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const countWords = (blocks: { text: string }[]) => blocks.reduce((n, b) => n + b.text.split(/\s+/).filter(Boolean).length, 0);
 
-/** STUB (03): blog-writing-agent → on-page-seo-optimizer. Deterministic outline-level draft. */
+/** Blog writing agent. Live: convex/agents/writer.ts (cappedInference). Stub: deterministic outline-level draft. */
 export const draftStep = internalAction({
-	args: { input: vDraftInput },
+	args: { input: vDraftInput, runId: v.optional(v.id("runs")) },
 	returns: vDraftOutput,
-	handler: async (_ctx, { input }) => {
+	handler: async (ctx, { input, runId }): Promise<TDraftOutput> => {
+		if (live() && runId) return await ctx.runAction(internal.agents.writer.draft, { input, runId });
 		const kw = input.keyword;
 		const blocks = [
 			{ id: "b1", kind: "p" as const, text: `${cap1(kw)} comes up in almost every first visit to ${input.siteName}. This guide answers the questions people ask most, in plain language.` },
@@ -126,12 +142,17 @@ export const openPrStep = internalAction({
 
 const vBlockIn = v.object({ id: v.string(), kind: v.string(), text: v.string() });
 
-/** STUB (03): the blog writer applies a reviewer's note to the current draft. Returns the revised blocks unchanged in
- *  shape; until 03 it only records that the note was applied. */
+export const vReviseOutput = v.object({ blocks: v.array(vBlockIn), seoTitle: v.string(), tokens: v.object({ input: v.number(), output: v.number() }) });
+export const vReviseInput = { siteId: v.id("sites"), postId: v.id("posts"), note: v.string(), blocks: v.array(vBlockIn), seoTitle: v.string(), modelRouting: v.optional(vModelRoutingIn) };
+
+/** The blog writer applies a reviewer's note. Live: convex/agents/writer.ts. Stub: returns the draft unchanged. */
 export const reviseStep = internalAction({
-	args: { siteId: v.id("sites"), postId: v.id("posts"), note: v.string(), blocks: v.array(vBlockIn), seoTitle: v.string() },
-	returns: v.object({ blocks: v.array(vBlockIn), seoTitle: v.string(), tokens: v.object({ input: v.number(), output: v.number() }) }),
-	handler: async (_ctx, a) => ({ blocks: a.blocks, seoTitle: a.seoTitle, tokens: { input: 0, output: 0 } }),
+	args: { ...vReviseInput, runId: v.optional(v.id("runs")) },
+	returns: vReviseOutput,
+	handler: async (ctx, a): Promise<Infer<typeof vReviseOutput>> => {
+		if (live() && a.runId) return await ctx.runAction(internal.agents.writer.revise, { ...a, runId: a.runId });
+		return { blocks: a.blocks, seoTitle: a.seoTitle, tokens: { input: 0, output: 0 } };
+	},
 });
 
 export const vRunArtifact = v.object({

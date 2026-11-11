@@ -9,6 +9,6 @@ export const revise = workflow
 	.handler(async (step, args): Promise<void> => {
 		const begun = await step.runMutation(internal.review.beginRevise, { siteId: args.siteId, postId: args.postId });
 		if (begun.stop) return;
-		const out = await step.runAction(internal.pipeline.steps.reviseStep, begun.input);
+		const out = await step.runAction(internal.pipeline.steps.reviseStep, { ...begun.input, runId: args.runId }, { retry: false });
 		await step.runMutation(internal.review.saveRevision, { ...args, blocks: out.blocks, seoTitle: out.seoTitle });
 	});

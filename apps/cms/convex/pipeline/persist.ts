@@ -33,7 +33,12 @@ export const beginDraft = internalMutation({
 		if (site.status === "paused") return { stop: true as const, reason: "Site paused" };
 		if (post.state !== "briefed" && post.state !== "decaying") return { stop: true as const, reason: `Post is ${post.state}` };
 		await mustTransition(ctx, post, "drafting", { extra: { progress: { label: "Reading brief and brand pack", value: 4 }, ...(post.state === "decaying" ? { source: "refresh" as const } : {}) } });
-		const keyword = (await ctx.db.get(post.keywordId))?.term ?? post.title;
+		const kw = await ctx.db.get(post.keywordId);
+		const keyword = kw && kw.siteId === siteId ? kw.term : post.title;
+		const pillar = await ctx.db.get(post.pillarId);
+		// Internal links: only real URLs this site already ranks with (Search Console), never guessed paths.
+		const linkRows = (await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(500)).filter((k) => k.rankingUrl && k._id !== post.keywordId).slice(0, 12);
+		const disclaimer = post.regulated ? site.brandPack.disclaimers[post.regulated] : undefined;
 		return {
 			stop: false as const,
 			input: {
@@ -45,8 +50,17 @@ export const beginDraft = internalMutation({
 				contentType: post.contentType,
 				styleKeywords: site.brandPack.styleKeywords,
 				heroProvider: site.routing.hero,
-				strongModel: post.strongModel,
+				strongModel: post.strongModel || post.contentType === "pillar" || post.contentType === "money-page",
 				wordTarget: post.wordTarget,
+				domain: site.domain,
+				industry: site.industry,
+				voice: site.brandPack.voice,
+				intent: post.intent,
+				...(pillar && pillar.siteId === siteId ? { pillar: pillar.name } : {}),
+				...(post.regulated ? { regulated: post.regulated } : {}),
+				...(disclaimer ? { disclaimer } : {}),
+				internalLinks: linkRows.map((k) => ({ title: k.term, url: k.rankingUrl! })),
+				modelRouting: site.modelRouting,
 			},
 		};
 	},

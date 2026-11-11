@@ -85,8 +85,13 @@ export async function refuseRun(ctx: MutationCtx, r: Omit<IRunStart, "status">, 
 export async function finishRun(ctx: MutationCtx, runId: Id<"runs">, outcome: { status: "succeeded" | "failed" | "cancelled"; output: string; error?: string; costUsd?: number }) {
 	const run = await ctx.db.get(runId);
 	if (!run || (run.status !== "running" && run.status !== "queued")) return;
-	const raw = outcome.costUsd ?? 0;
-	const costUsd = Math.round(raw * 100) / 100;
+	// Live agents settle money through convex/spend.ts and record usage on the run (spend.recordUsage); then the caller
+	// passes no costUsd and the recorded cost stands. A measured costUsd here is debited once (status guard above).
+	if (outcome.costUsd === undefined) {
+		await ctx.db.patch(runId, { status: outcome.status, output: outcome.output, finishedAt: Date.now(), ...(outcome.error ? { error: outcome.error } : {}) });
+		return;
+	}
+	const costUsd = Math.round(outcome.costUsd * 100) / 100;
 	await ctx.db.patch(runId, { status: outcome.status, output: outcome.output, finishedAt: Date.now(), costUsd, ...(outcome.error ? { error: outcome.error } : {}) });
 	const site = await ctx.db.get(run.siteId);
 	if (!site || costUsd <= 0) return;

@@ -351,3 +351,5 @@ export const IMAGE_ROUTING: readonly IImageRouting[] = [
 ];
 
 export const getAgent = (id: TAgentId): IHarnessAgent | undefined => AGENTS.find((a) => a.id === id);
+
+export { SKILLS, type ISkillText } from "./skills.generated";

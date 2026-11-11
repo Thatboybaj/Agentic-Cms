@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 // Handoff 01 step 3: every public Convex function must be built from a wrapper in convex/lib/functions.ts.
 // Handoff 02 step 2: only convex/lib/transition.ts may patch posts.state.
+// Handoff 03: model calls only in convex/agents/sdk.ts (behind cappedInference); claude-* ids only in agents/pricing.ts
+// (everything else takes them from MODELS in @studio/seo-harness).
 // Fails if a file in apps/cms/convex imports the raw public builders (query / mutation / action / httpAction is fine
 // only in the allowlist) from _generated/server. Internal builders (internalQuery, internalMutation, internalAction)
 // are allowed everywhere. Run: node scripts/check-cms-convex-auth.mjs
@@ -31,6 +33,8 @@ export function findViolations(files = walk(root)) {
 		if (rel !== "lib/transition.ts" && /\.patch\([^;]*?\bstate\s*:/s.test(src)) {
 			out.push(`${rel}: writes posts.state directly; use transitionPost/mustTransition from ./lib/transition`);
 		}
+		if (rel !== "agents/sdk.ts" && /\.messages\.(create|stream|parse)\s*\(/.test(src)) out.push(`${rel}: calls the model directly; go through cappedInference (convex/agents/capped.ts)`);
+		if (rel !== "agents/pricing.ts" && /["'`]claude-[a-z0-9-]+["'`]/.test(src)) out.push(`${rel}: hardcodes a model id; use MODELS from @studio/seo-harness`);
 		if (ALLOW.has(rel)) continue;
 		for (const m of src.matchAll(/import\s*\{([^}]*)\}\s*from\s*["'][./]*_generated\/server["']/g)) {
 			const names = m[1].split(",").map((s) => s.trim().split(/\s+as\s+/)[0].replace(/^type\s+/, "")).filter(Boolean);
