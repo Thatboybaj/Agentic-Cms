@@ -3,7 +3,8 @@
 
 import { PostCard } from "@/ds";
 import { isPendingIdea } from "@/lib/logic";
-import { useCms, useLedger, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { usePlanCms, usePlanLedger } from "./source";
 import type { TPostState } from "@/lib/types";
 import { LedgerLink } from "./aside";
 import { GenerateRow } from "./board";
@@ -15,8 +16,8 @@ export type TMobileFilter = TPostState | "needs-you";
 
 export function MobileList({ model, filter }: { model: IPlanModel; filter: TMobileFilter }) {
 	const { slug } = useSite();
-	const { data } = useCms();
-	const ledger = useLedger();
+	const { data } = usePlanCms();
+	const ledger = usePlanLedger();
 	const inReviewIds = new Set(model.columns["in-review"].map((p) => p.post.id));
 	const cards: IBoardPost[] = filter === "needs-you" ? model.humanPosts : model.columns[filter];
 	const ledgerItems = filter === "needs-you" ? ledger.filter((l) => !l.postId || !inReviewIds.has(l.postId)) : [];

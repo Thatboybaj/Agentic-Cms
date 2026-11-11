@@ -47,18 +47,28 @@ function WorkspaceStatus() {
 					))}
 				</ul>
 			)}
-			{sites && sites.length === 0 && workspace && workspace.role !== "member" && <SeedDemoSites />}
+			{sites && workspace && workspace.role !== "member" && (sites.length === 0 ? <SeedDemo what="sites" /> : <SeedDemo what="posts" />)}
 		</div>
 	);
 }
 
-/** Dev deployments only (CMS_DEV_TOOLS=1): loads the prototype's demo sites into this workspace. */
-function SeedDemoSites() {
+/**
+ * Dev deployments only (CMS_DEV_TOOLS=1). "sites": the prototype's demo sites. "posts": their content plans (pillars,
+ * keywords, posts, gate checks, image slots); sites that already have a plan are skipped, so pressing it twice is safe.
+ */
+function SeedDemo({ what }: { what: "sites" | "posts" }) {
 	const devTools = useQuery(api.devSeed.enabled, {});
-	const seed = useMutation(api.devSeed.seedSites);
+	const seedSites = useMutation(api.devSeed.seedSites);
+	const seedContent = useMutation(api.devSeed.seedContent);
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [done, setDone] = useState<string | null>(null);
 	if (!devTools) return null;
+	const seed = async () => {
+		if (what === "sites") return void (await seedSites({}));
+		const r = await seedContent({});
+		setDone(r.filled.length ? `Loaded posts for ${r.filled.length} site${r.filled.length === 1 ? "" : "s"}` : "Every site already has a plan");
+	};
 	return (
 		<div className="flex flex-col gap-1.5">
 			<Button
@@ -69,17 +79,18 @@ function SeedDemoSites() {
 					setBusy(true);
 					setError(null);
 					try {
-						await seed({});
+						await seed();
 					} catch (e) {
-						setError(e instanceof ConvexError ? String((e.data as { reason?: string }).reason ?? "Couldn't load the demo sites") : "Couldn't load the demo sites");
+						setError(e instanceof ConvexError ? String((e.data as { reason?: string }).reason ?? `Couldn't load the demo ${what}`) : `Couldn't load the demo ${what}`);
 					} finally {
 						setBusy(false);
 					}
 				}}
 			>
-				Load demo sites (dev only)
+				Load demo {what} (dev only)
 			</Button>
 			{error && <span className="text-xs text-block">{error}</span>}
+			{done && <span className="text-xs text-ink-3">{done}</span>}
 		</div>
 	);
 }

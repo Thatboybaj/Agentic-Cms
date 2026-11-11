@@ -1,0 +1,77 @@
+// Content plan (api-map §2 `posts.board` + the reads the plan page needs in one subscription): posts with their gate
+// checks and fact markers, keywords, pillars, image slots, MRs, schedules, open ledger items, recent runs, the
+// confirmed manifest, and the site's people with their roles. Bounded reads only (I3). Plus moveToWeek (api-map §3).
+import { v } from "convex/values";
+import { siteRoleFor } from "./lib/access";
+import { audit } from "./lib/audit";
+import { activeManifest, activeRepo } from "./lib/gateInputs";
+import { siteMutation, siteQuery } from "./lib/functions";
+import { isoWeek } from "./posts";
+
+type TResult = { ok: true } | { ok: false; reason: string };
+
+export const bundle = siteQuery({
+	permission: "plan.view",
+	args: {},
+	handler: async (ctx, { siteId }) => {
+		const { site, role } = ctx.access;
+		const allPosts = await ctx.db.query("posts").withIndex("by_site_week", (q) => q.eq("siteId", siteId)).take(500);
+		const posts = [];
+		for (const p of allPosts) {
+			if (p.ideaStatus === "rejected") continue;
+			const checks = await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", p._id)).take(60);
+			const facts = await ctx.db.query("factMarkers").withIndex("by_post", (q) => q.eq("postId", p._id)).take(60);
+			posts.push({ ...p, checks, facts });
+		}
+		const slots = await ctx.db.query("imageSlots").withIndex("by_site_status", (q) => q.eq("siteId", siteId)).take(2000);
+		const keywords = await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(2000);
+		const pillars = await ctx.db.query("pillars").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(100);
+		const mergeRequests = await ctx.db.query("mergeRequests").withIndex("by_site_status", (q) => q.eq("siteId", siteId)).take(500);
+		const schedules = await ctx.db.query("schedules").withIndex("by_site_kind", (q) => q.eq("siteId", siteId)).take(20);
+		const ledger = await ctx.db.query("ledgerItems").withIndex("by_site_done", (q) => q.eq("siteId", siteId).eq("done", false)).take(200);
+		const runs = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", siteId)).order("desc").take(50);
+		const manifest = await activeManifest(ctx, siteId);
+		const repo = await activeRepo(ctx, siteId);
+		// People on the site (names + effective roles) for "who does this" copy; never emails.
+		const memberRows = await ctx.db.query("memberships").withIndex("by_site_user", (q) => q.eq("siteId", siteId)).take(200);
+		const wsRows = await ctx.db.query("workspaceMembers").withIndex("by_workspace_user", (q) => q.eq("workspaceId", site.workspaceId)).take(500);
+		const ids = new Set([...memberRows.map((m) => m.userId), ...wsRows.filter((w) => w.status === "active" && w.role !== "member").map((w) => w.userId)]);
+		const members = [];
+		for (const userId of ids) {
+			const u = await ctx.db.get(userId);
+			const r = u ? await siteRoleFor(ctx, site, userId) : null;
+			if (u && r && u.status === "active") members.push({ id: u._id, name: u.name, initials: u.initials, role: r });
+		}
+		return {
+			site: { ...site, role },
+			repo: repo ? { host: repo.host, repo: repo.repo, baseBranch: repo.baseBranch, contentDir: repo.contentDir, assetDir: repo.assetDir, branchPattern: repo.branchPattern, installedAs: repo.installedAs } : null,
+			posts,
+			slots,
+			keywords,
+			pillars,
+			mergeRequests,
+			schedules,
+			ledger,
+			runs,
+			manifest,
+			members,
+			now: Date.now(),
+		};
+	},
+});
+
+export const moveToWeek = siteMutation({
+	permission: "post.schedule",
+	args: { postId: v.id("posts"), week: v.number() },
+	handler: async (ctx, { siteId, postId, week }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const post = await ctx.db.get(postId);
+		if (!post || post.siteId !== siteId) return { ok: false, reason: "Post not found" };
+		if (post.state !== "idea" && post.state !== "briefed") return { ok: false, reason: "Only planned posts (Idea, Briefed) can be rescheduled" };
+		if (!Number.isInteger(week) || week < isoWeek(Date.now()) || week > 53) return { ok: false, reason: "Pick this week or a later one" };
+		if (week === post.week) return { ok: true };
+		await ctx.db.patch(postId, { week, updatedAt: Date.now() });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "rescheduled", target: post.title, detail: `W${post.week} → W${week} · generation run moves with it` });
+		return { ok: true };
+	},
+});

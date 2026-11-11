@@ -4,7 +4,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarWeekGrid, Card, Chip, IconButton, PaginationDots, PillarMatrix, SourceNote, stateTone, type ICalendarWeek } from "@/ds";
 import { isoWeek } from "@/lib/clock";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { TPostState } from "@/lib/types";
 import { sitePath } from "@/lib/routes";
 
@@ -12,7 +13,7 @@ const PLANNED: TPostState[] = ["idea", "briefed", "drafting", "needs-assets", "i
 
 export function CalendarView() {
 	const { slug } = useSite();
-	const { data, site, can, why, actions } = useCms();
+	const { data, site, can, why, actions } = usePlanCms();
 	const canMove = can("post.schedule");
 	const scroller = useRef<HTMLDivElement>(null);
 	const [page, setPage] = useState(0);
@@ -76,7 +77,7 @@ export function CalendarView() {
 }
 
 export function MatrixView() {
-	const { data } = useCms();
+	const { data } = usePlanCms();
 	const cells = useMemo(() => {
 		const map = new Map<string, number>();
 		for (const p of data.posts) map.set(`${p.pillarId}|${p.state}`, (map.get(`${p.pillarId}|${p.state}`) ?? 0) + 1);

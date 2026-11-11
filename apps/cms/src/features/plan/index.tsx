@@ -22,7 +22,8 @@ import {
 } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { fmtDay, fmtTime, POST_STATES } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { TPostState } from "@/lib/types";
 import { PlanAside, RunDialog, type TRegionState } from "./aside";
 import { Board } from "./board";
@@ -41,9 +42,11 @@ export function PlanFeature({ newIdea = false }: { newIdea?: boolean }) {
 	const path = usePathname();
 	const view = parseView(params.get("view"));
 	const demoParam = params.get("demo");
-	const demo: TDemo = demoParam === "loading" || demoParam === "error" || demoParam === "empty" ? demoParam : null;
+	const demoFromUrl: TDemo = demoParam === "loading" || demoParam === "error" || demoParam === "empty" ? demoParam : null;
 
-	const { data, site, role, state, can } = useCms();
+	const { data, site, role, state, can, loading } = usePlanCms();
+	// On Convex, the first bundle takes a moment: reuse the page's own loading state.
+	const demo: TDemo = loading ? "loading" : demoFromUrl;
 	const model = usePlanModel();
 	const { stats, pivot } = usePlanHeadline();
 

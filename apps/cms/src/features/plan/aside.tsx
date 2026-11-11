@@ -24,7 +24,8 @@ import {
 	StatTile,
 } from "@/ds";
 import { budgetFor, checkCap, estimateRun, fmtDay, fmtSignedPct, fmtTime, fmtUsd, RUN_META, TIER_LABEL } from "@/lib/logic";
-import { useCms, type ILedgerView, useSite } from "@/lib/store";
+import { type ILedgerView, useSite } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { ISchedule, TRunKind } from "@/lib/types";
 import { usePlanHeadline } from "./model";
 import { sitePath } from "@/lib/routes";
@@ -119,7 +120,7 @@ function LedgerCard() {
 function ProgrammeCard() {
 	const { slug } = useSite();
 	const { stats, site } = usePlanHeadline();
-	const { data } = useCms();
+	const { data } = usePlanCms();
 	const { cadence, gap, concentration } = stats;
 	const under = cadence.shipped < cadence.target;
 	return (
@@ -165,7 +166,7 @@ const PLANNED_KINDS: TRunKind[] = ["keyword-swarm", "technical-monitor", "qa-swe
 
 function NextRunsCard() {
 	const { slug } = useSite();
-	const { data, site, role, why } = useCms();
+	const { data, site, role, why } = usePlanCms();
 	const [dialog, setDialog] = useState<ISchedule | null>(null);
 	const next = data.schedules
 		.filter((s) => s.enabled && PLANNED_KINDS.includes(s.kind))
@@ -209,7 +210,7 @@ function NextRunsCard() {
 
 /** O4 — Run estimate. The run never starts without an estimate on screen. */
 export function RunDialog({ schedule, kind, onClose }: { schedule?: ISchedule | null; kind?: TRunKind | null; onClose: () => void }) {
-	const { site, actions } = useCms();
+	const { site, actions } = usePlanCms();
 	const k = schedule?.kind ?? kind ?? null;
 	const label = schedule?.label ?? (k ? RUN_META[k].label : "");
 	const est = k ? estimateRun(k, site) : null;

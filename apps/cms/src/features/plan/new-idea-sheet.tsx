@@ -5,7 +5,8 @@
 import { useEffect, useId, useMemo, useState } from "react";
 import { AgentBadge, Button, Callout, Chip, DataGap, KeyValue, LockedAction, Select, Sheet, Skeleton, STATE_LABEL, TextField } from "@/ds";
 import { INTENT_LABEL } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { IPost, TIntent } from "@/lib/types";
 import { isoWeek } from "@/lib/clock";
 import { sitePath } from "@/lib/routes";
@@ -33,7 +34,7 @@ function useIsMobile() {
 
 export function NewIdeaSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const { slug } = useSite();
-	const { data, site, state, can, why, actions } = useCms();
+	const { data, site, state, can, why, actions } = usePlanCms();
 	const mobile = useIsMobile();
 	const [text, setText] = useState("");
 	const [pillarId, setPillarId] = useState<string | null>(null);
@@ -88,10 +89,10 @@ export function NewIdeaSheet({ open, onClose }: { open: boolean; onClose: () => 
 	const specialist = state.members.find((m) => m.role === "specialist")?.name ?? "The content specialist";
 	const allowed = can("idea.create");
 
-	const add = () => {
-		const r = actions.addIdea(title, pillar ?? undefined);
+	const add = async () => {
+		const r = await actions.addIdea(title, pillar ?? undefined);
 		if (!r.ok) return;
-		if (r.id && chosenWeek !== nextWeek) actions.movePostToWeek(r.id, chosenWeek);
+		if (r.id && chosenWeek !== nextWeek) await actions.movePostToWeek(r.id, chosenWeek);
 		onClose();
 	};
 

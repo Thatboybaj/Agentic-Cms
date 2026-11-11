@@ -6,7 +6,7 @@ import { clsx } from "clsx";
 import { useState } from "react";
 import { Button, Dialog, LockedAction, RoleGate, TextArea } from "@/ds";
 import { estimateRun, fmtUsd, round2 } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { IPost, ISite, ISiteData, TIdeaSource, TProvider } from "@/lib/types";
 
 export const IDEA_SOURCE_LABEL: Record<TIdeaSource, string> = {
@@ -28,7 +28,7 @@ export function ideaCost(site: Pick<ISite, "cadenceTarget">, data: Pick<ISiteDat
 
 /** Approve / Reject for one pending idea. Locked roles see the action with the reason, never a silent gap. */
 export function IdeaApprovalRow({ post, className }: { post: IPost; className?: string }) {
-	const { site, role, actions, why } = useCms();
+	const { site, role, actions, why } = usePlanCms();
 	const [rejecting, setRejecting] = useState(false);
 	const auto = !!site.publishing?.autopost;
 	return (
@@ -47,10 +47,10 @@ export function IdeaApprovalRow({ post, className }: { post: IPost; className?: 
 }
 
 export function RejectIdeaDialog({ post, open, onClose }: { post: IPost; open: boolean; onClose: () => void }) {
-	const { actions } = useCms();
+	const { actions } = usePlanCms();
 	const [note, setNote] = useState("");
-	const submit = () => {
-		if (actions.rejectIdea(post.id, note).ok) {
+	const submit = async () => {
+		if ((await actions.rejectIdea(post.id, note)).ok) {
 			setNote("");
 			onClose();
 		}
@@ -83,7 +83,7 @@ export function RejectIdeaDialog({ post, open, onClose }: { post: IPost; open: b
 
 /** "Est. $1.98 to produce" line for idea rows. */
 export function IdeaCostNote({ post }: { post: IPost }) {
-	const { site, data } = useCms();
+	const { site, data } = usePlanCms();
 	const c = ideaCost(site, data, post);
 	return (
 		<span className="tabular text-xs text-ink-3">

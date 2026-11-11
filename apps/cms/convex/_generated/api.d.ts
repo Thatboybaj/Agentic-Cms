@@ -33,6 +33,7 @@ import type * as pipeline_gate from "../pipeline/gate.js";
 import type * as pipeline_persist from "../pipeline/persist.js";
 import type * as pipeline_ship from "../pipeline/ship.js";
 import type * as pipeline_steps from "../pipeline/steps.js";
+import type * as plan from "../plan.js";
 import type * as portfolio from "../portfolio.js";
 import type * as posts from "../posts.js";
 import type * as review from "../review.js";
@@ -79,6 +80,7 @@ declare const fullApi: ApiFromModules<{
   "pipeline/persist": typeof pipeline_persist;
   "pipeline/ship": typeof pipeline_ship;
   "pipeline/steps": typeof pipeline_steps;
+  plan: typeof plan;
   portfolio: typeof portfolio;
   posts: typeof posts;
   review: typeof review;

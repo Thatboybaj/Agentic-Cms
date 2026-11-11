@@ -2,7 +2,7 @@
 // Derived view data for the Content plan. Reads only from the store; never copies domain data.
 
 import { useMemo } from "react";
-import { useActiveManifest, useCms, useLedger, useStats } from "@/lib/store";
+import { usePlanManifest, usePlanCms, usePlanLedger, usePlanStats } from "./source";
 import { evaluateGate, isPendingIdea, POST_STATES, STATE_OWNER } from "@/lib/logic";
 import type { IImageSlot, IMergeRequest, IPost, TOwner, TPostState } from "@/lib/types";
 
@@ -37,8 +37,8 @@ export interface IPlanModel {
 }
 
 export function usePlanModel(): IPlanModel {
-	const { data } = useCms();
-	const manifest = useActiveManifest();
+	const { data } = usePlanCms();
+	const manifest = usePlanManifest();
 	return useMemo(() => {
 		const columns = Object.fromEntries(POST_STATES.map((s) => [s, [] as IBoardPost[]])) as Record<TPostState, IBoardPost[]>;
 		for (const post of data.posts) {
@@ -66,9 +66,9 @@ export function usePlanModel(): IPlanModel {
 
 /** Everything the aside + header need beyond useStats. */
 export function usePlanHeadline() {
-	const stats = useStats();
-	const ledger = useLedger();
-	const { data, site } = useCms();
+	const stats = usePlanStats();
+	const ledger = usePlanLedger();
+	const { data, site } = usePlanCms();
 	const latestReport = data.reports[0];
 	const pivot = latestReport?.pivotTriggers[0] ?? null;
 	return { stats, ledger, site, pivot, latestReport };

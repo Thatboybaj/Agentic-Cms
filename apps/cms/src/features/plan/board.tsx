@@ -7,7 +7,8 @@ import Link from "next/link";
 import { useId, type KeyboardEvent } from "react";
 import { Button, Card, PipelineColumn, PostCard, RoleGate, STATE_LABEL, Tooltip } from "@/ds";
 import { checkCap, estimateRun, fmtUsd, isPendingIdea, POST_STATES, TIER_LABEL } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { usePlanCms } from "./source";
 import type { TPostState } from "@/lib/types";
 import { IdeaApprovalRow, IdeaCostNote } from "./idea-actions";
 import { cardPost, type IBoardPost, type IPlanModel } from "./model";
@@ -34,7 +35,7 @@ export interface IBoardProps {
 
 export function Board({ model, expanded, focus, onExpand, columnRef }: IBoardProps) {
 	const { slug } = useSite();
-	const { can, actions } = useCms();
+	const { can, actions } = usePlanCms();
 	const hintId = useId();
 	const canPromote = can("post.promote");
 	const liveCount = useCountLive();
@@ -105,7 +106,7 @@ const defaultWide = (s: TPostState) => s === "idea" || s === "drafting" || s ===
 
 /** Live count includes posts that predate the CMS (liveBaseline) — never show only the seeded objects. */
 function useCountLive() {
-	const { data } = useCms();
+	const { data } = usePlanCms();
 	return data.liveBaseline + data.posts.filter((p) => p.state === "live").length;
 }
 
@@ -134,7 +135,7 @@ function CollapsedBody({ items, count, state, onOpen }: { items: IBoardPost[]; c
 
 function BoardCard({ bp, selected, canPromote, hintId, onPromote }: { bp: IBoardPost; selected: boolean; canPromote: boolean; hintId: string; onPromote: (id: string) => void }) {
 	const { slug } = useSite();
-	const { data } = useCms();
+	const { data } = usePlanCms();
 	const { post } = bp;
 	const isIdea = post.state === "idea";
 	const draggable = canPromote && isIdea;
@@ -178,7 +179,7 @@ function BoardCard({ bp, selected, canPromote, hintId, onPromote }: { bp: IBoard
 
 /** "Generate now" on briefed cards — the estimate is always visible before the run starts (spend guardrail). */
 export function GenerateRow({ postId, strong }: { postId: string; strong: boolean }) {
-	const { site, role, actions, why } = useCms();
+	const { site, role, actions, why } = usePlanCms();
 	const est = estimateRun("post-generation", site, { strongModel: strong });
 	const cap = checkCap(site, "post-generation", est);
 	const over = cap.status === "refused";
