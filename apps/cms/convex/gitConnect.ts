@@ -9,17 +9,17 @@ import { audit } from "./lib/audit";
 import { siteAction, siteMutation, siteQuery } from "./lib/functions";
 import { signState } from "./lib/github";
 import { scopeError } from "./lib/pathScope";
+import { githubConfig } from "./appConfig";
 import type { IScan } from "./gitNode";
 
 type TResult = { ok: true; url?: string } | { ok: false; reason: string };
-const NOT_CONFIGURED = "The GitHub App isn't set up on this deployment yet (GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_APP_PRIVATE_KEY, GITHUB_WEBHOOK_SECRET)";
-const configured = () => !!(process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY && process.env.GITHUB_APP_SLUG && process.env.GITHUB_WEBHOOK_SECRET);
+const NOT_CONFIGURED = "The GitHub App isn't set up on this deployment yet · create it from Connect a site → Repo";
 
 export const status = siteQuery({
 	permission: "plan.view",
 	args: {},
 	handler: async (ctx, { siteId }) => ({
-		configured: configured(),
+		configured: (await githubConfig(ctx)) !== null,
 		installations: (await ctx.db.query("gitInstallations").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(10)).map((i) => ({ installationId: i.installationId, account: i.account ?? null })),
 	}),
 });
@@ -28,9 +28,23 @@ export const beginInstall = siteMutation({
 	permission: "repo.connect",
 	args: {},
 	handler: async (ctx, { siteId }): Promise<TResult> => {
-		if (!configured()) return { ok: false, reason: NOT_CONFIGURED };
-		const state = await signState(process.env.GITHUB_WEBHOOK_SECRET!, { siteId, userId: ctx.access.user._id, exp: Date.now() + 15 * 60_000 });
-		return { ok: true, url: `https://github.com/apps/${process.env.GITHUB_APP_SLUG}/installations/new?state=${encodeURIComponent(state)}` };
+		const cfg = await githubConfig(ctx);
+		if (!cfg) return { ok: false, reason: NOT_CONFIGURED };
+		const state = await signState(cfg.webhookSecret, { siteId, userId: ctx.access.user._id, exp: Date.now() + 15 * 60_000 });
+		return { ok: true, url: `https://github.com/apps/${cfg.slug}/installations/new?state=${encodeURIComponent(state)}` };
+	},
+});
+
+/** One-click App creation (GitHub App Manifest flow): returns the Convex page that posts the manifest to GitHub. */
+export const beginAppManifest = siteMutation({
+	permission: "repo.connect",
+	args: {},
+	handler: async (ctx, { siteId }): Promise<TResult> => {
+		if (await githubConfig(ctx)) return { ok: false, reason: "The GitHub App is already set up on this deployment" };
+		const key = process.env.CMS_SECRETS_KEY_V1;
+		if (!key) return { ok: false, reason: "The deployment's secrets key isn't set" };
+		const state = await signState(key, { siteId, userId: ctx.access.user._id, exp: Date.now() + 30 * 60_000 });
+		return { ok: true, url: `${process.env.CONVEX_SITE_URL}/github/manifest/start?state=${encodeURIComponent(state)}` };
 	},
 });
 
@@ -47,7 +61,7 @@ export const installRepos = siteAction({
 	permission: "repo.connect",
 	args: { installationId: v.string() },
 	handler: async (ctx, { siteId, installationId }): Promise<{ ok: true; account: string; repos: { repo: string; defaultBranch: string; private: boolean }[] } | { ok: false; reason: string }> => {
-		if (!configured()) return { ok: false, reason: NOT_CONFIGURED };
+		if (!(await ctx.runQuery(internal.appConfig.githubConfigured, {}))) return { ok: false, reason: NOT_CONFIGURED };
 		if (!(await ownInstallation(ctx, siteId, installationId))) return { ok: false, reason: "That installation wasn't completed for this site · install the app again" };
 		try {
 			const r = await ctx.runAction(internal.gitNode.installRepos, { installationId });
@@ -71,7 +85,7 @@ export const scanRepo = siteAction({
 	permission: "repo.connect",
 	args: { installationId: v.string(), repo: v.string() },
 	handler: async (ctx, { siteId, installationId, repo }): Promise<({ ok: true } & IScan) | { ok: false; reason: string }> => {
-		if (!configured()) return { ok: false as const, reason: NOT_CONFIGURED };
+		if (!(await ctx.runQuery(internal.appConfig.githubConfigured, {}))) return { ok: false as const, reason: NOT_CONFIGURED };
 		if (!(await ownInstallation(ctx, siteId, installationId))) return { ok: false as const, reason: "That installation wasn't completed for this site" };
 		try {
 			return { ok: true as const, ...(await ctx.runAction(internal.gitNode.scanRepo, { installationId, repo })) };
@@ -87,7 +101,7 @@ export const connectRepo = siteAction({
 	permission: "repo.connect",
 	args: { installationId: v.string(), repo: v.string(), ...vPaths },
 	handler: async (ctx, a): Promise<TResult> => {
-		if (!configured()) return { ok: false, reason: NOT_CONFIGURED };
+		if (!(await ctx.runQuery(internal.appConfig.githubConfigured, {}))) return { ok: false, reason: NOT_CONFIGURED };
 		for (const d of [a.contentDir, a.assetDir]) {
 			const why = scopeError(d);
 			if (why) return { ok: false, reason: why };

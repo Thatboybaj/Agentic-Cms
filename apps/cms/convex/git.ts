@@ -54,7 +54,7 @@ export const requestMerge = internalAction({
 	args: { mrId: v.id("mergeRequests"), by: v.string() },
 	handler: async (ctx, { mrId, by }) => {
 		const live = await ctx.runQuery(internal.gitHooks.mrForSync, { mrId });
-		if (live && process.env.GITHUB_APP_ID) {
+		if (live && (await ctx.runQuery(internal.appConfig.githubConfigured, {}))) {
 			await ctx.runAction(internal.gitNode.mergePr, { mrId, by });
 			return;
 		}

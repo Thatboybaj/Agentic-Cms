@@ -62,7 +62,7 @@ http.route({ pathPrefix: "/tpl/", method: "GET", handler: templateFile });
 export const githubSetup = httpAction(async (ctx, req) => {
 	const url = new URL(req.url);
 	const front = process.env.FRONTEND_URL ?? "";
-	const secret = process.env.GITHUB_WEBHOOK_SECRET;
+	const secret = (await ctx.runQuery(internal.appConfig.github, {}))?.webhookSecret;
 	const installationId = url.searchParams.get("installation_id");
 	const state = url.searchParams.get("state");
 	if (!secret || !installationId || !/^\d+$/.test(installationId) || !state) return new Response("Missing or invalid installation", { status: 400 });
@@ -75,7 +75,7 @@ export const githubSetup = httpAction(async (ctx, req) => {
 
 /** GitHub webhooks: HMAC over the raw body; replays deduped by delivery id; tenant from installation + repo only. */
 export const githubWebhook = httpAction(async (ctx, req) => {
-	const secret = process.env.GITHUB_WEBHOOK_SECRET;
+	const secret = (await ctx.runQuery(internal.appConfig.github, {}))?.webhookSecret;
 	if (!secret) return new Response("Webhook not configured", { status: 500 });
 	const body = await req.text();
 	if (!(await verifyWebhook(secret, body, req.headers.get("x-hub-signature-256")))) return new Response("Invalid signature", { status: 401 });
@@ -135,6 +135,48 @@ export const polarWebhook = httpAction(async (ctx, req) => {
 
 http.route({ path: "/polar/webhook", method: "POST", handler: polarWebhook });
 http.route({ path: "/oauth/google/callback", method: "GET", handler: googleCallback });
+/** Manifest flow step 1: a page that posts the App manifest to GitHub (the developer then clicks Create there). */
+export const githubManifestStart = httpAction(async (_ctx, req) => {
+	const state = new URL(req.url).searchParams.get("state") ?? "";
+	const key = process.env.CMS_SECRETS_KEY_V1;
+	if (!key || !(await verifyState(key, state))) return new Response("This link expired · start again from the CMS", { status: 400 });
+	const base = process.env.CONVEX_SITE_URL;
+	const manifest = {
+		name: "Agentic CMS BAYNOR",
+		url: base,
+		description: "Opens one branch and pull request per post. Writes only to the content and image folders; never pushes to the base branch.",
+		hook_attributes: { url: `${base}/github/webhook`, active: true },
+		redirect_url: `${base}/github/manifest/callback`,
+		setup_url: `${base}/github/setup`,
+		setup_on_update: true,
+		public: false,
+		default_permissions: { contents: "write", pull_requests: "write", checks: "read", statuses: "read", metadata: "read" },
+		default_events: ["check_run", "check_suite", "pull_request", "status"],
+	};
+	const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+	const html = `<!doctype html><html><head><meta charset="utf-8"><title>Create the GitHub App</title></head><body style="font-family:system-ui;padding:40px"><p>Opening GitHub to create the CMS app…</p><form id="f" method="post" action="https://github.com/settings/apps/new?state=${encodeURIComponent(state)}"><input type="hidden" name="manifest" value="${esc(JSON.stringify(manifest))}"><button type="submit">Continue to GitHub</button></form><script>document.getElementById("f").submit()</script></body></html>`;
+	return new Response(html, { headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" } });
+});
+
+/** Manifest flow step 2: GitHub returns a one-time code; Convex converts it to the App credentials and seals them. */
+export const githubManifestCallback = httpAction(async (ctx, req) => {
+	const url = new URL(req.url);
+	const front = process.env.FRONTEND_URL ?? "";
+	const key = process.env.CMS_SECRETS_KEY_V1;
+	const code = url.searchParams.get("code");
+	const s = key ? await verifyState(key, url.searchParams.get("state") ?? "") : null;
+	if (!s || !code || !/^[a-z0-9]+$/i.test(code)) return new Response("This link expired or was tampered with · start again from the CMS", { status: 400 });
+	const res = await fetch(`https://api.github.com/app-manifests/${code}/conversions`, { method: "POST", headers: { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", "User-Agent": "agentic-cms" } });
+	if (!res.ok) return new Response(`GitHub couldn't finish creating the app (${res.status}) · start again from the CMS`, { status: 502 });
+	const app = (await res.json()) as { id: number; slug: string; pem: string; webhook_secret: string | null };
+	if (!app.webhook_secret) return new Response("GitHub returned no webhook secret · start again", { status: 502 });
+	await ctx.runMutation(internal.appConfig.storeGithub, { appId: String(app.id), slug: app.slug, privateKey: app.pem, webhookSecret: app.webhook_secret });
+	const slug = await ctx.runQuery(internal.appConfig.siteSlug, { siteId: s.siteId as Id<"sites"> });
+	return Response.redirect(`${front}/s/${encodeURIComponent(slug ?? "")}/onboarding?app=created`, 302);
+});
+
+http.route({ path: "/github/manifest/start", method: "GET", handler: githubManifestStart });
+http.route({ path: "/github/manifest/callback", method: "GET", handler: githubManifestCallback });
 http.route({ path: "/github/setup", method: "GET", handler: githubSetup });
 http.route({ path: "/github/webhook", method: "POST", handler: githubWebhook });
 

@@ -56,7 +56,7 @@ function Wizard() {
 	const { site, can, why, state } = useSiteCms();
 	const canConnect = can("repo.connect");
 	const resume = resumeAt?.siteId === site.id ? resumeAt.step : null;
-	const returning = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("installation");
+	const returning = typeof window !== "undefined" && (new URLSearchParams(window.location.search).has("installation") || new URLSearchParams(window.location.search).has("app"));
 	const [started, setStarted] = useState(!site.repo || resume !== null || returning);
 	const [adding, setAdding] = useState(false);
 	const developer = state.members.find((m) => m.role === "developer")?.name ?? "a developer";
@@ -275,8 +275,27 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 					}}
 				/>
 				{live && live.ready && !live.configured ? (
-					<Callout tone="block" icon="Warning" title="The GitHub App isn't set up on this deployment yet.">
-						An admin adds GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_APP_PRIVATE_KEY and GITHUB_WEBHOOK_SECRET to the Convex deployment, then this button opens GitHub.
+					<Callout
+						tone="info"
+						icon="GithubLogo"
+						title="First, create the CMS app on GitHub (once per deployment)."
+						action={
+							<Button
+								variant="secondary"
+								size="sm"
+								icon="GithubLogo"
+								onClick={async () => {
+									setLiveError(null);
+									const res = await live.createApp();
+									if (!res.ok) return setLiveError(res.reason);
+									if (res.url) window.location.assign(res.url);
+								}}
+							>
+								Create the GitHub App
+							</Button>
+						}
+					>
+						GitHub shows the app with its permissions already set (contents and pull requests: write; checks and statuses: read). You click Create; GitHub hands the keys straight to the CMS.
 					</Callout>
 				) : null}
 				{liveError && (

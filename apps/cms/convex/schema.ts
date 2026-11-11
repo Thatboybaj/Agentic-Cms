@@ -939,6 +939,14 @@ export default defineSchema({
 		.index("by_polarSubscription", ["polarSubscriptionId"]),
 
 	/** Idempotent webhook intake (GitHub / GitLab / Clerk / Polar / Autumn). Workspace-agnostic until resolved. */
+	/** Deployment-level integration credentials created in-app (GitHub App manifest flow), sealed with CMS_SECRETS_KEY. */
+	appConfig: defineTable({
+		key: v.string(),
+		ciphertext: v.string(),
+		keyVersion: v.number(),
+		updatedAt: v.number(),
+	}).index("by_key", ["key"]),
+
 	webhookEvents: defineTable({
 		source: v.union(v.literal("github"), v.literal("gitlab"), v.literal("clerk"), v.literal("polar"), v.literal("autumn")),
 		deliveryId: v.string(), // X-GitHub-Delivery / svix-id / provider event id

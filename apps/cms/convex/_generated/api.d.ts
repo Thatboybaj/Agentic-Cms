@@ -23,6 +23,7 @@ import type * as agents_sdk from "../agents/sdk.js";
 import type * as agents_visual from "../agents/visual.js";
 import type * as agents_writer from "../agents/writer.js";
 import type * as agents_writerCore from "../agents/writerCore.js";
+import type * as appConfig from "../appConfig.js";
 import type * as assetsNode from "../assetsNode.js";
 import type * as billing from "../billing.js";
 import type * as clerkApi from "../clerkApi.js";
@@ -111,6 +112,7 @@ declare const fullApi: ApiFromModules<{
   "agents/visual": typeof agents_visual;
   "agents/writer": typeof agents_writer;
   "agents/writerCore": typeof agents_writerCore;
+  appConfig: typeof appConfig;
   assetsNode: typeof assetsNode;
   billing: typeof billing;
   clerkApi: typeof clerkApi;

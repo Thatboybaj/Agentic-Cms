@@ -7,7 +7,7 @@
 import { createSign } from "node:crypto";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
-import { internalAction } from "./_generated/server";
+import { type ActionCtx, internalAction } from "./_generated/server";
 import { rollUpCi } from "./lib/github";
 import { assertWritable, normDir } from "./lib/pathScope";
 
@@ -24,12 +24,17 @@ export class GitHubError extends Error {
 	}
 }
 
-export const githubConfigured = () => !!(process.env.GITHUB_APP_ID && process.env.GITHUB_APP_PRIVATE_KEY && process.env.GITHUB_APP_SLUG);
+type TCfg = { appId: string; privateKey: string };
 
-function appJwt(): string {
-	const appId = process.env.GITHUB_APP_ID;
-	const pem = (process.env.GITHUB_APP_PRIVATE_KEY ?? "").replace(/\\n/g, "\n");
-	if (!appId || !pem) throw new GitHubError(0, "The GitHub App isn't configured on this deployment");
+async function cfgOf(ctx: { runQuery: ActionCtx["runQuery"] }): Promise<TCfg> {
+	const c = await ctx.runQuery(internal.appConfig.github, {});
+	if (!c) throw new GitHubError(0, "The GitHub App isn't set up on this deployment yet");
+	return c;
+}
+
+function appJwt(cfg: TCfg): string {
+	const appId = cfg.appId;
+	const pem = cfg.privateKey;
 	const now = Math.floor(Date.now() / 1000);
 	const b64u = (o: object) => Buffer.from(JSON.stringify(o)).toString("base64url");
 	const unsigned = `${b64u({ alg: "RS256", typ: "JWT" })}.${b64u({ iat: now - 60, exp: now + 540, iss: appId })}`;
@@ -59,8 +64,8 @@ async function gh<T>(token: string, method: string, path: string, body?: unknown
 }
 
 /** A token for one installation, optionally narrowed to one repository (least privilege per call). */
-async function installationToken(installationId: string, repoName?: string): Promise<string> {
-	const r = await gh<{ token: string }>(appJwt(), "POST", `/app/installations/${installationId}/access_tokens`, repoName ? { repositories: [repoName] } : undefined);
+async function installationToken(cfg: TCfg, installationId: string, repoName?: string): Promise<string> {
+	const r = await gh<{ token: string }>(appJwt(cfg), "POST", `/app/installations/${installationId}/access_tokens`, repoName ? { repositories: [repoName] } : undefined);
 	return r.token;
 }
 
@@ -74,10 +79,11 @@ const split = (full: string) => {
 
 export const installRepos = internalAction({
 	args: { installationId: v.string() },
-	handler: async (_ctx, { installationId }): Promise<{ account: string; repos: { repo: string; defaultBranch: string; private: boolean }[] }> => {
-		const token = await installationToken(installationId);
+	handler: async (ctx, { installationId }): Promise<{ account: string; repos: { repo: string; defaultBranch: string; private: boolean }[] }> => {
+		const cfg = await cfgOf(ctx);
+		const token = await installationToken(cfg, installationId);
 		const r = await gh<{ repositories: { full_name: string; default_branch: string; private: boolean }[] }>(token, "GET", "/installation/repositories?per_page=100");
-		const inst = await gh<{ account: { login: string } }>(appJwt(), "GET", `/app/installations/${installationId}`);
+		const inst = await gh<{ account: { login: string } }>(appJwt(cfg), "GET", `/app/installations/${installationId}`);
 		return { account: inst.account.login, repos: r.repositories.map((x) => ({ repo: x.full_name, defaultBranch: x.default_branch, private: x.private })) };
 	},
 });
@@ -85,9 +91,9 @@ export const installRepos = internalAction({
 /** Reads the repo layout to suggest contentDir / assetDir (the most common Markdown dir; an images dir under public/static). */
 export const scanRepo = internalAction({
 	args: { installationId: v.string(), repo: v.string() },
-	handler: async (_ctx, { installationId, repo }): Promise<IScan> => {
+	handler: async (ctx, { installationId, repo }): Promise<IScan> => {
 		const { owner, name } = split(repo);
-		const token = await installationToken(installationId, name);
+		const token = await installationToken(await cfgOf(ctx), installationId, name);
 		const meta = await gh<{ default_branch: string }>(token, "GET", `/repos/${owner}/${name}`);
 		const tree = await gh<{ tree: { path: string; type: string }[]; truncated: boolean }>(token, "GET", `/repos/${owner}/${name}/git/trees/${encodeURIComponent(meta.default_branch)}?recursive=1`);
 		const count = new Map<string, number>();
@@ -132,7 +138,7 @@ export const openPr = internalAction({
 	handler: async (ctx, a): Promise<{ number: number; externalId: string; headSha: string; url: string }> => {
 		if (normDir(a.branch) === normDir(a.base) || !a.branch.trim()) throw new GitHubError(0, "Refusing to write to the base branch");
 		const { owner, name } = split(a.repo);
-		const token = await installationToken(a.installationId, name);
+		const token = await installationToken(await cfgOf(ctx), a.installationId, name);
 		const repoPath = `/repos/${owner}/${name}`;
 		const baseRef = await gh<{ object: { sha: string } }>(token, "GET", `${repoPath}/git/ref/heads/${encodeURIComponent(a.base)}`);
 		const baseCommit = await gh<{ tree: { sha: string } }>(token, "GET", `${repoPath}/git/commits/${baseRef.object.sha}`);
@@ -173,7 +179,7 @@ export const refreshCi = internalAction({
 		const m = await ctx.runQuery(internal.gitHooks.mrForSync, { mrId });
 		if (!m || !m.headSha) return;
 		const { owner, name } = split(m.repo);
-		const token = await installationToken(m.installationId, name);
+		const token = await installationToken(await cfgOf(ctx), m.installationId, name);
 		const runs = await gh<{ check_runs: { status: string; conclusion: string | null; name: string }[] }>(token, "GET", `/repos/${owner}/${name}/commits/${m.headSha}/check-runs?per_page=100`);
 		const status = await gh<{ statuses: { state: string; context: string }[] }>(token, "GET", `/repos/${owner}/${name}/commits/${m.headSha}/status`);
 		const r = rollUpCi(runs.check_runs, status.statuses);
@@ -188,7 +194,7 @@ export const mergePr = internalAction({
 		const m = await ctx.runQuery(internal.gitHooks.mrForSync, { mrId });
 		if (!m || !m.headSha) return;
 		const { owner, name } = split(m.repo);
-		const token = await installationToken(m.installationId, name);
+		const token = await installationToken(await cfgOf(ctx), m.installationId, name);
 		const repo = await gh<{ allow_squash_merge?: boolean; allow_merge_commit?: boolean; allow_rebase_merge?: boolean }>(token, "GET", `/repos/${owner}/${name}`);
 		const method = repo.allow_squash_merge ? "squash" : repo.allow_merge_commit ? "merge" : "rebase";
 		try {
