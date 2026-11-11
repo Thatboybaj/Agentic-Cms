@@ -213,30 +213,76 @@ export const dropConnection = internalMutation({
 const iso = (t: number) => new Date(t).toISOString().slice(0, 10);
 export const normQuery = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ").replace(/[?:]/g, "");
 
+type TRow = { query: string; page: string; date: string; clicks: number; impressions: number; position: number };
+type TDaily = { date: string; clicks: number; impressions: number };
+const BACKFILL_DAYS = 90;
+const WEEKLY_DAYS = 56; // the weekly totals window, rebuilt on every import
+
+/** One Search Analytics query, paged. null = access lost (marked reconnect_required; callers write nothing). */
+async function searchAnalytics(ctx: Pick<ActionCtx, "runMutation">, siteId: Id<"sites">, t: { token: string; propertyUri: string }, body: { startDate: string; endDate: string; dimensions: string[] }): Promise<{ keys: string[]; clicks: number; impressions: number; position: number }[] | null> {
+	const out: { keys: string[]; clicks: number; impressions: number; position: number }[] = [];
+	for (let startRow = 0; startRow < 250_000; startRow += 25_000) {
+		const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(t.propertyUri)}/searchAnalytics/query`, { method: "POST", headers: { Authorization: `Bearer ${t.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ ...body, rowLimit: 25_000, startRow, dataState: "final" }) });
+		if (res.status === 401 || res.status === 403) {
+			await ctx.runMutation(internal.gsc.markState, { siteId, status: "reconnect_required", code: `import_${res.status}` });
+			return null; // never write zeros for a failed import
+		}
+		if (!res.ok) throw new Error(`Search Analytics ${res.status}`);
+		const page = ((await res.json()) as { rows?: { keys: string[]; clicks: number; impressions: number; position: number }[] }).rows ?? [];
+		out.push(...page);
+		if (page.length < 25_000) break;
+	}
+	return out;
+}
+
+const queryRows = (rows: { keys: string[]; clicks: number; impressions: number; position: number }[]): TRow[] => rows.map((r) => ({ query: r.keys[0]!, page: r.keys[1]!, date: r.keys[2]!, clicks: r.clicks, impressions: r.impressions, position: r.position }));
+
 export const importSite = internalAction({
 	args: { siteId: v.id("sites") },
 	handler: async (ctx, { siteId }) => {
 		const t = await accessToken(ctx, siteId);
 		if (!t || !t.propertyUri) return;
+		const prop = { token: t.token, propertyUri: t.propertyUri };
 		const end = iso(Date.now() - LAG_DAYS * DAY);
-		const start = t.lastImportedDate ? iso(Date.parse(t.lastImportedDate) + DAY) : iso(Date.now() - (LAG_DAYS + 90) * DAY);
+		const start = t.lastImportedDate ? iso(Date.parse(t.lastImportedDate) + DAY) : iso(Date.now() - (LAG_DAYS + BACKFILL_DAYS) * DAY);
 		if (start > end) return;
-		const rows: { query: string; page: string; date: string; clicks: number; impressions: number; position: number }[] = [];
-		for (let startRow = 0; startRow < 250_000; startRow += 25_000) {
-			const res = await fetch(`https://www.googleapis.com/webmasters/v3/sites/${encodeURIComponent(t.propertyUri)}/searchAnalytics/query`, { method: "POST", headers: { Authorization: `Bearer ${t.token}`, "Content-Type": "application/json" }, body: JSON.stringify({ startDate: start, endDate: end, dimensions: ["query", "page", "date"], rowLimit: 25_000, startRow, dataState: "final" }) });
-			if (res.status === 401 || res.status === 403) {
-				await ctx.runMutation(internal.gsc.markState, { siteId, status: "reconnect_required", code: `import_${res.status}` });
-				return; // never write zeros for a failed import
-			}
-			if (!res.ok) throw new Error(`Search Analytics ${res.status}`);
-			const body = (await res.json()) as { rows?: { keys: [string, string, string]; clicks: number; impressions: number; position: number }[] };
-			for (const r of body.rows ?? []) rows.push({ query: r.keys[0], page: r.keys[1], date: r.keys[2], clicks: r.clicks, impressions: r.impressions, position: r.position });
-			if ((body.rows?.length ?? 0) < 25_000) break;
-		}
+		const raw = await searchAnalytics(ctx, siteId, prop, { startDate: start, endDate: end, dimensions: ["query", "page", "date"] });
+		if (!raw) return;
+		const rows = queryRows(raw);
+		// Site-wide daily totals (every query, tracked or not) for the weekly impressions series: one small request,
+		// re-read for the whole window each time so late-final days and re-runs replace rather than add.
+		const days = await searchAnalytics(ctx, siteId, prop, { startDate: iso(Date.parse(end) - (WEEKLY_DAYS - 1) * DAY), endDate: end, dimensions: ["date"] });
+		if (!days) return;
+		const daily: TDaily[] = days.map((d) => ({ date: d.keys[0]!, clicks: d.clicks, impressions: d.impressions }));
 		for (let i = 0; i < rows.length; i += 2000) await ctx.runMutation(internal.gsc.writeRows, { siteId, rows: rows.slice(i, i + 2000) });
-		await ctx.runMutation(internal.gsc.finishImport, { siteId, lastImportedDate: end, rowCount: rows.length });
+		await ctx.runMutation(internal.gsc.finishImport, { siteId, lastImportedDate: end, rowCount: rows.length, daily });
 	},
 });
+
+/**
+ * Keywords added after the first import (manual ideas, the keyword swarm) would otherwise never get history: nightly
+ * imports only fetch new days, and writeRows keeps only queries that match a keyword. This re-reads the last 90 days
+ * for the whole property; writeRows is idempotent per (keyword, date), so it's safe to run any number of times.
+ */
+export const backfill = internalAction({
+	args: { siteId: v.id("sites") },
+	handler: async (ctx, { siteId }) => {
+		const t = await accessToken(ctx, siteId);
+		if (!t || !t.propertyUri || !t.lastImportedDate) return; // the first import covers the same 90 days
+		const end = t.lastImportedDate;
+		const raw = await searchAnalytics(ctx, siteId, { token: t.token, propertyUri: t.propertyUri }, { startDate: iso(Date.parse(end) - (BACKFILL_DAYS - 1) * DAY), endDate: end, dimensions: ["query", "page", "date"] });
+		if (!raw) return;
+		const rows = queryRows(raw);
+		for (let i = 0; i < rows.length; i += 2000) await ctx.runMutation(internal.gsc.writeRows, { siteId, rows: rows.slice(i, i + 2000) });
+		await ctx.runMutation(internal.gsc.finishBackfill, { siteId, lastImportedDate: end, rowCount: rows.length });
+	},
+});
+
+/** Call after inserting keywords: when the site has Search Console, their 90-day history is fetched shortly after. */
+export async function scheduleBackfill(ctx: MutationCtx, siteId: Id<"sites">) {
+	const c = await connectionOf(ctx, siteId);
+	if (c?.status === "connected" && c.propertyUri && c.lastImportedDate) await ctx.scheduler.runAfter(30_000, internal.gsc.backfill, { siteId });
+}
 
 const vRow = v.object({ query: v.string(), page: v.string(), date: v.string(), clicks: v.number(), impressions: v.number(), position: v.number() });
 
@@ -282,20 +328,13 @@ export const writeRows = internalMutation({
 });
 
 /** 28-day keyword roll-ups + the weekly impressions roll-up, then the import marker. */
-export const finishImport = internalMutation({
-	args: { siteId: v.id("sites"), lastImportedDate: v.string(), rowCount: v.number() },
-	handler: async (ctx, { siteId, lastImportedDate, rowCount }) => {
-		const site = (await ctx.db.get(siteId))!;
-		const since = iso(Date.parse(lastImportedDate) - 27 * DAY);
-		const keywords = await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(5000);
-		const weekly = new Map<string, number>();
-		for (const k of keywords) {
-			const hist = (await ctx.db.query("positionHistory").withIndex("by_keyword_date", (q) => q.eq("keywordId", k._id).gte("date", iso(Date.parse(lastImportedDate) - 56 * DAY))).take(200)).filter((h) => h.source === "gsc");
-			for (const h of hist) {
-				const wk = isoWeekKey(h.date);
-				weekly.set(wk, (weekly.get(wk) ?? 0) + h.impressions);
-			}
-			const recent = hist.filter((h) => h.date >= since);
+/** Per-keyword roll-up from the stored daily history: 28-day impressions and position, ranking page, weekly trend, decay. */
+async function rollupKeywords(ctx: MutationCtx, siteId: Id<"sites">, lastImportedDate: string) {
+	const since = iso(Date.parse(lastImportedDate) - 27 * DAY);
+	const keywords = await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(5000);
+	for (const k of keywords) {
+		const hist = (await ctx.db.query("positionHistory").withIndex("by_keyword_date", (q) => q.eq("keywordId", k._id).gte("date", iso(Date.parse(lastImportedDate) - WEEKLY_DAYS * DAY))).take(200)).filter((h) => h.source === "gsc");
+		const recent = hist.filter((h) => h.date >= since);
 			if (!recent.length) continue;
 			const impressions = recent.reduce((n, h) => n + h.impressions, 0);
 			const position = impressions ? Math.round((recent.reduce((n, h) => n + (h.position ?? 0) * h.impressions, 0) / impressions) * 10) / 10 : null;
@@ -310,16 +349,41 @@ export const finishImport = internalMutation({
 			const known = trend.filter((x): x is number => x !== null);
 			const decaying = known.length >= 3 && known[known.length - 1]! - known[known.length - 3]! >= 3; // 3+ places worse over 2 weeks
 			await ctx.db.patch(k._id, { impressions, position, rankingUrl: top?.[0] ?? null, rankingPages: pages.size, positionTrend: known, decaying });
-		}
-		for (const [wk, impressions] of weekly) {
-			const row = (await ctx.db.query("trafficWeekly").withIndex("by_site_week", (q) => q.eq("siteId", siteId).eq("isoWeek", wk)).take(1))[0];
-			// GSC has clicks, not sessions: sessions stay null (a labelled gap) until analytics is connected.
-			if (row) await ctx.db.patch(row._id, { impressions });
-			else await ctx.db.insert("trafficWeekly", { siteId, isoWeek: wk, sessions: null, impressions, projected: 0 });
-		}
+	}
+}
+
+/** Weekly impressions for the whole site (every query, tracked or not), set — not added — from Google's daily totals. */
+export async function writeWeekly(ctx: MutationCtx, siteId: Id<"sites">, daily: TDaily[]) {
+	const weekly = new Map<string, number>();
+	for (const d of daily) weekly.set(isoWeekKey(d.date), (weekly.get(isoWeekKey(d.date)) ?? 0) + d.impressions);
+	for (const [wk, impressions] of weekly) {
+		const row = (await ctx.db.query("trafficWeekly").withIndex("by_site_week", (q) => q.eq("siteId", siteId).eq("isoWeek", wk)).take(1))[0];
+		// GSC has clicks, not sessions: sessions stay null (a labelled gap) until analytics is connected.
+		if (row) await ctx.db.patch(row._id, { impressions });
+		else await ctx.db.insert("trafficWeekly", { siteId, isoWeek: wk, sessions: null, impressions, projected: 0 });
+	}
+}
+
+const vDaily = v.object({ date: v.string(), clicks: v.number(), impressions: v.number() });
+
+export const finishImport = internalMutation({
+	args: { siteId: v.id("sites"), lastImportedDate: v.string(), rowCount: v.number(), daily: v.optional(v.array(vDaily)) },
+	handler: async (ctx, { siteId, lastImportedDate, rowCount, daily }) => {
+		const site = (await ctx.db.get(siteId))!;
+		await rollupKeywords(ctx, siteId, lastImportedDate);
+		if (daily) await writeWeekly(ctx, siteId, daily);
 		const c = await connectionOf(ctx, siteId);
 		if (c) await ctx.db.patch(c._id, { lastImportAt: Date.now(), lastImportedDate, updatedAt: Date.now() });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: { system: "Search Console" }, action: "imported Search Console data", target: site.domain, detail: `${rowCount} rows · through ${lastImportedDate}` });
+	},
+});
+
+export const finishBackfill = internalMutation({
+	args: { siteId: v.id("sites"), lastImportedDate: v.string(), rowCount: v.number() },
+	handler: async (ctx, { siteId, lastImportedDate, rowCount }) => {
+		const site = (await ctx.db.get(siteId))!;
+		await rollupKeywords(ctx, siteId, lastImportedDate);
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: { system: "Search Console" }, action: "backfilled keyword history", target: site.domain, detail: `${rowCount} rows · ${BACKFILL_DAYS} days through ${lastImportedDate}` });
 	},
 });
 

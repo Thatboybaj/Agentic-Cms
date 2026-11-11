@@ -16,6 +16,7 @@ import { notify, siteAudience, siteAudienceWith } from "./lib/notify";
 import { createRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
 import { NOT_ENTITLED, siteEntitled } from "./billing";
+import { scheduleBackfill } from "./gsc";
 import { workflow } from "./workflows/manager";
 
 type TResult = { ok: true; id?: string } | { ok: false; reason: string };
@@ -86,6 +87,7 @@ export const addIdea = siteMutation({
 		const keywordId =
 			existingKw?._id ??
 			(await ctx.db.insert("keywords", { workspaceId, siteId: site._id, term, termNormalized: term, pillarId: pillar._id, intent, difficulty: 0, difficultyEvidence: "KD pending · next keyword swarm", impressions: 0, position: null, positionTrend: [], kasShare: 0, kasDelta: 0, rankingUrl: null, rankingPages: 0, decaying: false }));
+		if (!existingKw) await scheduleBackfill(ctx, site._id); // its Search Console history, if the site has it
 		const now = Date.now();
 		const postId = await ctx.db.insert("posts", {
 			workspaceId,

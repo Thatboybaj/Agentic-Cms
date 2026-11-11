@@ -18,6 +18,7 @@ import { createRun, finishRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
 import { NOT_ENTITLED, siteEntitled } from "./billing";
 import { vRunArtifact } from "./pipeline/steps";
+import { scheduleBackfill } from "./gsc";
 import { isoWeek, startGeneration } from "./posts";
 import { workflow } from "./workflows/manager";
 
@@ -175,6 +176,7 @@ export const finishScheduled = internalMutation({
 					fresh++;
 				}
 			}
+			if (fresh) await scheduleBackfill(ctx, siteId); // the new keywords' Search Console history
 			summary = pillars.length ? `${ideas.length} ideas · ${ideas.length - fresh} deduplicated against live and planned · ${fresh} new in Idea` : "No pillars in the plan yet · ideas not added";
 		}
 		// Ledger items (QA findings, data requests): one open item per key.

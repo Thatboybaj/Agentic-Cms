@@ -5,7 +5,7 @@ import { convexTest } from "convex-test";
 import { afterEach, beforeEach, expect, test } from "vitest";
 import { computeKas } from "../src/lib/logic";
 import { internal } from "./_generated/api";
-import { isoWeekKey } from "./gsc";
+import { isoWeekKey, scheduleBackfill } from "./gsc";
 import { seal, aadFor } from "./lib/crypto";
 import schema from "./schema";
 
@@ -83,9 +83,10 @@ test("imports are idempotent per (keyword, date) and keep unknown queries out", 
 	expect(hist).toHaveLength(1);
 	expect(hist[0]).toMatchObject({ date: "2026-11-01", impressions: 250, clicks: 11, page: "/blog/implant-cost", source: "gsc" });
 	expect(hist[0]!.position).toBeCloseTo((3.2 * 200 + 9 * 50) / 250, 1);
-	await t.mutation(internal.gsc.finishImport, { siteId: site, lastImportedDate: "2026-11-08", rowCount: 3 });
+	// Google's site-wide total for that day counts every query, the untracked one included.
+	await t.mutation(internal.gsc.finishImport, { siteId: site, lastImportedDate: "2026-11-08", rowCount: 3, daily: [{ date: "2026-11-01", clicks: 11, impressions: 1150 }] });
 	const weeks = await t.run((ctx) => ctx.db.query("trafficWeekly").collect());
-	expect(weeks.map((w) => [w.isoWeek, w.sessions, w.impressions])).toEqual([["2026-W44", null, 250]]); // sessions stay a labelled gap
+	expect(weeks.map((w) => [w.isoWeek, w.sessions, w.impressions])).toEqual([["2026-W44", null, 1150]]); // sessions stay a labelled gap
 	const k = await t.run(async (ctx) => (await ctx.db.query("keywords").collect()).find((x) => x.term === "implant cost")!);
 	expect(k).toMatchObject({ impressions: 250, rankingUrl: "/blog/implant-cost", rankingPages: 1 });
 });
@@ -111,4 +112,42 @@ test("ISO week keys", () => {
 	expect(isoWeekKey("2026-11-01")).toBe("2026-W44");
 	expect(isoWeekKey("2026-01-01")).toBe("2026-W01");
 	expect(isoWeekKey("2027-01-01")).toBe("2026-W53");
+});
+
+test("weekly impressions come from Google's site-wide daily totals, even with no tracked keywords, and re-runs replace", async () => {
+	const { t, site } = await world();
+	await t.run(async (ctx) => {
+		for (const k of await ctx.db.query("keywords").collect()) await ctx.db.delete(k._id); // nothing tracked yet, like a new site
+	});
+	const daily = [
+		{ date: "2026-11-02", clicks: 1, impressions: 4 }, // Monday 2 – Sunday 8 Nov: one ISO week
+		{ date: "2026-11-03", clicks: 0, impressions: 5 },
+		{ date: "2026-11-08", clicks: 2, impressions: 6 },
+	];
+	await t.mutation(internal.gsc.finishImport, { siteId: site, lastImportedDate: "2026-11-08", rowCount: 9, daily });
+	await t.mutation(internal.gsc.finishImport, { siteId: site, lastImportedDate: "2026-11-08", rowCount: 9, daily }); // same window again
+	const weeks = await t.run((ctx) => ctx.db.query("trafficWeekly").collect());
+	expect(weeks.map((w) => ({ wk: w.isoWeek, impressions: w.impressions, sessions: w.sessions }))).toEqual([{ wk: isoWeekKey("2026-11-02"), impressions: 15, sessions: null }]);
+});
+
+test("new keywords schedule a 90-day backfill only when the site has an imported Search Console property", async () => {
+	const { t, site, user } = await world();
+	const scheduled = () => t.run(async (ctx) => (await ctx.db.system.query("_scheduled_functions").collect()).filter((j) => j.name.includes("gsc") && j.name.includes("backfill")).length);
+	await t.run((ctx) => scheduleBackfill(ctx, site));
+	expect(await scheduled()).toBe(0); // not connected
+	await t.run(async (ctx) => {
+		const ws = (await ctx.db.get(site))!.workspaceId;
+		await ctx.db.insert("oauthConnections", { workspaceId: ws, siteId: site, provider: "google-search-console", status: "connected", scopes: [], propertyUri: "sc-domain:lumendental.co", connectedBy: user, updatedAt: 0 });
+	});
+	await t.run((ctx) => scheduleBackfill(ctx, site));
+	expect(await scheduled()).toBe(0); // connected but never imported: the first import covers the same 90 days
+	await t.run(async (ctx) => {
+		const c = (await ctx.db.query("oauthConnections").collect())[0]!;
+		await ctx.db.patch(c._id, { lastImportedDate: "2026-11-08" });
+	});
+	await t.run((ctx) => scheduleBackfill(ctx, site));
+	expect(await scheduled()).toBe(1);
+	await t.run(async (ctx) => {
+		for (const j of await ctx.db.system.query("_scheduled_functions").collect()) await ctx.scheduler.cancel(j._id);
+	});
 });
