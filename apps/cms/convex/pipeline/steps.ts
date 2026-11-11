@@ -32,6 +32,8 @@ export const vDraftInput = v.object({
 	disclaimer: v.optional(v.string()),
 	internalLinks: v.optional(v.array(v.object({ title: v.string(), url: v.string() }))),
 	modelRouting: v.optional(vModelRoutingIn),
+	/** Refresh of a live post (content-refresh): its current text and why it was picked. */
+	refreshOf: v.optional(v.object({ reason: v.string(), blocks: v.array(v.object({ kind: v.string(), text: v.string() })) })),
 });
 
 const vBlockOut = v.object({ id: v.string(), kind: v.union(v.literal("h2"), v.literal("h3"), v.literal("p"), v.literal("ul"), v.literal("faq"), v.literal("quote"), v.literal("disclaimer")), text: v.string() });
@@ -161,18 +163,35 @@ export const reviseStep = internalAction({
 	},
 });
 
+const vContentTypeIdea = v.union(v.literal("guide"), v.literal("comparison"), v.literal("listicle"), v.literal("how-to"), v.literal("faq"));
 export const vRunArtifact = v.object({
 	status: v.union(v.literal("succeeded"), v.literal("failed")),
 	output: v.string(),
 	/** keyword-swarm: new keyword ideas for the plan (deduped against existing terms by the persist step). */
-	ideas: v.array(v.object({ term: v.string(), intent: v.union(v.literal("informational"), v.literal("commercial"), v.literal("transactional"), v.literal("navigational")), difficulty: v.number(), evidence: v.string() })),
+	ideas: v.array(v.object({ term: v.string(), intent: v.union(v.literal("informational"), v.literal("commercial"), v.literal("transactional"), v.literal("navigational")), difficulty: v.number(), evidence: v.string(), pillar: v.optional(v.string()), suggestedTitle: v.optional(v.string()), contentType: v.optional(vContentTypeIdea) })),
+	/** Items only a person can move (QA findings, data requests); deduped on key. */
+	ledger: v.optional(v.array(v.object({ key: v.string(), title: v.string(), downstream: v.string(), postId: v.optional(v.id("posts")) }))),
+	/** Harness outputs kept as artifacts (pipeline_csv, top10_md, scorecard_md, ...). */
+	artifacts: v.optional(v.array(v.object({ kind: v.string(), content: v.string() }))),
+	/** content-refresh: live posts to send back through the writer as refresh drafts. */
+	refresh: v.optional(v.array(v.object({ postId: v.id("posts"), reason: v.string() }))),
 });
+export type TRunArtifact = Infer<typeof vRunArtifact>;
 
-/** STUB (03 / 07): the harness agent(s) for a scheduled run kind. Canned artifacts with the prototype's wording. */
+/** Scheduled (cron) runs spend only with a second opt-in, CMS_SCHEDULED_AGENTS=live; "Run now" needs only CMS_AGENTS. */
+const scheduledLive = (trigger?: string) => live() && (trigger !== "scheduled" || process.env.CMS_SCHEDULED_AGENTS === "live");
+const LIVE_KINDS = new Set(["keyword-swarm", "qa-sweep", "content-refresh"]);
+
+/**
+ * The harness agent(s) for a scheduled run kind. Live (keyword swarm, QA sweep, content refresh): agents/scheduled.ts.
+ * The rest wait for their data sources (07: Search Console, crawler, backlink provider) and say so instead of
+ * inventing results. Stub texts below are the $0 world's.
+ */
 export const runKindStep = internalAction({
-	args: { siteId: v.id("sites"), kind: v.string(), siteName: v.string(), searchConsole: v.string(), rankSource: v.union(v.string(), v.null()), industry: v.string() },
+	args: { siteId: v.id("sites"), kind: v.string(), siteName: v.string(), searchConsole: v.string(), rankSource: v.union(v.string(), v.null()), industry: v.string(), runId: v.optional(v.id("runs")), trigger: v.optional(v.string()) },
 	returns: vRunArtifact,
-	handler: async (_ctx, a) => {
+	handler: async (ctx, a): Promise<TRunArtifact> => {
+		if (a.runId && LIVE_KINDS.has(a.kind) && scheduledLive(a.trigger)) return await ctx.runAction(internal.agents.scheduled.run, { siteId: a.siteId, runId: a.runId, kind: a.kind });
 		const none = [] as { term: string; intent: "informational" | "commercial" | "transactional" | "navigational"; difficulty: number; evidence: string }[];
 		switch (a.kind) {
 			case "keyword-swarm": {
@@ -185,17 +204,17 @@ export const runKindStep = internalAction({
 				return { status: "succeeded" as const, output: "", ideas };
 			}
 			case "technical-monitor":
-				return { status: "succeeded" as const, output: `Health ${a.searchConsole === "connected" ? 96 : 88} · 0 new issues`, ideas: none };
+				return { status: "succeeded" as const, output: "Data gap: no crawler or Search Console feed yet (07) · no health score written", ideas: none };
 			case "qa-sweep":
-				return { status: "succeeded" as const, output: "Light sweep · scorecard 11/12 · ledger unchanged", ideas: none };
+				return { status: "succeeded" as const, output: "Stub sweep · live agents off, no findings recorded", ideas: none };
 			case "content-refresh":
-				return { status: "succeeded" as const, output: "Prune list refreshed · 0 decaying posts ranked for refresh", ideas: none };
+				return { status: "succeeded" as const, output: "Stub · live agents off, no refresh drafted", ideas: none };
 			case "link-prospecting":
 				return a.rankSource ? { status: "succeeded" as const, output: "12 prospects · 5 outreach drafts", ideas: none } : { status: "failed" as const, output: "Failed: no Ahrefs or Semrush connection for backlink data.", ideas: none };
 			case "kas-recalc":
 				return { status: "succeeded" as const, output: a.searchConsole === "connected" ? "Scores recalculated" : "Data gap: Search Console not connected. No scores written.", ideas: none };
 			case "biweekly-report":
-				return { status: "succeeded" as const, output: "Report drafted · ready to share", ideas: none };
+				return { status: "succeeded" as const, output: "Data gap: the report needs Search Console data (07) · nothing drafted", ideas: none };
 			default:
 				return { status: "succeeded" as const, output: "Done", ideas: none };
 		}

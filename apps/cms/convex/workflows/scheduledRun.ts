@@ -9,6 +9,7 @@ export const scheduledRun = workflow
 	.handler(async (step, args): Promise<void> => {
 		const begun = await step.runMutation(internal.schedules.beginScheduled, { siteId: args.siteId, runId: args.runId });
 		if (begun.stop) return;
-		const artifact = await step.runAction(internal.pipeline.steps.runKindStep, begun.input);
+		// No workflow retry on the paid step (agents retry their own calls; a blind re-run would pay twice).
+		const artifact = await step.runAction(internal.pipeline.steps.runKindStep, begun.input, { retry: false });
 		await step.runMutation(internal.schedules.finishScheduled, { siteId: args.siteId, runId: args.runId, ...artifact });
 	});

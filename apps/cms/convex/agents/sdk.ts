@@ -21,22 +21,31 @@ export function anthropicTransport(): TTransport {
 	if (!apiKey) throw new Error("ANTHROPIC_API_KEY is not set on this Convex deployment");
 	const client = new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 0 }); // cappedInference owns retries
 	return async (req) => {
-		const stream = client.messages.stream({
-			model: req.model,
-			max_tokens: req.maxTokens,
-			system: req.system.map((text, i) => ({ type: "text" as const, text, ...(i === 0 ? { cache_control: { type: "ephemeral" as const } } : {}) })),
-			messages: [{ role: "user", content: req.user }],
-			output_config: { format: req.jsonSchema as Anthropic.Messages.JSONOutputFormat, ...(req.effort ? { effort: req.effort } : {}) },
-		});
-		const msg = await stream.finalMessage();
-		const text = msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
-		return {
-			text,
-			stopReason: msg.stop_reason,
-			model: msg.model,
-			usage: { inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens, cacheReadTokens: msg.usage.cache_read_input_tokens ?? 0, cacheWriteTokens: msg.usage.cache_creation_input_tokens ?? 0 },
-			...(stream.request_id ? { requestId: stream.request_id } : {}),
-		};
+		const system = req.system.map((text, i) => ({ type: "text" as const, text, ...(i === 0 ? { cache_control: { type: "ephemeral" as const } } : {}) }));
+		const tools: Anthropic.Messages.ToolUnion[] | undefined = req.webSearch ? [{ type: "web_search_20260209", name: "web_search", max_uses: req.webSearch.maxUses, ...(req.webSearch.allowedDomains?.length ? { allowed_domains: req.webSearch.allowedDomains } : {}) } as Anthropic.Messages.ToolUnion] : undefined;
+		const output_config = { ...(req.jsonSchema ? { format: req.jsonSchema as Anthropic.Messages.JSONOutputFormat } : {}), ...(req.effort ? { effort: req.effort } : {}) };
+		const messages: Anthropic.Messages.MessageParam[] = [{ role: "user", content: req.user }];
+		const usage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0, webSearches: 0 };
+		let text = "";
+		let msg: Anthropic.Messages.Message | undefined;
+		let requestId: string | undefined;
+		const sources = new Set<string>();
+		// Server tools can pause a long turn (pause_turn): resend with the assistant content so far, bounded.
+		for (let turn = 0; turn < 4; turn++) {
+			const stream = client.messages.stream({ model: req.model, max_tokens: req.maxTokens, system, messages, ...(tools ? { tools } : {}), ...(Object.keys(output_config).length ? { output_config } : {}) });
+			msg = await stream.finalMessage();
+			requestId = stream.request_id ?? requestId;
+			usage.inputTokens += msg.usage.input_tokens;
+			usage.outputTokens += msg.usage.output_tokens;
+			usage.cacheReadTokens += msg.usage.cache_read_input_tokens ?? 0;
+			usage.cacheWriteTokens += msg.usage.cache_creation_input_tokens ?? 0;
+			usage.webSearches += msg.usage.server_tool_use?.web_search_requests ?? 0;
+			text += msg.content.map((b) => (b.type === "text" ? b.text : "")).join("");
+			for (const b of msg.content) if (b.type === "web_search_tool_result" && Array.isArray(b.content)) for (const r of b.content) if (r.type === "web_search_result") sources.add(r.url);
+			if (msg.stop_reason !== "pause_turn") break;
+			messages.push({ role: "assistant", content: msg.content });
+		}
+		return { text, stopReason: msg!.stop_reason, model: msg!.model, usage, ...(requestId ? { requestId } : {}), ...(sources.size ? { sources: [...sources] } : {}) };
 	};
 }
 

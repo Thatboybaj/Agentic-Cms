@@ -388,6 +388,8 @@ export default defineSchema({
 		title: v.string(),
 		seoTitle: v.string(),
 		metaDescription: v.optional(v.string()),
+		/** Why content-refresh picked this live post (the writer's refresh brief). */
+		refreshReason: v.optional(v.string()),
 		keywordId: v.id("keywords"),
 		pillarId: v.id("pillars"),
 		intent: vIntent,

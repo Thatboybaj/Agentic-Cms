@@ -62,6 +62,7 @@ export const beginDraft = internalMutation({
 				...(disclaimer ? { disclaimer } : {}),
 				internalLinks: linkRows.map((k) => ({ title: k.term, url: k.rankingUrl! })),
 				modelRouting: site.modelRouting,
+				...(post.state === "decaying" && post.blocks.length ? { refreshOf: { reason: post.refreshReason ?? "Scheduled refresh", blocks: post.blocks.filter((b) => b.kind !== "image").map((b) => ({ kind: b.kind, text: b.text })) } } : {}),
 			},
 		};
 	},

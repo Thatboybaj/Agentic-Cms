@@ -15,6 +15,8 @@ import { capSite, fmtUsd } from "./lib/budget";
 import { nextAtFor } from "./lib/defaults";
 import { siteMutation, siteQuery } from "./lib/functions";
 import { createRun, finishRun, refuseRun } from "./lib/runs";
+import { transitionPost } from "./lib/transition";
+import { vRunArtifact } from "./pipeline/steps";
 import { isoWeek, startGeneration } from "./posts";
 import { workflow } from "./workflows/manager";
 
@@ -137,16 +139,16 @@ export const beginScheduled = internalMutation({
 			await finishRun(ctx, runId, { status: "cancelled", output: "Site paused · run skipped" });
 			return { stop: true as const };
 		}
-		return { stop: false as const, input: { siteId, kind: run.kind, siteName: site.name, searchConsole: site.searchConsole, rankSource: site.rankSource, industry: site.industry } };
+		return { stop: false as const, input: { siteId, kind: run.kind, siteName: site.name, searchConsole: site.searchConsole, rankSource: site.rankSource, industry: site.industry, runId, trigger: run.trigger } };
 	},
 });
 
-const vIdea = v.object({ term: v.string(), intent: v.union(v.literal("informational"), v.literal("commercial"), v.literal("transactional"), v.literal("navigational")), difficulty: v.number(), evidence: v.string() });
+const vIdea = vRunArtifact.fields.ideas.element;
 
 /** Persists the run's artifact. keyword-swarm: new ideas (deduped against every term on the site) land in Idea. */
 export const finishScheduled = internalMutation({
-	args: { siteId: v.id("sites"), runId: v.id("runs"), status: v.union(v.literal("succeeded"), v.literal("failed")), output: v.string(), ideas: v.array(vIdea) },
-	handler: async (ctx, { siteId, runId, status, output, ideas }) => {
+	args: { siteId: v.id("sites"), runId: v.id("runs"), status: v.union(v.literal("succeeded"), v.literal("failed")), output: v.string(), ideas: v.array(vIdea), ledger: vRunArtifact.fields.ledger, artifacts: vRunArtifact.fields.artifacts, refresh: vRunArtifact.fields.refresh },
+	handler: async (ctx, { siteId, runId, status, output, ideas, ledger, artifacts, refresh }) => {
 		const site = await ctx.db.get(siteId);
 		const run = await ctx.db.get(runId);
 		if (!site || !run || run.siteId !== siteId) return;
@@ -160,11 +162,11 @@ export const finishScheduled = internalMutation({
 					const term = idea.term.trim().toLowerCase().replace(/\s+/g, " ").replace(/[?:]/g, "");
 					const dupe = await ctx.db.query("keywords").withIndex("by_site_term", (q) => q.eq("siteId", siteId).eq("termNormalized", term)).unique();
 					if (dupe) continue;
-					const pillar = pillars[fresh % pillars.length]!;
+					const pillar = (idea.pillar && pillars.find((p) => p.name === idea.pillar)) || pillars[fresh % pillars.length]!;
 					const keywordId = await ctx.db.insert("keywords", { workspaceId: site.workspaceId, siteId, term, termNormalized: term, pillarId: pillar._id, intent: idea.intent, difficulty: idea.difficulty, difficultyEvidence: idea.evidence, impressions: 0, position: null, positionTrend: [], kasShare: 0, kasDelta: 0, rankingUrl: null, rankingPages: 0, decaying: false });
 					await ctx.db.insert("posts", {
-						workspaceId: site.workspaceId, siteId, slug: term.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80), title: term, seoTitle: term, keywordId, pillarId: pillar._id,
-						intent: idea.intent, contentType: "guide", source: "keyword-swarm", state: "idea", stateChangedAt: now, owner: "human", week: isoWeek(now) + 1, strongModel: false,
+						workspaceId: site.workspaceId, siteId, slug: term.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80), title: idea.suggestedTitle ?? term, seoTitle: idea.suggestedTitle ?? term, keywordId, pillarId: pillar._id,
+						intent: idea.intent, contentType: idea.contentType ?? "guide", source: "keyword-swarm", state: "idea", stateChangedAt: now, owner: "human", week: isoWeek(now) + 1, strongModel: false,
 						words: 0, wordTarget: 1500, blocks: [], currentVersion: 0, ideaApproval: { status: "pending" }, ideaStatus: "pending", createdAt: now, updatedAt: now,
 					});
 					fresh++;
@@ -172,7 +174,35 @@ export const finishScheduled = internalMutation({
 			}
 			summary = pillars.length ? `${ideas.length} ideas · ${ideas.length - fresh} deduplicated against live and planned · ${fresh} new in Idea` : "No pillars in the plan yet · ideas not added";
 		}
-		await finishRun(ctx, runId, { status, output: summary });
+		// Ledger items (QA findings, data requests): one open item per key.
+		let added = 0;
+		for (const l of ledger ?? []) {
+			const open = await ctx.db.query("ledgerItems").withIndex("by_site_dedupe", (q) => q.eq("siteId", siteId).eq("dedupeKey", l.key)).first();
+			if (open && !open.done) continue;
+			if (l.postId) {
+				const p = await ctx.db.get(l.postId);
+				if (!p || p.siteId !== siteId) continue;
+			}
+			await ctx.db.insert("ledgerItems", { siteId, title: l.title, owner: "Content specialist", createdAt: Date.now(), downstream: l.downstream, ...(l.postId ? { postId: l.postId } : {}), origin: "qa-agent", dedupeKey: l.key, done: false });
+			added++;
+		}
+		for (const a of artifacts ?? []) await ctx.db.insert("artifacts", { siteId, agentId: run.agentId, kind: a.kind, runId, content: a.content.slice(0, 200_000), createdAt: Date.now() });
+		// content-refresh: live → decaying → the writer drafts the refresh (cap-checked like any generation).
+		if (run.kind === "content-refresh" && refresh?.length) {
+			const started: string[] = [];
+			for (const r of refresh) {
+				const post = await ctx.db.get(r.postId);
+				if (!post || post.siteId !== siteId || post.state !== "live" || post.workflowId) continue;
+				const t = await transitionPost(ctx, post, "decaying", { extra: { source: "refresh" } });
+				if (!t.ok) continue;
+				await ctx.db.patch(post._id, { refreshReason: r.reason });
+				const g = await startGeneration(ctx, site, { ...t.post, refreshReason: r.reason }, { trigger: "workflow" });
+				if (g.ok) started.push(post.title);
+			}
+			summary = started.length ? `${started.length} refresh draft${started.length === 1 ? "" : "s"} started · ${started.join(", ")}` : "Refresh candidates found but none could start (cap or state)";
+		}
+		if (run.kind !== "keyword-swarm" && run.kind !== "content-refresh" && added) summary = summary ? `${summary}` : `${added} new on the ledger`;
+		await finishRun(ctx, runId, { status, output: summary || output || "Done" });
 	},
 });
 

@@ -32,14 +32,14 @@ export interface ICappedOptions {
 	sleep?: (ms: number) => Promise<void>;
 }
 
-const addUsage = (a: IUsage, b?: IUsage): IUsage => (b ? { inputTokens: a.inputTokens + b.inputTokens, outputTokens: a.outputTokens + b.outputTokens, cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens, cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens } : a);
+const addUsage = (a: IUsage, b?: IUsage): IUsage => (b ? { inputTokens: a.inputTokens + b.inputTokens, outputTokens: a.outputTokens + b.outputTokens, cacheReadTokens: a.cacheReadTokens + b.cacheReadTokens, cacheWriteTokens: a.cacheWriteTokens + b.cacheWriteTokens, webSearches: (a.webSearches ?? 0) + (b.webSearches ?? 0) } : a);
 
 export async function cappedInference<T>(ledger: ILedger, transport: TTransport, idempotencyKey: string, req: IInferenceRequest<T>, toJsonSchema: (s: z.ZodType<T>) => object, opts: ICappedOptions = {}): Promise<ICappedResult<T>> {
 	const maxAttempts = opts.maxAttempts ?? 3;
 	const sleep = opts.sleep ?? ((ms: number) => new Promise((r) => setTimeout(r, ms)));
 	const inputChars = req.system.reduce((n, s) => n + s.length, 0) + req.user.length;
 	// The hold covers every retry (each could bill in the worst case), so a run can never exceed its cap.
-	const hold = holdMicroUsd(req.model, inputChars, req.maxTokens) * maxAttempts;
+	const hold = holdMicroUsd(req.model, inputChars, req.maxTokens, req.webSearch?.maxUses ?? 0) * maxAttempts;
 	const held = await ledger.hold(idempotencyKey, hold);
 	if (!held.ok) throw new CapError(held.message);
 

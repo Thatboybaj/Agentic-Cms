@@ -64,7 +64,10 @@ export interface IWriterBrief {
 	heroProvider: string;
 	regulated?: string;
 	internalLinks?: { title: string; url: string }[];
+	refreshOf?: { reason: string; blocks: { kind: string; text: string }[] };
 }
+
+const REFRESH_NOTE = "This is a refresh of the live post below, not a new one. Keep its topic and any heading that holds rankings; deepen thin sections, add at least 2 new FAQ entries, update year references, add internal links to content published since. Never silently invent newer numbers: a statistic you can't source stays in unsourcedClaims.";
 
 export function writerUserPrompt(b: IWriterBrief): string {
 	const lines = [
@@ -82,6 +85,7 @@ export function writerUserPrompt(b: IWriterBrief): string {
 		b.regulated ? `Regulated topic: ${b.regulated} (the CMS appends the disclaimer; be careful with claims)` : "",
 		b.internalLinks?.length ? `Internal links you may use (only these URLs):\n${b.internalLinks.map((l) => `- ${l.title}: ${l.url}`).join("\n")}` : "Internal links: none published yet; use [INTERNAL LINK: topic] placeholders.",
 		"</brief>",
+		...(b.refreshOf ? [`<refresh reason="${b.refreshOf.reason}">`, REFRESH_NOTE, ...b.refreshOf.blocks.map((x) => `[${x.kind}] ${x.text}`), "</refresh>"] : []),
 	];
 	return lines.filter(Boolean).join("\n");
 }

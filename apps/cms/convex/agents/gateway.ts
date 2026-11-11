@@ -9,9 +9,12 @@ export interface IInferenceRequest<T> {
 	/** Stable skill text first (prompt-cached); never secrets, never another site's data. */
 	system: string[];
 	user: string;
-	schema: z.ZodType<T>;
+	/** Structured output. Omit for a text answer (research notes); then T is string. */
+	schema?: z.ZodType<T>;
 	maxTokens: number;
 	effort?: "low" | "medium" | "high";
+	/** Server-side web search, capped per call (billed per search; never with a schema: citations and JSON output don't mix). */
+	webSearch?: { maxUses: number; allowedDomains?: string[] };
 }
 
 /** What the transport hands back: raw JSON text of the structured output + usage. */
@@ -21,15 +24,18 @@ export interface ITransportResult {
 	usage: IUsage;
 	requestId?: string;
 	model: string;
+	/** URLs the server web search returned (provenance for research). */
+	sources?: string[];
 }
 
-export type TTransport = (req: { model: string; system: string[]; user: string; jsonSchema: object; maxTokens: number; effort?: "low" | "medium" | "high" }) => Promise<ITransportResult>;
+export type TTransport = (req: { model: string; system: string[]; user: string; jsonSchema?: object; maxTokens: number; effort?: "low" | "medium" | "high"; webSearch?: { maxUses: number; allowedDomains?: string[] } }) => Promise<ITransportResult>;
 
 export interface IInferenceResponse<T> {
 	output: T;
 	usage: IUsage;
 	model: string;
 	requestId?: string;
+	sources?: string[];
 }
 
 export type TInferenceErrorKind = "rate-limited" | "server" | "timeout" | "network" | "bad-request" | "auth" | "refusal" | "truncated" | "invalid-output" | "unknown";
@@ -69,12 +75,16 @@ export function classify(e: unknown): InferenceError {
 export async function infer<T>(transport: TTransport, req: IInferenceRequest<T>, toJsonSchema: (s: z.ZodType<T>) => object): Promise<IInferenceResponse<T>> {
 	let res: ITransportResult;
 	try {
-		res = await transport({ model: req.model, system: req.system, user: req.user, jsonSchema: toJsonSchema(req.schema), maxTokens: req.maxTokens, ...(req.effort && priceOf(req.model).effort ? { effort: req.effort } : {}) });
+		res = await transport({ model: req.model, system: req.system, user: req.user, ...(req.schema ? { jsonSchema: toJsonSchema(req.schema) } : {}), maxTokens: req.maxTokens, ...(req.effort && priceOf(req.model).effort ? { effort: req.effort } : {}), ...(req.webSearch ? { webSearch: req.webSearch } : {}) });
 	} catch (e) {
 		throw classify(e);
 	}
 	if (res.stopReason === "refusal") throw new InferenceError("refusal", "The model declined this request", res.usage);
 	if (res.stopReason === "max_tokens") throw new InferenceError("truncated", "The output hit the token limit before it was complete", res.usage);
+	if (!req.schema) {
+		if (!res.text.trim()) throw new InferenceError("invalid-output", "The model returned no text", res.usage);
+		return { output: res.text as T, usage: res.usage, model: res.model, ...(res.requestId ? { requestId: res.requestId } : {}), ...(res.sources ? { sources: res.sources } : {}) };
+	}
 	let json: unknown;
 	try {
 		json = JSON.parse(res.text);

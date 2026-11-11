@@ -19,11 +19,16 @@ export const PRICES: Readonly<Record<(typeof MODELS)[keyof typeof MODELS], IPric
 	"claude-opus-5-5": { inputPerM: 4, outputPerM: 20, effort: true },
 };
 
+/** Server web search: USD per 1,000 searches (same source and date as the token prices). */
+export const WEB_SEARCH_PER_1K = 10;
+
 export interface IUsage {
 	inputTokens: number;
 	outputTokens: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
+	/** Server-side web searches the call ran (billed per search). */
+	webSearches?: number;
 }
 
 export const ZERO_USAGE: IUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheWriteTokens: 0 };
@@ -37,11 +42,12 @@ export function priceOf(model: string): IPrice {
 /** Integer micro-dollars (no floats on the money path); rounded up so we never under-charge a cap. */
 export function costMicroUsd(model: string, u: IUsage): number {
 	const p = priceOf(model);
-	const usd = (u.inputTokens * p.inputPerM + u.cacheWriteTokens * p.inputPerM * 1.25 + u.cacheReadTokens * p.inputPerM * 0.1 + u.outputTokens * p.outputPerM) / 1e6;
+	const usd = (u.inputTokens * p.inputPerM + u.cacheWriteTokens * p.inputPerM * 1.25 + u.cacheReadTokens * p.inputPerM * 0.1 + u.outputTokens * p.outputPerM) / 1e6 + ((u.webSearches ?? 0) * WEB_SEARCH_PER_1K) / 1000;
 	return Math.ceil(usd * 1e6);
 }
 
 /** Upper-bound hold for one call: every input char as a token (over-counts) + the whole output budget. */
-export function holdMicroUsd(model: string, inputChars: number, maxTokens: number): number {
-	return costMicroUsd(model, { inputTokens: Math.ceil(inputChars / 3), outputTokens: maxTokens, cacheReadTokens: 0, cacheWriteTokens: 0 });
+export function holdMicroUsd(model: string, inputChars: number, maxTokens: number, maxSearches = 0): number {
+	// Searched pages come back as input tokens: allow ~6k tokens per search on top of the prompt.
+	return costMicroUsd(model, { inputTokens: Math.ceil(inputChars / 3) + maxSearches * 6000, outputTokens: maxTokens, cacheReadTokens: 0, cacheWriteTokens: 0, webSearches: maxSearches });
 }
