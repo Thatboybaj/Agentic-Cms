@@ -42,7 +42,8 @@ export function BackendPanel() {
 	if (!isSignedIn) {
 		return (
 			<div className="flex w-full max-w-[440px] justify-center">
-				<ClerkSignIn routing="hash" />
+				{/* withSignUp: one combined flow, so a new person can create an account without a separate /sign-up route. */}
+				<ClerkSignIn routing="hash" withSignUp />
 			</div>
 		);
 	}

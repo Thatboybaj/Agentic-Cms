@@ -42,7 +42,7 @@ function EnsureUser() {
 export function BackendProvider({ children }: { children: ReactNode }) {
 	if (!BACKEND_ENABLED) return <>{children}</>;
 	return (
-		<ClerkProvider publishableKey={CLERK_KEY} signInUrl="/sign-in" signUpUrl="/sign-in">
+		<ClerkProvider publishableKey={CLERK_KEY} signInUrl="/sign-in">
 			<ConvexProviderWithClerk client={convexClient()} useAuth={useAuth}>
 				<EnsureUser />
 				{children}
