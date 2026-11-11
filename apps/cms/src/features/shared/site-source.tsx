@@ -7,7 +7,7 @@
 
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { toPlanData } from "@/lib/adapter";
 import { BACKEND_ENABLED } from "@/lib/backend";
 import { evaluateGate, isPendingIdea, ledgerAge, ledgerStatus, lockReason, roleCan, type TPermission } from "@/lib/logic";
@@ -22,6 +22,7 @@ import {
 	useMergeRequest,
 	useMrForPost,
 	usePendingIdeas,
+	usePost,
 	useSite,
 	useSlotsForPost,
 	useStats,
@@ -47,6 +48,11 @@ export interface ISiteActions {
 	generateNow(postId: string): TMaybeAsync<TResult>;
 	movePostToWeek(postId: string, week: number): TMaybeAsync<TResult>;
 	runNow(kind: TRunKind): TMaybeAsync<TResult>;
+	confirmManifest(manifestId: string): TMaybeAsync<TResult>;
+	mapTemplateItem(manifestId: string, mappingId: string, role: ITemplateManifest["mappings"][number]["role"], label?: string): TMaybeAsync<TResult>;
+	setOutputFormat(manifestId: string, output: ITemplateManifest["output"]): TMaybeAsync<TResult>;
+	/** Convex only: upload the original .html/.zip; the server parse is authoritative. */
+	ingestTemplateFile?: (file: File) => Promise<TResult>;
 	toggleSchedule(kind: TRunKind): TMaybeAsync<TResult>;
 	resolveLedgerItem(itemId: string): TMaybeAsync<TResult>;
 	markNotificationRead(id: string): TMaybeAsync<TResult>;
@@ -152,6 +158,11 @@ function useLiveSite(): ISiteCms {
 		generateNow: useMutation(api.posts.generateNow),
 		moveToWeek: useMutation(api.plan.moveToWeek),
 		runNow: useMutation(api.schedules.runNow),
+		confirmManifest: useMutation(api.templates.confirm),
+		mapTemplateItem: useMutation(api.templates.mapItem),
+		setOutputFormat: useMutation(api.templates.setOutput),
+		templateUploadUrl: useMutation(api.templates.uploadUrl),
+		ingestTemplate: useMutation(api.templates.ingest),
 		toggleSchedule: useMutation(api.schedules.toggle),
 		resolveLedgerItem: useMutation(api.inbox.resolveLedgerItem),
 		markNotificationRead: useMutation(api.inbox.markNotificationRead),
@@ -184,9 +195,38 @@ function useLiveSite(): ISiteCms {
 		rebaseMr: useMutation(api.git.rebaseMr),
 	};
 
+	// Template versions with their sample HTML (fetched once per stored sample) and the /tpl asset base.
+	const tplRows = useQuery(api.templates.list, siteId ? { siteId } : "skip");
+	const [samples, setSamples] = useState<Record<string, string>>({});
+	useEffect(() => {
+		for (const r of tplRows ?? []) {
+			if (!r.sampleUrl || samples[r._id] !== undefined) continue;
+			const id = r._id;
+			setSamples((s) => ({ ...s, [id]: "" }));
+			fetch(r.sampleUrl)
+				.then((x) => x.text())
+				.then((html) => setSamples((s) => ({ ...s, [id]: html })))
+				.catch(() => undefined);
+		}
+	}, [tplRows, samples]);
+	const manifests = useMemo<ITemplateManifest[] | null>(() => {
+		if (!tplRows) return null;
+		const siteUrl = (process.env.NEXT_PUBLIC_CONVEX_URL ?? "").replace(/\.convex\.cloud\/?$/, ".convex.site");
+		return tplRows.map((r) => {
+			const dir = r.samplePath && r.samplePath.includes("/") ? r.samplePath.slice(0, r.samplePath.lastIndexOf("/") + 1) : "";
+			const html = samples[r._id];
+			return {
+				id: r._id, version: r.version, source: r.source, kind: r.kind, output: r.output, status: r.status, mappings: r.mappings,
+				...(r.confirmedBy ? { confirmedBy: r.confirmedBy } : {}), ...(r.confirmedAt ? { confirmedAt: new Date(r.confirmedAt).toISOString() } : {}),
+				...(html ? { sampleHtml: html } : {}), ...(r.samplePath ? { samplePath: r.samplePath, assetBase: `${siteUrl}/tpl/${r._id}/${dir}` } : {}), ...(r.parseError ? { parseError: r.parseError } : {}),
+			};
+		});
+	}, [tplRows, samples]);
+
 	const mapped = useMemo(() => {
 		if (!bundle) return null;
 		const out = toPlanData(bundle);
+		if (manifests) out.data = { ...out.data, manifests };
 		if (detail && focusId) {
 			out.data = {
 				...out.data,
@@ -205,7 +245,7 @@ function useLiveSite(): ISiteCms {
 			};
 		}
 		return out;
-	}, [bundle, detail, focusId]);
+	}, [bundle, detail, focusId, manifests]);
 
 	const versionOf = useMemo(() => new Map((bundle?.posts ?? []).map((p) => [p._id as string, p.currentVersion])), [bundle]);
 	const lockHolder = detail?.lock && detail.lock.fresh ? detail.lock : null;
@@ -234,6 +274,17 @@ function useLiveSite(): ISiteCms {
 			generateNow: (postId) => run(() => m.generateNow({ siteId: s, postId: asId(postId) }), { text: "Generating · the writer has started", tone: "agent" }),
 			movePostToWeek: (postId, week) => run(() => m.moveToWeek({ siteId: s, postId: asId(postId), week }), { text: `Rescheduled to W${week}` }),
 			runNow: (kind) => run(() => m.runNow({ siteId: s, kind }), { text: "Run started", tone: "agent" }),
+			confirmManifest: (manifestId) => run(() => m.confirmManifest({ siteId: s, manifestId: manifestId as Id<"templateManifests"> }), { text: "Manifest confirmed · new posts render into it", tone: "pass" }),
+			mapTemplateItem: (manifestId, mappingId, role, label) => run(() => m.mapTemplateItem({ siteId: s, manifestId: manifestId as Id<"templateManifests">, mappingId, role, ...(label ? { label } : {}) })),
+			setOutputFormat: (manifestId, output) => run(() => m.setOutputFormat({ siteId: s, manifestId: manifestId as Id<"templateManifests">, output })),
+			ingestTemplateFile: (file) =>
+				run(async () => {
+					const url = await m.templateUploadUrl({ siteId: s });
+					const res = await fetch(url, { method: "POST", headers: { "Content-Type": file.type || "application/octet-stream" }, body: file });
+					if (!res.ok) return { ok: false, reason: `Upload failed (${res.status})` };
+					const { storageId } = (await res.json()) as { storageId: string };
+					return m.ingestTemplate({ siteId: s, storageId: storageId as Id<"_storage">, fileName: file.name });
+				}, { text: "Uploaded · the server is parsing the template", tone: "agent" }),
 			toggleSchedule: (kind) => run(() => m.toggleSchedule({ siteId: s, kind })),
 			resolveLedgerItem: (itemId) => run(() => m.resolveLedgerItem({ siteId: s, itemId: itemId as Id<"ledgerItems"> }), { text: "Done · removed from the ledger", tone: "pass" }),
 			markNotificationRead: (id) => run(() => m.markNotificationRead({ siteId: s, notificationId: id as Id<"notifications"> })),
@@ -347,6 +398,11 @@ function useLiveMrForPost(postId: string | undefined): IMergeRequest | undefined
 		return data.mergeRequests.find((x) => x.id === post?.mrId) ?? data.mergeRequests.find((x) => x.postId === postId);
 	}, [data, postId]);
 }
+function useLivePost(postId: string | undefined): IPost | undefined {
+	const { data } = useLiveSite();
+	return useMemo(() => (postId ? data.posts.find((p) => p.id === postId) : undefined), [data.posts, postId]);
+}
+
 function useLiveSlotsForPost(postId: string | undefined): IImageSlot[] {
 	const { data } = useLiveSite();
 	return useMemo(() => (postId ? data.slots.filter((x) => x.postId === postId) : []), [data, postId]);
@@ -371,6 +427,7 @@ export const useSiteGate: (postId: string | undefined) => IGateView | null = on 
 export const useSiteEditLock: (postId: string | undefined) => { holder: IEditLockHolder | null; mine: boolean } = on ? useLiveEditLock : useEditLock;
 export const useSiteMergeRequest: (id: string | undefined) => IMergeRequest | undefined = on ? useLiveMergeRequest : useMergeRequest;
 export const useSiteMrForPost: (postId: string | undefined) => IMergeRequest | undefined = on ? useLiveMrForPost : useMrForPost;
+export const useSitePost: (postId: string | undefined) => IPost | undefined = on ? useLivePost : usePost;
 export const useSiteSlotsForPost: (postId: string | undefined) => IImageSlot[] = on ? useLiveSlotsForPost : useSlotsForPost;
 export const useSiteAutopostHold: (postId: string | undefined) => ILedgerItem | undefined = on ? useLiveAutopostHold : useAutopostHold;
 export const useSitePendingIdeas: () => IPost[] = on ? useLivePendingIdeas : usePendingIdeas;

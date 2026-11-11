@@ -122,13 +122,23 @@ export const vRenderOutput = v.object({
 	/** Structures the template can't render (fidelity rule): non-empty → hold, never invent markup. */
 	held: v.array(v.string()),
 	files: v.array(v.object({ path: v.string(), change: v.string(), kind: v.union(v.literal("post"), v.literal("assets"), v.literal("index")) })),
+	/** The rendered post file (real render only; the stub world has none) and the asset paths the commit carries. */
+	post: v.optional(v.object({ path: v.string(), content: v.string() })),
+	assets: v.optional(v.array(v.object({ path: v.string(), slotId: v.string() }))),
 });
 
-/** STUB (05): renderer in publish mode. Returns the files the PR will carry. */
+/** Renderer in publish mode (convex/render.ts) when the confirmed manifest has a stored template; otherwise the stub. */
 export const renderStep = internalAction({
 	args: { siteId: v.id("sites"), postId: v.id("posts"), slug: v.string(), words: v.number(), output: v.string(), contentDir: v.string(), assetDir: v.string(), rasterSlots: v.number(), svgSlots: v.number() },
 	returns: vRenderOutput,
-	handler: async (_ctx, a) => {
+	handler: async (ctx, a): Promise<Infer<typeof vRenderOutput>> => {
+		const real = await ctx.runAction(internal.render.publish, { siteId: a.siteId, postId: a.postId });
+		if (real) {
+			const kb = (n: number) => `${Math.max(1, Math.round(n / 1024))} KB`;
+			const files: Infer<typeof vRenderOutput>["files"] = [{ path: real.post.path, change: `+${real.post.content.split("\n").length}`, kind: "post" }];
+			if (real.assets.length) files.push({ path: `${a.assetDir.replace(/\/+$/, "")}/ ·${real.assets.length} image${real.assets.length === 1 ? "" : "s"}`, change: kb(real.assets.length * 80_000), kind: "assets" });
+			return { held: real.held, files, post: real.post, assets: real.assets };
+		}
 		const ext = ({ mdx: "mdx", html: "html", json: "json", component: "tsx" } as Record<string, string>)[a.output] ?? "mdx";
 		const files: { path: string; change: string; kind: "post" | "assets" | "index" }[] = [{ path: `${a.contentDir}/${a.slug}.${ext}`, change: `+${Math.max(40, Math.round(a.words / 7.6))}`, kind: "post" }];
 		if (a.rasterSlots + a.svgSlots) files.push({ path: `${a.assetDir}/ · ${a.rasterSlots} WebP${a.svgSlots ? ` · ${a.svgSlots} SVG` : ""}`, change: `${a.rasterSlots * 78} KB`, kind: "assets" });
@@ -137,13 +147,46 @@ export const renderStep = internalAction({
 	},
 });
 
-export const vOpenPrOutput = v.object({ number: v.optional(v.number()), externalId: v.optional(v.string()), headSha: v.string(), previewUrl: v.optional(v.string()) });
+export const vOpenPrOutput = v.object({
+	number: v.optional(v.number()),
+	externalId: v.optional(v.string()),
+	headSha: v.string(),
+	previewUrl: v.optional(v.string()),
+	url: v.optional(v.string()),
+	/** Set when the PR can't be opened honestly (e.g. a selected image has no file yet): the post is held instead. */
+	held: v.optional(v.string()),
+});
 
-/** STUB (06): GitHub App: branch content/{slug}, commit files, open (or update) the PR. Never pushes to base. */
+/**
+ * Opens or updates the post's PR. Live (a connection made through the GitHub App, gitConnect.connectRepo): one commit
+ * with the rendered post + its image files on the current base, path-scoped, via gitNode.openPr. Otherwise the stub.
+ */
 export const openPrStep = internalAction({
-	args: { siteId: v.id("sites"), postId: v.id("posts"), branch: v.string(), base: v.string(), title: v.string(), domain: v.string(), slug: v.string() },
+	args: {
+		siteId: v.id("sites"),
+		postId: v.id("posts"),
+		branch: v.string(),
+		base: v.string(),
+		title: v.string(),
+		domain: v.string(),
+		slug: v.string(),
+		post: v.optional(v.object({ path: v.string(), content: v.string() })),
+		assets: v.optional(v.array(v.object({ path: v.string(), slotId: v.string() }))),
+		autopost: v.optional(v.boolean()),
+		overrides: v.optional(v.array(v.string())),
+	},
 	returns: vOpenPrOutput,
-	handler: async (_ctx, a) => ({ headSha: `stub-${a.postId.slice(-8)}`, previewUrl: `https://${a.domain.split(".")[0]}-git-${a.branch.replace(/\//g, "-")}.vercel.app/blog/${a.slug}` }),
+	handler: async (ctx, a): Promise<Infer<typeof vOpenPrOutput>> => {
+		const stub = { headSha: `stub-${a.postId.slice(-8)}`, previewUrl: `https://${a.domain.split(".")[0]}-git-${a.branch.replace(/\//g, "-")}.vercel.app/blog/${a.slug}` };
+		if (!a.post) return stub; // no real render (seeded manifest): nothing real to commit
+		const sc = await ctx.runQuery(internal.gitHooks.shipContext, { siteId: a.siteId, postId: a.postId, slotIds: (a.assets ?? []).map((x) => x.slotId), autopost: a.autopost ?? false, overrides: a.overrides ?? [] });
+		if (!sc) return stub;
+		const missing = sc.assets.filter((x) => !x.storageId);
+		if (missing.length) return { headSha: "", held: `Image files aren't produced yet for: ${missing.map((m) => m.name).join(", ")}` };
+		const files = [{ path: a.post.path, content: a.post.content }, ...(a.assets ?? []).map((x) => ({ path: x.path, storageId: sc.assets.find((s) => s.slotId === x.slotId)!.storageId! }))];
+		const pr = await ctx.runAction(internal.gitNode.openPr, { installationId: sc.installationId, repo: sc.repo, base: sc.base, branch: sc.branch, scope: sc.scope, files, message: sc.message, title: sc.title, body: sc.body });
+		return { number: pr.number, externalId: pr.externalId, headSha: pr.headSha, url: pr.url };
+	},
 });
 
 // ─── Revise + scheduled runs (handoff 02 steps 8–9) ───────────────────────────

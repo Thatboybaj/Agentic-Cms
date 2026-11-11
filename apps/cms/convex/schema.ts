@@ -284,12 +284,24 @@ export default defineSchema({
 		installationId: v.string(), // GitHub App installation id / GitLab app integration id (string for both hosts)
 		indexFiles: v.optional(v.array(v.string())), // manually maintained index/sitemap files the CMS may also write
 		status: v.union(v.literal("active"), v.literal("suspended"), v.literal("removed")),
+		/** Connected through the real GitHub App (gitConnect.connectRepo). Seeded/test rows lack it and keep the stub. */
+		live: v.optional(v.boolean()),
 		connectedBy: v.id("users"),
 		connectedAt: v.number(),
 	})
 		.index("by_site", ["siteId"])
 		.index("by_installation", ["host", "installationId"])
 		.index("by_repo", ["host", "repo"]),
+
+	/** A GitHub App installation a developer completed for a site (the /github/setup round-trip), before a repo is picked. */
+	gitInstallations: defineTable({
+		siteId: v.id("sites"),
+		host: vGitHost,
+		installationId: v.string(),
+		account: v.optional(v.string()),
+		createdBy: v.id("users"),
+		createdAt: v.number(),
+	}).index("by_site", ["siteId"]),
 
 	// ── Plan & SEO data ───────────────────────────────────────────────────────
 
@@ -562,7 +574,8 @@ export default defineSchema({
 	assets: defineTable({
 		workspaceId: v.id("workspaces"),
 		siteId: v.id("sites"),
-		r2Key: v.string(), // "sites/<siteId>/assets/<sha256>.<ext>"
+		r2Key: v.optional(v.string()), // R2 later; today the bytes live in Convex storage
+		storageId: v.optional(v.id("_storage")),
 		contentType: v.string(),
 		bytes: v.number(),
 		sha256: v.string(),
@@ -591,6 +604,10 @@ export default defineSchema({
 		output: v.union(v.literal("mdx"), v.literal("html"), v.literal("json"), v.literal("component")),
 		status: v.union(v.literal("parsing"), v.literal("needs-confirmation"), v.literal("confirmed"), v.literal("superseded")),
 		samplePath: v.optional(v.string()),
+		/** The original upload (.html or .zip) in Convex storage; parsed server-side (authoritative). */
+		uploadStorageId: v.optional(v.id("_storage")),
+		/** Set when the server parse failed (the manifest stays in parsing; a developer re-uploads). */
+		parseError: v.optional(v.string()),
 		mappings: v.array(vTemplateMapping),
 		bundleFiles: v.number(),
 		bundleBytes: v.number(),
@@ -608,7 +625,8 @@ export default defineSchema({
 		siteId: v.id("sites"),
 		manifestId: v.id("templateManifests"),
 		path: v.string(),
-		r2Key: v.string(), // "sites/<siteId>/templates/<manifestId>/<path>"
+		r2Key: v.optional(v.string()), // R2 later; today the bytes live in Convex storage
+		storageId: v.optional(v.id("_storage")),
 		contentType: v.string(),
 		bytes: v.number(),
 		kind: v.union(v.literal("html"), v.literal("css"), v.literal("image"), v.literal("font")),
@@ -632,6 +650,8 @@ export default defineSchema({
 		status: v.union(v.literal("open"), v.literal("merged"), v.literal("closed"), v.literal("conflict")),
 		ci: v.union(v.literal("pending"), v.literal("passing"), v.literal("failing"), v.literal("none")),
 		previewUrl: v.optional(v.string()),
+		/** The PR on GitHub (live connections). */
+		url: v.optional(v.string()),
 		files: v.array(v.object({ path: v.string(), change: v.string(), kind: v.union(v.literal("post"), v.literal("assets"), v.literal("index")) })),
 		openedAt: v.number(),
 		mergedAt: v.optional(v.number()),

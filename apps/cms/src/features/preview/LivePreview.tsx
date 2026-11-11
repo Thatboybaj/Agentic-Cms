@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Button, Chip, DataGap, Icon, IconButton, SegmentedControl, Skeleton, Tooltip } from "@/ds";
 import { nowIso } from "@/lib/clock";
-import { useActiveManifest, useCms, useMrForPost, usePost, useSlotsForPost } from "@/lib/store";
+import { useSiteManifest, useSiteCms, useSiteMrForPost, useSitePost, useSiteSlotsForPost } from "@/features/shared/site-source";
 import type { IPost, ITemplateManifest } from "@/lib/types";
 import { renderPost, type IRenderResult } from "@/render";
 import { SiteFrame } from "./SiteFrame";
@@ -49,11 +49,11 @@ export function openFactCount(post: IPost): number {
 }
 
 export function LivePreview({ postId, device: deviceProp = "desktop", embedded = false, manifestId, onDeviceChange, className }: ILivePreviewProps) {
-	const { site, data } = useCms();
-	const post = usePost(postId);
-	const slots = useSlotsForPost(postId);
-	const active = useActiveManifest();
-	const mr = useMrForPost(postId);
+	const { site, data } = useSiteCms();
+	const post = useSitePost(postId);
+	const slots = useSiteSlotsForPost(postId);
+	const active = useSiteManifest();
+	const mr = useSiteMrForPost(postId);
 	const manifest: ITemplateManifest | null = (manifestId ? data.manifests.find((m) => m.id === manifestId) : null) ?? active;
 	const source = useTemplateSource(manifest, site);
 	const [ownDevice, setOwnDevice] = useState<TPreviewDevice>(deviceProp);

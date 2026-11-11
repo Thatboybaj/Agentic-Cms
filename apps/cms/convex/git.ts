@@ -49,10 +49,15 @@ export const onCi = internalMutation({
 	},
 });
 
-/** STUB (06): asks GitHub/GitLab to merge. The real webhook then calls onMerged; the stub calls it directly. */
+/** Asks GitHub to merge (live connections, gitNode.mergePr at the CI-validated head); the stub reports the merge itself. */
 export const requestMerge = internalAction({
 	args: { mrId: v.id("mergeRequests"), by: v.string() },
 	handler: async (ctx, { mrId, by }) => {
+		const live = await ctx.runQuery(internal.gitHooks.mrForSync, { mrId });
+		if (live && process.env.GITHUB_APP_ID) {
+			await ctx.runAction(internal.gitNode.mergePr, { mrId, by });
+			return;
+		}
 		await ctx.runMutation(internal.git.onMerged, { mrId, sha: `stub-merge-${mrId.slice(-8)}`, by });
 	},
 });
@@ -88,14 +93,15 @@ export const onMerged = internalMutation({
 /** A developer merges an open, green MR (mergeMr). Same refusals as the prototype. */
 export const mergeMr = siteMutation({
 	permission: "mr.merge",
-	args: { mrId: v.id("mergeRequests") },
-	handler: async (ctx, { siteId, mrId }): Promise<TResult> => {
+	args: { mrId: v.id("mergeRequests"), confirmNoCi: v.optional(v.boolean()) },
+	handler: async (ctx, { siteId, mrId, confirmNoCi }): Promise<TResult> => {
 		const mr = await ctx.db.get(mrId);
 		if (!mr || mr.siteId !== siteId) return { ok: false, reason: "Merge request not found" };
 		if (mr.status === "conflict") return { ok: false, reason: "Conflict with the base branch. Rebase first" };
 		if (mr.status !== "open") return { ok: false, reason: `This MR is ${mr.status}` };
 		if (mr.ci === "failing") return { ok: false, reason: "CI is failing. Fix the build first" };
 		if (mr.ci === "pending") return { ok: false, reason: "CI is still running" };
+		if (mr.ci === "none" && !confirmNoCi) return { ok: false, reason: "This repo has no CI checks · confirm to merge without them" };
 		await ctx.scheduler.runAfter(0, internal.git.requestMerge, { mrId, by: ctx.access.user.name });
 		return { ok: true };
 	},
@@ -115,6 +121,9 @@ export const rebaseMr = siteMutation({
 		if (mr.status !== "conflict" && mr.ci !== "failing") return { ok: false, reason: "Nothing to rebase: the MR applies cleanly" };
 		const manifest = await activeManifest(ctx, siteId);
 		await ctx.db.patch(mrId, { status: "open", ci: "pending", conflictDetail: undefined, ciDetail: undefined, ...(manifest ? { manifestVersion: manifest.version } : {}) });
+		// Live: re-render on the current manifest and rebuild the post branch on the current base (gitNode.rebase).
+		const conn = await ctx.db.get(mr.repoConnectionId);
+		if (conn?.live && conn.status === "active") await ctx.scheduler.runAfter(0, internal.gitNode.rebase, { mrId });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, ...(mr.postId ? { postId: mr.postId } : {}), actor: user, action: "rebased and re-rendered", target: `${mrRef(mr)} ${mr.branch}`, detail: `onto ${mr.base} · manifest v${manifest?.version ?? "?"}` });
 		return { ok: true };
 	},

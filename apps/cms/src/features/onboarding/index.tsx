@@ -23,6 +23,8 @@ import {
 	TextField,
 } from "@/ds";
 import { useCms, useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
+import { useLiveRepoConnect, type IRepoChoice } from "./live-repo";
 import type { IRepoConnection, ISite } from "@/lib/types";
 import { sitePath } from "@/lib/routes";
 
@@ -45,16 +47,17 @@ const repoSlug = (site: Pick<ISite, "id" | "domain">) => `${site.id.split("-")[0
 const installName = (host: IRepoConnection["host"]) => `Grandeur CMS (${HOST_LABEL[host]} App)`;
 
 export function OnboardingView() {
-	const { site } = useCms();
+	const { site } = useSiteCms();
 	return <Wizard key={site.id} />;
 }
 
 function Wizard() {
 	const { slug } = useSite();
-	const { site, can, why, state } = useCms();
+	const { site, can, why, state } = useSiteCms();
 	const canConnect = can("repo.connect");
 	const resume = resumeAt?.siteId === site.id ? resumeAt.step : null;
-	const [started, setStarted] = useState(!site.repo || resume !== null);
+	const returning = typeof window !== "undefined" && new URLSearchParams(window.location.search).has("installation");
+	const [started, setStarted] = useState(!site.repo || resume !== null || returning);
 	const [adding, setAdding] = useState(false);
 	const developer = state.members.find((m) => m.role === "developer")?.name ?? "a developer";
 
@@ -103,7 +106,7 @@ function Wizard() {
 	return (
 		<>
 			{header}
-			<Steps initial={adding ? 0 : (resume ?? 0)} adding={adding} />
+			<Steps initial={adding ? 0 : (resume ?? (returning ? 1 : 0))} adding={adding} />
 		</>
 	);
 }
@@ -112,7 +115,12 @@ function Wizard() {
 
 function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 	const { slug } = useSite();
-	const { site, actions } = useCms();
+	const { actions } = useCms(); // store-only actions (add site, Search Console demo)
+	const { site } = useSiteCms();
+	const live = useLiveRepoConnect();
+	const [repos, setRepos] = useState<IRepoChoice[] | null>(null);
+	const [liveError, setLiveError] = useState<string | null>(null);
+	const [scanNote, setScanNote] = useState<string | null>(null);
 	const router = useRouter();
 	const [step, setStep] = useState(initial);
 	const [name, setName] = useState(adding ? "" : site.name);
@@ -138,15 +146,48 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 	}, []);
 
 	// Repo scan when the Paths step opens (fields are prefilled from what the scan infers).
+	// Live: list the repos the installation can see.
 	useEffect(() => {
-		if (step !== 2 || site.repo) return;
+		if (!live?.installationId || repos) return;
+		let on = true;
+		void live.listRepos(live.installationId).then((res) => {
+			if (!on) return;
+			if (!res.ok) return setLiveError(res.reason);
+			setRepos(res.repos);
+			setInstalled(true);
+			if (res.repos[0]) setRepo((cur) => (res.repos.some((x) => x.repo === cur) ? cur : res.repos[0]!.repo));
+		});
+		return () => {
+			on = false;
+		};
+	}, [live, repos]);
+
+	// Live: read the repo layout when the Paths step opens and prefill what it finds.
+	useEffect(() => {
+		if (step !== 2 || site.repo || !live?.installationId) return;
+		let on = true;
+		setScanning(true);
+		void live.scan(live.installationId, repo).then((res) => {
+			if (!on) return;
+			setScanning(false);
+			if (!res.ok) return setScanNote(res.reason);
+			setPaths((p) => ({ ...p, contentDir: res.contentDir, assetDir: res.assetDir, baseBranch: res.defaultBranch }));
+			setScanNote(res.contentFiles ? `${res.contentFiles} post file${res.contentFiles === 1 ? "" : "s"} found in ${res.contentDir}` : "No posts found yet · the content directory is a suggestion");
+		});
+		return () => {
+			on = false;
+		};
+	}, [step, site.repo, live, repo]);
+
+	useEffect(() => {
+		if (step !== 2 || site.repo || live) return;
 		setScanning(true);
 		const t = setTimeout(() => setScanning(false), SCAN_MS);
 		return () => clearTimeout(t);
 	}, [step, site.repo]);
 
 	useEffect(() => {
-		if (!installing) return;
+		if (!installing || live) return;
 		const t = setTimeout(() => {
 			setInstalling(false);
 			setInstalled(true);
@@ -176,9 +217,16 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 			actions.setSite(r.id);
 		}
 	};
-	const confirmPaths = () => {
+	const confirmPaths = async () => {
 		setPathError(null);
 		if (branchError) return;
+		if (live) {
+			if (site.repo) return setStep(3);
+			if (!live.installationId) return setPathError("Install the GitHub app first");
+			const res = await live.connect({ installationId: live.installationId, repo, ...paths });
+			if (!res.ok) return setPathError(res.reason);
+			return setStep(3);
+		}
 		const r = site.repo ? ({ ok: true } as const) : actions.connectRepo(site.id, conn);
 		if (!r.ok) return setPathError(r.reason);
 		setStep(3);
@@ -226,12 +274,29 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 						setInstalled(false);
 					}}
 				/>
+				{live && live.ready && !live.configured ? (
+					<Callout tone="block" icon="Warning" title="The GitHub App isn't set up on this deployment yet.">
+						An admin adds GITHUB_APP_ID, GITHUB_APP_SLUG, GITHUB_APP_PRIVATE_KEY and GITHUB_WEBHOOK_SECRET to the Convex deployment, then this button opens GitHub.
+					</Callout>
+				) : null}
+				{liveError && (
+					<Callout tone="block" title="GitHub didn't answer as expected.">
+						{liveError}
+					</Callout>
+				)}
 				{installed ? (
 					<div className="flex flex-col gap-3">
 						<Chip tone="pass" icon="PlugsConnected" className="w-fit">
-							Connected as {installName(host)}
+							Connected as {live?.account ?? installName(host)}
 						</Chip>
-						<Select label="Repository" value={repo} options={[{ value: repo, label: repo, hint: "Only installed repo" }]} onChange={setRepo} icon={host === "github" ? "GithubLogo" : "GitlabLogo"} className="w-full" />
+						<Select
+							label="Repository"
+							value={repo}
+							options={repos ? repos.map((x) => ({ value: x.repo, label: x.repo, hint: `${x.private ? "Private" : "Public"} · ${x.defaultBranch}` })) : [{ value: repo, label: repo, hint: "Only installed repo" }]}
+							onChange={setRepo}
+							icon={host === "github" ? "GithubLogo" : "GitlabLogo"}
+							className="w-full"
+						/>
 					</div>
 				) : (
 					<EmptyState icon="GitBranch" title="No repo connected" body="Install the app, then pick the site repo." />
@@ -243,7 +308,19 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 				Continue
 			</Button>
 		) : (
-			<Button variant="primary" icon={host === "github" ? "GithubLogo" : "GitlabLogo"} loading={installing} onClick={() => setInstalling(true)}>
+			<Button
+				variant="primary"
+				icon={host === "github" ? "GithubLogo" : "GitlabLogo"}
+				loading={installing}
+				disabled={!!live && (!live.configured || host === "gitlab")}
+				onClick={async () => {
+					if (!live) return setInstalling(true);
+					setLiveError(null);
+					const res = await live.begin();
+					if (!res.ok) return setLiveError(res.reason);
+					if (res.url) window.location.assign(res.url);
+				}}
+			>
 				Install {HOST_LABEL[host]} app
 			</Button>
 		);
@@ -260,10 +337,10 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 		body = (
 			<div className="flex flex-col gap-4">
 				<p className="text-sm text-ink-3" aria-live="polite">
-					{scanning ? `Reading ${repo}…` : "Everything else is inferred from the repo."}
+					{scanning ? `Reading ${repo}…` : (scanNote ?? "Everything else is inferred from the repo.")}
 				</p>
 				<div className="grid gap-4 sm:grid-cols-2">
-					{field("contentDir", "Content directory", site.id === "lumen" ? "41 .mdx files found" : "12 .mdx files found")}
+					{field("contentDir", "Content directory", live ? "Where posts are written" : site.id === "lumen" ? "41 .mdx files found" : "12 .mdx files found")}
 					{field("assetDir", "Asset directory", "Images are written here as WebP")}
 					{field("branchPattern", "Branch naming", "One branch per post", branchError)}
 					{field("baseBranch", "Base branch", "Protected · CMS never pushes here")}

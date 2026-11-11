@@ -330,6 +330,11 @@ export interface ITemplateManifest {
 	mappings: ITemplateMapping[];
 	/** Sample post HTML from a real client-side parse (rendered in the ingest preview). */
 	sampleHtml?: string;
+	/** Convex: the sample's path in the bundle and the absolute URL its relative CSS/images resolve against. */
+	samplePath?: string;
+	assetBase?: string;
+	/** Convex: why the server parse failed (the manifest stays in parsing). */
+	parseError?: string;
 }
 
 export interface IWeekPoint {

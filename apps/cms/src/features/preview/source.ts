@@ -32,6 +32,8 @@ const abs = (path: string) => (typeof window === "undefined" ? path : new URL(pa
 const encodePath = (p: string) => p.split("/").map(encodeURIComponent).join("/");
 
 async function load(manifest: ITemplateManifest, siteId: string): Promise<ITemplateSource> {
+	// Convex: the sample came from storage and the bundle's files are served by the /tpl route.
+	if (manifest.sampleHtml && manifest.assetBase) return { status: "ready", html: manifest.sampleHtml, baseHref: manifest.assetBase, samplePath: manifest.samplePath ?? null, origin: "upload", note: null };
 	if (manifest.sampleHtml) {
 		try {
 			const r = await fetch(`/api/templates/${encodeURIComponent(manifest.id)}`, { cache: "no-store" });

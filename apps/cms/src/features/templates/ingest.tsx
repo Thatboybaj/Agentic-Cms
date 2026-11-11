@@ -31,6 +31,7 @@ import {
 } from "@/ds";
 import { fmtDateTime } from "@/lib/logic";
 import { SIM_MS, useCms, useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { ITemplateManifest, ITemplateMapping, TRole } from "@/lib/types";
 import { invalidateTemplateSource, useTemplateSource } from "@/features/preview/source";
 import { SampleFrame, realSourceHighlights } from "./sample-frame";
@@ -67,7 +68,7 @@ function SampleMeta() {
 
 export function IngestView() {
 	const { slug } = useSite();
-	const { site, data, role, actions, can } = useCms();
+	const { site, data, role, actions, can } = useSiteCms();
 	const canAct = can("template.ingest") && can("template.confirm");
 	const [confirmedId, setConfirmedId] = useState<string | null>(null);
 	const pending = useMemo(
@@ -101,8 +102,8 @@ export function IngestView() {
 			</>
 		);
 
-	const confirm = (m: ITemplateManifest) => {
-		const r = actions.confirmManifest(m.id);
+	const confirm = async (m: ITemplateManifest) => {
+		const r = await actions.confirmManifest(m.id);
 		if (r.ok) setConfirmedId(m.id);
 	};
 
@@ -113,7 +114,7 @@ export function IngestView() {
 		return (
 			<RoleGate role={role} allow={CAN_ACT} fallback={<LockedAction label={label} reasons={[READ_ONLY]} summary="read-only" />}>
 				{m.status === "parsing" ? (
-					<LockedAction label={label} reasons={["Still parsing the template"]} summary="parsing" />
+					<LockedAction label={label} reasons={[m.parseError ? `Parse failed: ${m.parseError} · upload a corrected file` : "Still parsing the template"]} summary={m.parseError ? "parse failed" : "parsing"} />
 				) : (
 					<LockedAction
 						label={label}
@@ -191,7 +192,8 @@ type TUploadPhase = { phase: "reading" | "parsing" | "uploading" | "linking"; na
 const PHASE_LABEL: Record<TUploadPhase["phase"], string> = { reading: "Reading files", parsing: "Detecting content region, structures, images and metadata", uploading: "Uploading", linking: "Versioning the manifest" };
 
 function UploadStep({ canAct, nextVersion, onBusy }: { canAct: boolean; nextVersion: number; onBusy: (busy: boolean) => void }) {
-	const { actions, data, site } = useCms();
+	const { actions, data, site } = useSiteCms();
+	const store = useCms(); // the demo store's ingest (backend off)
 	const current = data.manifests.find((m) => m.status === "confirmed");
 	const [error, setError] = useState<string | null>(null);
 	const [upload, setUpload] = useState<TUploadPhase | null>(null);
@@ -206,10 +208,18 @@ function UploadStep({ canAct, nextVersion, onBusy }: { canAct: boolean; nextVers
 			setUpload({ phase: "reading", name: f.name, loaded: 0, total: f.size });
 			const bundle = await readBundle(f);
 			setUpload({ phase: "parsing", name: f.name, loaded: 0, total: bundle.bytes });
+			if (actions.ingestTemplateFile) {
+				// Convex: the browser parse above only validates; the original file goes up and the server parses it.
+				setUpload({ phase: "uploading", name: f.name, loaded: 0, total: f.size });
+				const r = await actions.ingestTemplateFile(f);
+				if (!r.ok) throw new IngestError(r.reason);
+				if (r.id) UPLOAD_NOTES.set(r.id, { samplePath: bundle.samplePath, missing: bundle.missing, skipped: bundle.skipped });
+				return;
+			}
 			const bundleId = `up-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 			await uploadBundle(site.id, bundleId, bundle, (loaded, total) => setUpload({ phase: "uploading", name: f.name, loaded, total }));
 			setUpload({ phase: "linking", name: f.name, loaded: bundle.bytes, total: bundle.bytes });
-			const r = actions.ingestTemplate(f.name, bundle.kind, { mappings: bundle.parsed.mappings, sampleHtml: bundle.parsed.sampleHtml, source: sourceLabel(bundle) });
+			const r = store.actions.ingestTemplate(f.name, bundle.kind, { mappings: bundle.parsed.mappings, sampleHtml: bundle.parsed.sampleHtml, source: sourceLabel(bundle) });
 			if (!r.ok) throw new IngestError(r.reason);
 			if (r.id) {
 				UPLOAD_NOTES.set(r.id, { samplePath: bundle.samplePath, missing: bundle.missing, skipped: bundle.skipped });
@@ -303,7 +313,7 @@ function ParseStep({ manifest }: { manifest: ITemplateManifest }) {
 
 function ConfirmStep({ manifest: m, canAct, action }: { manifest: ITemplateManifest; canAct: boolean; action: ReactNode }) {
 	const { slug } = useSite();
-	const { actions, role, site, data } = useCms();
+	const { actions, role, site, data } = useSiteCms();
 	const [mode, setMode] = useState<"rendered" | "source">("rendered");
 	const [all, setAll] = useState(false);
 	const hand = handMapped(m);
@@ -459,7 +469,7 @@ function MobileConfirm({
 	samplePath: string;
 	previewLink: ReactNode;
 }) {
-	const { actions } = useCms();
+	const { actions } = useSiteCms();
 	const [sheet, setSheet] = useState(false);
 	const [expanded, setExpanded] = useState<string | null>(null);
 	const [group, setGroup] = useState<string | null>(null);
@@ -558,7 +568,7 @@ function MobileConfirm({
 
 function VersionedStep({ manifest: m }: { manifest: ITemplateManifest }) {
 	const { slug } = useSite();
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const hand = handMapped(m);
 	const previewPost = pickPreviewPost(data.posts);
 	return (

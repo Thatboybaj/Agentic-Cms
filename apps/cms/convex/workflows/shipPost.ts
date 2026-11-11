@@ -15,6 +15,10 @@ export const shipPost = workflow
 			await step.runMutation(internal.pipeline.ship.renderHeld, { siteId: args.siteId, postId: args.postId, held: render.held });
 			return;
 		}
-		const pr = await step.runAction(internal.pipeline.steps.openPrStep, prep.pr);
+		const pr = await step.runAction(internal.pipeline.steps.openPrStep, { ...prep.pr, ...(render.post ? { post: render.post } : {}), ...(render.assets ? { assets: render.assets } : {}), autopost: args.autopost, overrides: args.overrides });
+		if (pr.held) {
+			await step.runMutation(internal.pipeline.ship.renderHeld, { siteId: args.siteId, postId: args.postId, held: [pr.held] });
+			return;
+		}
 		await step.runMutation(internal.pipeline.ship.recordMr, { ...args, render, pr });
 	});

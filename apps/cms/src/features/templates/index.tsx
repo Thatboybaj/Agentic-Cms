@@ -20,7 +20,8 @@ import {
 	type IDataTableColumn,
 } from "@/ds";
 import { fmtDate } from "@/lib/logic";
-import { useActiveManifest, useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteManifest, useSiteCms } from "@/features/shared/site-source";
 import type { ITemplateManifest, TRole, TTone } from "@/lib/types";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { handMapped, openItems, pickPreviewPost, summaryRows } from "./sample";
@@ -39,8 +40,8 @@ const STRUCTURE_ROLE = { table: "table", list: "list", quote: "quote", image: "i
 
 export function TemplatesView() {
 	const { slug } = useSite();
-	const { site, data, role, state, actions, can } = useCms();
-	const active = useActiveManifest();
+	const { site, data, role, state, actions, can } = useSiteCms();
+	const active = useSiteManifest();
 	const canManage = can("template.ingest");
 	const developer = state.members.find((m) => m.role === "developer")?.name ?? "the developer";
 	const pending = useMemo(

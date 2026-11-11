@@ -51,7 +51,7 @@ export const renderHeld = internalMutation({
 		const post = await ctx.db.get(postId);
 		const site = await ctx.db.get(siteId);
 		if (!post || !site || post.siteId !== siteId) return;
-		await holdPost(ctx, site, post, `Template can't render: ${held.join(", ")}`);
+		await holdPost(ctx, site, post, held.length === 1 && /^Image files/.test(held[0]!) ? held[0]! : `Template can't render: ${held.join(", ")}`);
 	},
 });
 
@@ -108,6 +108,7 @@ export const recordMr = internalMutation({
 				status: "open",
 				ci: "pending",
 				...(pr.previewUrl ? { previewUrl: pr.previewUrl } : {}),
+				...(pr.url ? { url: pr.url } : {}),
 				files: render.files,
 				openedAt: Date.now(),
 				overrides,
