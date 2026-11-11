@@ -5,8 +5,9 @@
 //
 // "Last-used" is the `cms.lastSite` cookie, written client-side by SiteGate (app/(app)/s/[site]/site-states.tsx) only once a
 // slug resolves to a site this person can open — so a typo or a no-access site never becomes the redirect target.
-// No cookie yet → the seeded default site. Workspace routes, /styleguide, /api, /_next and static files are not matched.
-import { NextResponse, type NextRequest } from "next/server";
+// No cookie yet → the seeded default site. Workspace routes, /styleguide and /api pass through unchanged.
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse, type NextRequest, type NextFetchEvent } from "next/server";
 import { sitePath } from "@/lib/routes";
 
 const DEFAULT_SITE_SLUG = "lumen";
@@ -21,7 +22,7 @@ function lastSite(req: NextRequest): string {
 	return v && SLUG_RE.test(v) ? v : DEFAULT_SITE_SLUG;
 }
 
-export function middleware(req: NextRequest) {
+function legacyRedirects(req: NextRequest) {
 	const { pathname } = req.nextUrl;
 	const [first = "", ...rest] = pathname.split("/").filter(Boolean);
 
@@ -40,6 +41,17 @@ export function middleware(req: NextRequest) {
 	return NextResponse.next();
 }
 
+// With the real backend on, Clerk runs first (session handshake), then the same redirects. Routes are not protected
+// here yet: Convex functions enforce access (requireSiteRole), and pages still run on demo data.
+const BACKEND_ENABLED = process.env.NEXT_PUBLIC_CMS_BACKEND === "convex" && !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY && !!process.env.CLERK_SECRET_KEY;
+const withClerk = clerkMiddleware((_auth, req) => legacyRedirects(req));
+
+export function middleware(req: NextRequest, event: NextFetchEvent) {
+	return BACKEND_ENABLED ? withClerk(req, event) : legacyRedirects(req);
+}
+
 export const config = {
-	matcher: ["/preview/:postId", "/(plan|posts|assets|templates|onboarding|approvals|merge-requests|seo|runs|settings)", "/(plan|posts|assets|templates|onboarding|approvals|merge-requests|seo|runs|settings)/:path*"],
+	// Every page and API route except Next internals and static files (Clerk needs to see them). legacyRedirects only
+	// acts on the pre-multi-site paths in SITE_ROUTES and /preview/<postId>, so the broad matcher changes nothing else.
+	matcher: ["/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)", "/(api|trpc)(.*)"],
 };

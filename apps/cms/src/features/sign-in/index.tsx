@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { AppFrame, Avatar, Button, Callout, Card, Chip, Icon, Skeleton, TextField, WORKSPACE_ROLE_LABEL } from "@/ds";
 import { useWorkspaceActions, useWorkspaceView } from "@/features/workspace/data";
+import { BACKEND_ENABLED } from "@/lib/backend";
 import { CmsProvider } from "@/lib/store";
+import { BackendPanel } from "./backend";
 import { WORKSPACE_ROUTES } from "@/lib/routes";
 
 function SignInCard() {
@@ -125,7 +127,8 @@ function Loading() {
 export function SignIn() {
 	return (
 		<AppFrame wash="blue-peach">
-			<div className="grid min-h-full place-items-center py-6">
+			<div className="grid min-h-full place-items-center gap-6 py-6">
+				{BACKEND_ENABLED && <BackendPanel />}
 				<CmsProvider fallback={<Loading />}>
 					<SignInCard />
 				</CmsProvider>
