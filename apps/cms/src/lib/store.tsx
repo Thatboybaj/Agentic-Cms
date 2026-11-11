@@ -6,7 +6,7 @@
 // `storage` event, one tab runs the job runner); the signed-in person is per tab (sessionStorage); the site comes from
 // <SiteScope> (the URL), never from shared state. Tenant isolation: every hook only returns sites the user can access.
 import { usePathname } from "next/navigation";
-import { Fragment, createContext, createElement, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
+import { Fragment, createContext, createElement, useCallback, useContext, useEffect, useMemo, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { addHours, anchorClock, isoWeek, now, nowIso } from "./clock";
 import {
 	AUTOPOST_ACTOR,
@@ -3110,6 +3110,12 @@ export function useActionsForSite(): (siteId: string) => ICmsActions {
 export function useToasts(): IToast[] {
 	const store = useStore();
 	return useSyncExternalStore(store.subscribe, store.getToasts, store.getToasts);
+}
+
+/** Show a toast from code that doesn't go through store actions (the Convex-backed workspace actions). */
+export function useToast(): (t: Omit<IToast, "id">) => void {
+	const store = useStore();
+	return useCallback((t: Omit<IToast, "id">) => store.toast(t), [store]);
 }
 
 // ─── SiteScope ───────────────────────────────────────────────────────────────

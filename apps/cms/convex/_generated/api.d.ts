@@ -20,6 +20,7 @@ import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as members from "../members.js";
+import type * as portfolio from "../portfolio.js";
 import type * as sites from "../sites.js";
 import type * as users from "../users.js";
 import type * as workspace from "../workspace.js";
@@ -43,6 +44,7 @@ declare const fullApi: ApiFromModules<{
   "lib/functions": typeof lib_functions;
   "lib/notify": typeof lib_notify;
   members: typeof members;
+  portfolio: typeof portfolio;
   sites: typeof sites;
   users: typeof users;
   workspace: typeof workspace;

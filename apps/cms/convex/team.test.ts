@@ -222,3 +222,21 @@ describe("defaults", () => {
 		expect(new Date(nextAtFor("monthly:1@07:00", fri)).toISOString()).toBe("2026-12-01T06:00:00.000Z");
 	});
 });
+
+describe("portfolio.list", () => {
+	test("one row per openable site with role, live baseline in counts, spend in USD, latest activity", async () => {
+		const t = convexTest(schema, modules);
+		const { tolu } = await world(t);
+		const { id: a } = (await as(t, "admin").mutation(api.sites.add, { name: "Lumen", domain: "lumen.co" })) as unknown as { id: Id<"sites"> };
+		await as(t, "admin").mutation(api.sites.add, { name: "Harbor", domain: "harbor.co" });
+		await t.run((ctx) => ctx.db.patch(a, { liveBaseline: 7, spend: { month: "2026-11", textMicroUsd: 2_500_000, imageMicroUsd: 500_000 } }));
+		await as(t, "admin").mutation(api.members.setMembership, { siteId: a, userId: tolu, role: "specialist" });
+		const forTolu = await as(t, "tolu").query(api.portfolio.list, {});
+		expect(forTolu.map((r) => [r.slug, r.role])).toEqual([["lumen", "specialist"]]);
+		expect(forTolu[0].counts.live).toBe(7);
+		expect(forTolu[0].spend).toEqual({ textUsd: 2.5, imageUsd: 0.5, textCapUsd: 100, imageCapUsd: 50 });
+		expect(forTolu[0].lastActivityAt).toEqual(expect.any(Number));
+		expect((await as(t, "admin").query(api.portfolio.list, {})).length).toBe(2);
+		expect(await as(t, "other", "org_w2").query(api.portfolio.list, {})).toEqual([]);
+	});
+});

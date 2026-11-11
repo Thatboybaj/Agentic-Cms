@@ -23,6 +23,7 @@ import {
 	SegmentedControl,
 	Select,
 	SiteAvatar,
+	Skeleton,
 	Sparkline,
 	StatStrip,
 	Toggle,
@@ -31,7 +32,8 @@ import {
 } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { AddSiteSheet } from "@/features/workspace/add-site-sheet";
-import { useSitePresence, useSiteRows, useWorkspaceView, type ISiteRow } from "@/features/workspace/data";
+import { LiveSignInPrompt } from "@/features/workspace/live-sign-in";
+import { PAGES_ON_CONVEX, usePageSiteRows, usePageWorkspaceView, useSitePresence, type ISiteRow } from "@/features/workspace/data";
 import { STATUS_ICON, STATUS_LABEL, STATUS_TONE, plural, type TSiteStatus } from "@/features/workspace/labels";
 import { sitePath } from "@/lib/routes";
 import type { TRole } from "@/lib/types";
@@ -58,8 +60,8 @@ function readView(): TView {
 
 export function SitesPortfolio() {
 	const router = useRouter();
-	const { canAddSite, addSiteWhy } = useWorkspaceView();
-	const rows = useSiteRows();
+	const { canAddSite, addSiteWhy, loading, signedIn } = usePageWorkspaceView();
+	const rows = usePageSiteRows();
 	const [view, setViewState] = useState<TView>(readView);
 	const [status, setStatus] = useState<TStatusFilter>("all");
 	const [role, setRole] = useState<TRoleFilter>("all");
@@ -127,6 +129,21 @@ export function SitesPortfolio() {
 		<LockedAction label="Add site" summary="Admins only" reasons={[addSiteWhy ?? "Only a workspace owner or admin can add sites"]} />
 	);
 
+	if (loading) {
+		return (
+			<>
+				<PageHeader title="Sites" subtitle="Loading your sites…" />
+				<div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3" aria-busy="true" aria-label="Loading sites">
+					{[0, 1, 2].map((i) => (
+						<Skeleton key={i} className="h-48 w-full" />
+					))}
+				</div>
+			</>
+		);
+	}
+
+	if (PAGES_ON_CONVEX && !signedIn) return <LiveSignInPrompt what="your sites" />;
+
 	if (rows.length === 0) {
 		return (
 			<>
@@ -162,7 +179,11 @@ export function SitesPortfolio() {
 			<TopBarCta>{addButton}</TopBarCta>
 			<PageHeader
 				title={`Sites · ${rows.length}`}
-				subtitle="Every client site you can open, with what's waiting on you first"
+				subtitle={
+					PAGES_ON_CONVEX
+						? "Every client site you can open · live from the backend (post counts and approvals fill in as posts move to it)"
+						: "Every client site you can open, with what's waiting on you first"
+				}
 				actions={
 					<SegmentedControl
 						label="Layout"

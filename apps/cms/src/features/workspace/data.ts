@@ -8,6 +8,8 @@ import { useActions, useActionsForSite, useCms, useInbox, usePortfolio, usePrese
 import { sitePath } from "@/lib/routes";
 import { computeStats, type IInboxItem, type TInboxKind } from "@/lib/workspace";
 import type { IMembership, ISite, IUser, IWorkspace, TRole, TSiteStatus, TTone, TWorkspaceRole } from "@/lib/types";
+import { BACKEND_ENABLED } from "@/lib/backend";
+import { useLiveSiteRows, useLiveWorkspaceActions, useLiveWorkspaceView } from "./live";
 
 // ---- Workspace + me -----------------------------------------------------------
 
@@ -266,3 +268,25 @@ export function useShellToasts(): {
 	const undo = useCallback(() => void actions.undo(), [actions]);
 	return { toasts, dismiss, undo };
 }
+
+// ---- Page-level data source (Sites, Team, invite + add-site sheets) ------------------
+// With the real backend on (NEXT_PUBLIC_CMS_BACKEND=convex) these pages read and write Convex; otherwise the demo
+// store. BACKEND_ENABLED is a build-time constant, so each binding picks one hook for the whole app run.
+
+export type TMaybeAsync<T> = T | Promise<T>;
+
+export interface IPageWorkspaceActions {
+	addSite: (input: { name: string; domain: string; industry: string }) => TMaybeAsync<TAddSiteResult>;
+	inviteUsers: (emails: string[], workspaceRole: TWorkspaceRole, siteRoles: Record<string, TRole>, fallbackSiteId?: string) => TMaybeAsync<TResult>;
+	setMembership: (userId: string, siteId: string, role: TRole | null) => TMaybeAsync<TResult>;
+	setWorkspaceRole: (userId: string, role: TWorkspaceRole) => TMaybeAsync<TResult>;
+	/** Convex only: pending invites are listed as people; the demo store has no revoke. */
+	revokeInvite?: (userId: string) => TMaybeAsync<TResult>;
+}
+
+/** Where pages read from. `loading` is only ever true on the Convex path. */
+export const usePageWorkspaceView: () => IWorkspaceView & { loading?: boolean } = BACKEND_ENABLED ? useLiveWorkspaceView : useWorkspaceView;
+export const usePageSiteRows: () => ISiteRow[] = BACKEND_ENABLED ? useLiveSiteRows : useSiteRows;
+export const usePageWorkspaceActions: () => IPageWorkspaceActions = BACKEND_ENABLED ? useLiveWorkspaceActions : useWorkspaceActions;
+/** True when these pages show Convex data: they show a "Live data" chip, and add-site returns to /sites. */
+export const PAGES_ON_CONVEX = BACKEND_ENABLED;

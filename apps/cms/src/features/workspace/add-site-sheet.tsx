@@ -4,8 +4,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, Callout, Select, Sheet, TextField } from "@/ds";
-import { sitePath } from "@/lib/routes";
-import { useWorkspaceActions } from "./data";
+import { WORKSPACE_ROUTES, sitePath } from "@/lib/routes";
+import { PAGES_ON_CONVEX, usePageWorkspaceActions } from "./data";
 
 const INDUSTRIES = ["Healthcare", "Legal", "Veterinary", "Fintech", "Physiotherapy", "Food & beverage", "Real estate", "Beauty & skincare", "SaaS", "Education", "Other"];
 
@@ -13,7 +13,7 @@ const DOMAIN_RE = /^(?!-)[a-z0-9-]+(\.[a-z0-9-]+)+$/i;
 
 export function AddSiteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
 	const router = useRouter();
-	const { addSite } = useWorkspaceActions();
+	const { addSite } = usePageWorkspaceActions();
 	const [name, setName] = useState("");
 	const [domain, setDomain] = useState("");
 	const [industry, setIndustry] = useState<string | null>(null);
@@ -40,19 +40,20 @@ export function AddSiteSheet({ open, onClose }: { open: boolean; onClose: () => 
 	const domainErr = tried && !DOMAIN_RE.test(cleanDomain) ? "Use a domain like client.com (no https://)" : undefined;
 	const industryErr = tried && !industry ? "Pick an industry — it seeds the keyword swarm" : undefined;
 
-	const submit = (e: FormEvent) => {
+	const submit = async (e: FormEvent) => {
 		e.preventDefault();
 		setTried(true);
 		if (name.trim().length < 2 || !DOMAIN_RE.test(cleanDomain) || !industry) return;
 		setBusy(true);
-		const r = addSite({ name: name.trim(), domain: cleanDomain, industry });
+		const r = await addSite({ name: name.trim(), domain: cleanDomain, industry });
 		if (!r.ok) {
 			setBusy(false);
 			setError(r.reason);
 			return;
 		}
 		onClose();
-		router.push(sitePath(r.slug, "/onboarding"));
+		// On Convex the site pages (onboarding included) aren't ported yet, so the new site shows up on /sites instead.
+		router.push(PAGES_ON_CONVEX ? WORKSPACE_ROUTES.sites : sitePath(r.slug, "/onboarding"));
 	};
 
 	return (

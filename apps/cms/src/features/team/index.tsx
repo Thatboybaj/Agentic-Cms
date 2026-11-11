@@ -20,12 +20,14 @@ import {
 	Section,
 	Select,
 	SiteAvatar,
+	Skeleton,
 	Tooltip,
 	WORKSPACE_ROLE_LABEL,
 	formatRelative,
 } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
-import { useWorkspaceActions, useWorkspaceView } from "@/features/workspace/data";
+import { PAGES_ON_CONVEX, usePageWorkspaceActions, usePageWorkspaceView } from "@/features/workspace/data";
+import { LiveSignInPrompt } from "@/features/workspace/live-sign-in";
 import { plural } from "@/features/workspace/labels";
 import type { ISite, IUser, TRole, TWorkspaceRole } from "@/lib/types";
 import { InviteSheet } from "./invite-sheet";
@@ -47,12 +49,14 @@ interface IPending {
 	body: string;
 	confirm: string;
 	danger?: boolean;
-	run: () => void;
+	run: () => unknown;
 }
 
 export function Team() {
-	const { workspace, me, users, workspaceRoles, memberships, sites, canManageMembers, membersWhy } = useWorkspaceView();
-	const { setMembership, setWorkspaceRole } = useWorkspaceActions();
+	const { workspace, me, users, workspaceRoles, memberships, sites, canManageMembers, membersWhy, loading, signedIn } = usePageWorkspaceView();
+	const { setMembership, setWorkspaceRole, revokeInvite } = usePageWorkspaceActions();
+	/** On Convex, pending invites are listed as people but have no user row yet: withdraw instead of editing. */
+	const pendingInvite = (u: IUser) => Boolean(revokeInvite) && u.status === "invited";
 	const [inviting, setInviting] = useState(false);
 	const [pending, setPending] = useState<IPending | null>(null);
 
@@ -115,6 +119,29 @@ export function Team() {
 
 	const lockedNote = !canManageMembers ? (membersWhy ?? "Only workspace owners and admins can change who has access.") : null;
 
+	const withdraw = (u: IUser) =>
+		setPending({
+			title: `Withdraw the invite to ${u.email}?`,
+			body: "The invite link stops working and the seat frees up. You can invite them again later.",
+			confirm: "Withdraw invite",
+			danger: true,
+			run: () => revokeInvite?.(u.id),
+		});
+
+	if (PAGES_ON_CONVEX && !signedIn) return <LiveSignInPrompt what="your team" />;
+
+	if (loading) {
+		return (
+			<>
+				<PageHeader title="Team" subtitle="Loading people and access…" />
+				<div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading team">
+					<Skeleton className="h-40 w-full" />
+					<Skeleton className="h-56 w-full" />
+				</div>
+			</>
+		);
+	}
+
 	return (
 		<>
 			<TopBarCta>
@@ -160,7 +187,11 @@ export function Team() {
 												</Chip>
 											)}
 											<span className="tabular w-16 text-end text-xs text-ink-3">{plural(siteCount(u), "site")}</span>
-											{canManageMembers && !owner && !self ? (
+											{pendingInvite(u) && canManageMembers ? (
+												<Button variant="ghost" size="sm" icon="X" onClick={() => withdraw(u)}>
+													Withdraw
+												</Button>
+											) : canManageMembers && !owner && !self ? (
 												<Select<TWorkspaceRole>
 													label={`Workspace role for ${u.name}`}
 													value={wr}
@@ -253,7 +284,7 @@ export function Team() {
 												const cur = roleOf(u.id, s.id);
 												return (
 													<td key={s.id} className="px-2 py-1.5">
-														{canManageMembers ? (
+														{canManageMembers && !pendingInvite(u) ? (
 															<Select<TCell>
 																label={`${u.name} on ${s.name}`}
 																value={cur ?? "none"}

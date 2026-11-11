@@ -3,7 +3,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { Button, Callout, ROLE_LABEL, ROLE_SHORT, SegmentedControl, Select, Sheet, SiteAvatar, TextArea, WORKSPACE_ROLE_LABEL } from "@/ds";
-import { useWorkspaceActions, useWorkspaceView } from "@/features/workspace/data";
+import { usePageWorkspaceActions, usePageWorkspaceView } from "@/features/workspace/data";
 import { plural } from "@/features/workspace/labels";
 import type { TRole, TWorkspaceRole } from "@/lib/types";
 
@@ -11,8 +11,9 @@ type TCell = TRole | "none";
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function InviteSheet({ open, onClose }: { open: boolean; onClose: () => void }) {
-	const { workspace, sites, users } = useWorkspaceView();
-	const { inviteUsers } = useWorkspaceActions();
+	const { workspace, sites, users } = usePageWorkspaceView();
+	const { inviteUsers } = usePageWorkspaceActions();
+	const [busy, setBusy] = useState(false);
 	const [raw, setRaw] = useState("");
 	const [wr, setWr] = useState<TWorkspaceRole>("member");
 	const [roles, setRoles] = useState<Record<string, TCell>>({});
@@ -56,11 +57,13 @@ export function InviteSheet({ open, onClose }: { open: boolean; onClose: () => v
 	const rolesErr = tried && wr === "member" && Object.keys(siteRoles).length === 0 ? "Give them a role on at least one site, or make them an admin" : undefined;
 	const seatErr = emails.length > seatsLeft ? `${plural(seatsLeft, "seat")} left on the ${workspace.plan} plan — invite fewer people or add seats` : undefined;
 
-	const submit = (e: FormEvent) => {
+	const submit = async (e: FormEvent) => {
 		e.preventDefault();
 		setTried(true);
-		if (!emails.length || bad.length || existing.length || seatErr || (wr === "member" && !Object.keys(siteRoles).length)) return;
-		const r = inviteUsers(emails, wr, siteRoles, sites[0]?.id);
+		if (busy || !emails.length || bad.length || existing.length || seatErr || (wr === "member" && !Object.keys(siteRoles).length)) return;
+		setBusy(true);
+		const r = await inviteUsers(emails, wr, siteRoles, sites[0]?.id);
+		setBusy(false);
 		if (!r.ok) return setError(r.reason);
 		onClose();
 	};
@@ -76,7 +79,7 @@ export function InviteSheet({ open, onClose }: { open: boolean; onClose: () => v
 					<Button variant="ghost" onClick={onClose}>
 						Cancel
 					</Button>
-					<Button variant="primary" type="submit" form="invite-form" icon="PaperPlaneTilt">
+					<Button variant="primary" type="submit" form="invite-form" icon="PaperPlaneTilt" loading={busy}>
 						{emails.length > 1 ? `Send ${emails.length} invites` : "Send invite"}
 					</Button>
 				</>
