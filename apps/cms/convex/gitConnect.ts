@@ -131,3 +131,23 @@ export const writeConnection = internalMutation({
 		await audit(ctx, { workspaceId: site.workspaceId, siteId: a.siteId, actor: user, action: "connected repo", target: a.repo, detail: `Writes only to ${a.contentDir} and ${a.assetDir} · never pushes to ${a.baseBranch}` });
 	},
 });
+
+/**
+ * Detaches the site's repo: the connection stops being active, so no post on this site can open a PR there. Open
+ * PRs on GitHub are left alone (close them there). The GitHub App installation itself stays installed.
+ */
+export const disconnect = siteMutation({
+	permission: "repo.connect",
+	args: {},
+	handler: async (ctx, { siteId }): Promise<{ ok: true; repo: string | null }> => {
+		const site = ctx.access.site;
+		let repo: string | null = null;
+		for (const c of await ctx.db.query("repoConnections").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(10)) {
+			if (c.status !== "active") continue;
+			await ctx.db.patch(c._id, { status: "removed" });
+			repo = c.repo;
+		}
+		if (repo) await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: ctx.access.user, action: "disconnected repo", target: repo, detail: "Posts on this site can't open pull requests until a repo is connected again" });
+		return { ok: true, repo };
+	},
+});
