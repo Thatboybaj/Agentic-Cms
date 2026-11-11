@@ -52,3 +52,37 @@ export const updateOrgRole = internalAction({
 		await clerk(`/organizations/${a.clerkOrgId}/memberships/${a.clerkUserId}`, { method: "PATCH", body: { role: a.role } });
 	},
 });
+
+/**
+ * One-off for a new deployment: Clerk only sends events going forward, so an org and members that already exist
+ * never reach a fresh backend. Reads them from the Clerk API and runs each through clerkSync.apply, the same rules
+ * the webhook uses (replay-safe: one delivery id per object version). Run: npx convex run clerkApi:backfill --prod
+ */
+export const backfill = internalAction({
+	args: {},
+	handler: async (ctx): Promise<{ users: number; orgs: number; memberships: number }> => {
+		const page = async (path: string): Promise<any[]> => {
+			const out: any[] = [];
+			for (let offset = 0; offset < 2000; offset += 100) {
+				const r = await clerk(`${path}${path.includes("?") ? "&" : "?"}limit=100&offset=${offset}`, { method: "GET" });
+				const rows: any[] = Array.isArray(r) ? r : (r?.data ?? []);
+				out.push(...rows);
+				if (rows.length < 100) break;
+			}
+			return out;
+		};
+		const send = (type: string, data: any) => ctx.runMutation(internal.clerkSync.apply, { deliveryId: `backfill:${type}:${data.id}:${data.updated_at ?? 0}`, type, data });
+		const users = await page("/users");
+		for (const u of users) await send("user.created", u);
+		const orgs = await page("/organizations");
+		let memberships = 0;
+		for (const o of orgs) {
+			await send("organization.created", o);
+			for (const m of await page(`/organizations/${o.id}/memberships`)) {
+				await send("organizationMembership.created", m);
+				memberships++;
+			}
+		}
+		return { users: users.length, orgs: orgs.length, memberships };
+	},
+});

@@ -142,7 +142,7 @@ export const githubManifestStart = httpAction(async (_ctx, req) => {
 	if (!key || !(await verifyState(key, state))) return new Response("This link expired · start again from the CMS", { status: 400 });
 	const base = process.env.CONVEX_SITE_URL;
 	const manifest = {
-		name: "Agentic CMS BAYNOR",
+		name: process.env.GITHUB_APP_NAME || "Agentic CMS BAYNOR", // GitHub App names are unique across GitHub: one per deployment
 		url: base,
 		description: "Opens one branch and pull request per post. Writes only to the content and image folders; never pushes to the base branch.",
 		hook_attributes: { url: `${base}/github/webhook`, active: true },
