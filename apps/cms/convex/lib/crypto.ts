@@ -8,12 +8,11 @@ const unb64u = (s: string) => Uint8Array.from(atob(s.replace(/-/g, "+").replace(
 
 export class SecretError extends Error {}
 
+/** Configured key versions, newest first. Probed by name: Convex's runtime doesn't let you list process.env. */
 function keyVersions(env: Record<string, string | undefined> = process.env): number[] {
-	return Object.keys(env)
-		.map((k) => /^CMS_SECRETS_KEY_V(\d+)$/.exec(k)?.[1])
-		.filter((x): x is string => !!x && !!env[`CMS_SECRETS_KEY_V${x}`])
-		.map(Number)
-		.sort((a, b) => b - a);
+	const out: number[] = [];
+	for (let n = 1; n <= 32; n++) if (env[`CMS_SECRETS_KEY_V${n}`]) out.push(n);
+	return out.sort((a, b) => b - a);
 }
 
 async function keyFor(version: number, env: Record<string, string | undefined> = process.env): Promise<CryptoKey> {
