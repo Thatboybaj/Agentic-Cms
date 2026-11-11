@@ -5,6 +5,7 @@
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
+import { vSafeEdits, vTask } from "../agentEdits";
 
 const live = () => process.env.CMS_AGENTS === "live";
 const vTier = v.union(v.literal("fast"), v.literal("workhorse"), v.literal("strongest"));
@@ -48,6 +49,7 @@ const vSlotOut = v.object({
 
 export const vDraftOutput = v.object({
 	seoTitle: v.string(),
+	metaDescription: v.optional(v.string()),
 	blocks: v.array(vBlockOut),
 	words: v.number(),
 	/** Claims the writer couldn't source: become open fact markers (the gate hard-fails on them). */
@@ -102,12 +104,16 @@ export const fillSlotStep = internalAction({
 
 // ─── Autopost gate + ship (handoff 02 steps 5–6) ───────────────────────────────
 
-/** STUB (03): the agent's text fixes for the gate's plan (rewrite claims, on-page fixes). Until 03 the fixes are the
- *  deterministic ports in fixes.ts, applied by gate.applyAndShip; this step is the seam where a model call goes. */
+/** The CMS agent's text fixes for the gate's plan. Live: one model call (agents/editor.autopostFixes) whose guarded
+ *  edits gate.applyAndShip applies. Stub: no edits; applyAndShip uses the deterministic ports in fixes.ts. */
 export const fixStep = internalAction({
-	args: { siteId: v.id("sites"), postId: v.id("posts"), fixes: v.number() },
-	returns: v.object({ applied: v.number() }),
-	handler: async (_ctx, { fixes }) => ({ applied: fixes }),
+	args: { siteId: v.id("sites"), postId: v.id("posts"), fixes: v.number(), tasks: v.optional(v.array(vTask)) },
+	returns: v.object({ applied: v.number(), result: v.optional(vSafeEdits) }),
+	handler: async (ctx, { siteId, postId, fixes, tasks }): Promise<{ applied: number; result?: Infer<typeof vSafeEdits> }> => {
+		if (!live() || !tasks?.length) return { applied: fixes };
+		const out = await ctx.runAction(internal.agents.editor.autopostFixes, { siteId, postId, tasks });
+		return { applied: out.result.edits.length, result: out.result };
+	},
 });
 
 export const vRenderOutput = v.object({

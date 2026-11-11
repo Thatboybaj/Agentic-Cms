@@ -10,6 +10,7 @@ export const autopostGate = workflow
 		const decided = await step.runMutation(internal.pipeline.gate.decide, args);
 		if (decided.action !== "ship") return;
 		const textFixes = decided.plan.filter((f) => f.kind !== "slot" && f.kind !== "soft-accept").length;
-		if (textFixes) await step.runAction(internal.pipeline.steps.fixStep, { ...args, fixes: textFixes });
-		await step.runMutation(internal.pipeline.gate.applyAndShip, args);
+		// No workflow retry on the paid step (the agent retries itself; a blind re-run pays twice).
+		const fx = textFixes ? await step.runAction(internal.pipeline.steps.fixStep, { ...args, fixes: textFixes, tasks: decided.tasks }, { retry: false }) : null;
+		await step.runMutation(internal.pipeline.gate.applyAndShip, { ...args, ...(fx?.result ? { agentEdits: fx.result } : {}) });
 	});

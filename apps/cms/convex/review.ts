@@ -15,6 +15,7 @@ import { siteMutation } from "./lib/functions";
 import { notify, siteAudienceWith } from "./lib/notify";
 import { createRun, finishRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
+import { agentsLive, refreshOnPage } from "./lib/onpage";
 import { workflow } from "./workflows/manager";
 
 type TResult = { ok: true } | { ok: false; reason: string };
@@ -77,6 +78,7 @@ export const saveRevision = internalMutation({
 		await ctx.db.insert("postVersions", { siteId, postId, n, origin: "agent-edit", actor: RUN_META["post-generation"].agent, runId, at: Date.now(), words, blocks: next, seoTitle, note: `Revised from note: "${note}"` });
 		const r = await transitionPost(ctx, post, "in-review", { extra: { blocks: next, seoTitle, words, currentVersion: n, sendBackNote: undefined } });
 		if (!r.ok) return;
+		if (agentsLive()) await refreshOnPage(ctx, r.post);
 		await finishRun(ctx, runId, { status: "succeeded", output: "Revision ready for review" });
 		const recipients = await siteAudienceWith(ctx, site, "post.approve");
 		if (post.assigneeId) recipients.push(post.assigneeId);

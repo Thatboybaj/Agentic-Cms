@@ -6,6 +6,7 @@ import { loadPostInSite } from "./lib/access";
 import { audit } from "./lib/audit";
 import { siteMutation } from "./lib/functions";
 import { transitionPost } from "./lib/transition";
+import { agentsLive, refreshOnPage } from "./lib/onpage";
 
 type TResult = { ok: true } | { ok: false; reason: string };
 const COALESCE_MS = 2 * 60_000;
@@ -54,6 +55,7 @@ export const editBlock = siteMutation({
 			await ctx.db.insert("postVersions", { siteId, postId, n, origin: "human-edit", actor: user.name, actorUserId: user._id, at: now, words, blocks, seoTitle: post.seoTitle });
 		}
 		await ctx.db.patch(postId, { blocks, words, currentVersion: n, updatedAt: now });
+		if (agentsLive()) await refreshOnPage(ctx, (await ctx.db.get(postId))!);
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "edited", target: post.title, detail: `v${n} · human edit` });
 
 		if (post.state === "mr-open" && post.approvedVersion !== undefined && post.approvedVersion < n) {

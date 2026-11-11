@@ -15,6 +15,9 @@ import { notify, siteAudienceWith } from "./lib/notify";
 import { createRun, finishRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
 import { rewriteWithout } from "./pipeline/fixes";
+import { internal } from "./_generated/api";
+import { agentsLive, refreshOnPage } from "./lib/onpage";
+import type { TEditTask } from "./agents/editorCore";
 import { lastContentBlock, proposeEdit, textBlocks, type IProposal } from "./pipeline/proposals";
 
 type TResult = { ok: true } | { ok: false; reason: string };
@@ -97,6 +100,7 @@ export const restoreVersion = siteMutation({
 		if (!ver || ver.postId !== postId) return fail("Version not found");
 		if (post.workflowId) return fail("An agent is working on this post · wait for it to finish");
 		await newVersion(ctx, site, post, user, { blocks: ver.blocks, words: ver.words, seoTitle: ver.seoTitle ?? post.seoTitle, note: `Restored v${ver.n}` });
+		if (agentsLive()) await refreshOnPage(ctx, (await ctx.db.get(postId))!);
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "restored version", target: post.title, detail: `v${ver.n}` });
 		return { ok: true };
 	},
@@ -236,6 +240,29 @@ async function queueSuggestion(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"
 	return { ok: true };
 }
 
+/**
+ * Live CMS agent (CMS_AGENTS=live): cap check, a running run, and the model call scheduled in agents/editor.ts. The
+ * suggestion arrives when it's ready; the editor shows it through its subscription.
+ */
+async function queueAgent(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, user: Doc<"users">, task: TEditTask, meta: { instruction: string; fixesCheckId?: string; resolvesFactId?: Id<"factMarkers"> }, label: string): Promise<TResult> {
+	const cap = checkCap(capSite(site), "post-generation", SUGGESTION_ESTIMATE);
+	const key = `run:${site._id}:agent-edit:${post._id}:${post.currentVersion}:${task.type}:${meta.instruction}:${"blockId" in task ? (task.blockId ?? "") : ""}`;
+	const base = { site, kind: "post-generation" as const, trigger: "manual" as const, estimate: SUGGESTION_ESTIMATE, idempotencyKey: key, postId: post._id, triggeredBy: user._id, output: `Agent working · "${meta.instruction}"` };
+	if (cap.status === "refused") {
+		await refuseRun(ctx, base, cap, user);
+		return fail(cap.message);
+	}
+	// One request at a time per task and version; asking again after an answer is fine (each answer is a new run).
+	const recent = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", site._id)).order("desc").take(50);
+	if (recent.some((r) => r.idempotencyKey.startsWith(key) && (r.status === "running" || r.status === "queued"))) return fail("The agent is already working on that");
+	const runId = await createRun(ctx, { ...base, idempotencyKey: `${key}:${Date.now()}` });
+	await ctx.scheduler.runAfter(0, internal.agents.editor.suggest, { siteId: site._id, postId: post._id, runId, tasks: [task], meta: [{ taskId: task.id, ...meta }] });
+	await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, postId: post._id, actor: user, action: label, target: post.title, detail: `"${meta.instruction}" · est. ${fmtUsd(SUGGESTION_ESTIMATE.usd)}` });
+	return { ok: true };
+}
+
+const MODEL_FIXABLE = new Set(["kw-first-100", "title-length", "meta-description", "faq", "internal-links", "word-count", "headings", "density", "title-front"]);
+
 async function keywordOf(ctx: MutationCtx, post: Doc<"posts">) {
 	return (await ctx.db.get(post.keywordId))?.term ?? post.title;
 }
@@ -248,6 +275,7 @@ export const instructAgent = siteMutation({
 		const post = await loadPostInSite(ctx, siteId, postId);
 		if (!instruction.trim()) return fail("Tell the agent what to change");
 		if (!post.blocks.length) return fail("There's no draft yet. Generate one first");
+		if (agentsLive()) return queueAgent(ctx, site, post, user, { id: "t1", type: "instruct", instruction: instruction.trim(), ...(blockId ? { blockId } : {}) }, { instruction: instruction.trim() }, "instructed agent");
 		const checks = await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", postId)).take(60);
 		const proposal = proposeEdit({ blocks: post.blocks, gate: checks.map((c) => ({ id: c.checkId, status: c.status })) }, await keywordOf(ctx, post), instruction.trim(), blockId);
 		if (!proposal) return fail("The agent found nothing to change for that instruction");
@@ -266,6 +294,7 @@ export const rewriteFactWithout = siteMutation({
 		if (f.status !== "open") return fail("This marker is already resolved");
 		const block = post.blocks.find((b) => b.factMarkerIds?.includes(markerId)) ?? post.blocks.find((b) => b.text.includes(f.claim));
 		if (!block) return fail("The claim is no longer in the draft");
+		if (agentsLive()) return queueAgent(ctx, site, post, user, { id: "t1", type: "rewrite-claim", claim: f.claim, blockId: block.id }, { instruction: "rewrite without the unsourced claim", resolvesFactId: markerId }, "asked agent to rewrite");
 		return queueSuggestion(ctx, site, post, user, { instruction: "rewrite without the unsourced claim", blockId: block.id, before: block.text, after: rewriteWithout(block.text, f.claim), resolvesFactId: markerId }, "asked agent to rewrite");
 	},
 });
@@ -281,6 +310,8 @@ export const fixCheck = siteMutation({
 		if (!check) return fail("Check not found");
 		if (check.status === "pass") return fail("Already passing");
 		const kw = inputs.keyword;
+		if (agentsLive() && MODEL_FIXABLE.has(checkId)) return queueAgent(ctx, site, post, user, { id: "t1", type: "fix-check", checkId, label: check.label, value: check.value }, { instruction: `fix: ${check.label.toLowerCase()}`, fixesCheckId: checkId }, "asked agent to fix");
+		if (agentsLive() && checkId === "external-links") return fail("The agent has no web access yet. Add 1–3 sources to the draft yourself");
 		const simple = { blocks: post.blocks, gate: inputs.checkDocs.map((c) => ({ id: c.checkId, status: c.status })) };
 		if (checkId === "schema") {
 			const row = inputs.checkDocs.find((c) => c.checkId === "schema");
@@ -321,8 +352,11 @@ export const acceptSuggestion = siteMutation({
 		if (!sg || sg.postId !== postId || sg.status !== "pending") return fail("This suggestion is no longer pending");
 		let blocks = post.blocks.map((b) => ({ ...b }));
 		let words = post.words;
+		let seoTitle = post.seoTitle;
 		const idx = blocks.findIndex((b) => b.id === sg.blockId);
-		if (sg.insertKind) {
+		if (sg.field === "seoTitle") seoTitle = sg.after.trim();
+		else if (sg.field === "metaDescription") await ctx.db.patch(postId, { metaDescription: sg.after.trim() });
+		else if (sg.insertKind) {
 			blocks.splice(idx >= 0 ? idx + 1 : blocks.length, 0, { id: `b-${Date.now().toString(36)}`, kind: sg.insertKind, text: sg.after });
 			words += countWords(sg.after);
 		} else if (idx >= 0) {
@@ -334,14 +368,15 @@ export const acceptSuggestion = siteMutation({
 		if (sg.fixesCheckId) {
 			const row = (await ctx.db.query("gateChecks").withIndex("by_post_check", (q) => q.eq("postId", postId).eq("checkId", sg.fixesCheckId!)).take(1))[0];
 			if (row) await ctx.db.patch(row._id, { status: "pass", value: row.checkId === "kw-first-100" ? "Word 9" : row.checkId === "internal-links" ? "2 of 2" : row.checkId === "faq" ? "2 questions" : row.value });
-			if (sg.fixesCheckId === "word-count") words = Math.max(words, post.wordTarget);
 		}
+		if (agentsLive()) words = blocks.reduce((n, b) => n + countWords(b.text), 0); // counted, never assumed
 		if (sg.resolvesFactId) {
 			await ctx.db.patch(sg.resolvesFactId, { status: "resolved", resolution: "rewritten", resolvedBy: user.name, resolvedAt: Date.now(), note: "Rewritten without the claim." });
 			blocks = blocks.map((b) => (b.factMarkerIds ? { ...b, factMarkerIds: b.factMarkerIds.filter((x) => x !== sg.resolvesFactId) } : b));
 		}
 		await ctx.db.patch(suggestionId, { status: "accepted", decidedBy: user.name, decidedAt: Date.now() });
-		await newVersion(ctx, site, post, user, { blocks, words, seoTitle: post.seoTitle, origin: "agent-edit", actor: RUN_META["post-generation"].agent, note: `"${sg.instruction}" · accepted by ${user.name}` });
+		await newVersion(ctx, site, post, user, { blocks, words, seoTitle, origin: "agent-edit", actor: RUN_META["post-generation"].agent, note: `"${sg.instruction}" · accepted by ${user.name}` });
+		if (agentsLive()) await refreshOnPage(ctx, (await ctx.db.get(postId))!);
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "accepted agent edit", target: post.title, detail: `"${sg.instruction}"` });
 		return { ok: true };
 	},

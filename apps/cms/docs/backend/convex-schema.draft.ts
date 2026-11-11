@@ -391,6 +391,7 @@ export default defineSchema({
 		slug: v.string(),
 		title: v.string(),
 		seoTitle: v.string(),
+		metaDescription: v.optional(v.string()),
 		keywordId: v.id("keywords"),
 		pillarId: v.id("pillars"),
 		intent: vIntent,
@@ -490,6 +491,8 @@ export default defineSchema({
 		fixesCheckId: v.optional(v.string()),
 		resolvesFactId: v.optional(v.id("factMarkers")),
 		insertKind: v.optional(vBlock.fields.kind),
+		/** Set when the diff is to a post field instead of a block (blockId is then ""). */
+		field: v.optional(v.union(v.literal("seoTitle"), v.literal("metaDescription"))),
 		runId: v.optional(v.id("runs")),
 		createdAt: v.number(),
 		decidedBy: v.optional(v.string()),

@@ -124,7 +124,7 @@ export function toDraft(out: TWriterOutput, opts: { disclaimer?: string }) {
 	const claims = out.unsourcedClaims
 		.filter((c) => c.claim.trim())
 		.map((c) => ({ blockId: blocks[Math.max(0, Math.min(blocks.length - 1, c.blockIndex))]?.id ?? "b1", claim: c.claim.trim() }));
-	return { seoTitle: out.seoTitle.trim().slice(0, 70), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
+	return { seoTitle: out.seoTitle.trim().slice(0, 70), ...(out.metaDescription.trim() ? { metaDescription: out.metaDescription.trim().slice(0, 170) } : {}), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
 }
 
 // ─── Revise (reviewer's send-back note) ───────────────────────────────────────

@@ -11,6 +11,24 @@ import { gateInputs } from "../lib/gateInputs";
 import { createRun, finishRun } from "../lib/runs";
 import { transitionPost } from "../lib/transition";
 import { countWords, fixCheck, rewriteWithout } from "./fixes";
+import { vSafeEdits } from "../agentEdits";
+import { agentsLive, refreshOnPage } from "../lib/onpage";
+
+/** The plan's text fixes as CMS agent tasks (fact rewrites + agent-fixable checks). */
+function tasksFor(plan: IAutopostFix[], facts: Doc<"factMarkers">[], post: Doc<"posts">, checks: Doc<"gateChecks">[]) {
+	const out: ({ id: string; type: "rewrite-claim"; claim: string; blockId: string } | { id: string; type: "fix-check"; checkId: string; label: string; value: string })[] = [];
+	for (const f of plan) {
+		if (f.kind === "fact") {
+			const m = facts.find((x) => x._id === f.id);
+			const b = m && (post.blocks.find((x) => x.factMarkerIds?.includes(m._id)) ?? post.blocks.find((x) => x.text.includes(m.claim)) ?? post.blocks.find((x) => x.id === m.blockId));
+			if (m && b) out.push({ id: `fact:${m._id}`, type: "rewrite-claim", claim: m.claim, blockId: b.id });
+		} else if (f.kind === "check") {
+			const row = checks.find((c) => c.checkId === f.id);
+			out.push({ id: `check:${f.id}`, type: "fix-check", checkId: f.id, label: row?.label ?? f.label, value: row?.value ?? "" });
+		}
+	}
+	return out;
+}
 
 const AUTOPOST = { system: AUTOPOST_ACTOR };
 const GATE_STATES = new Set(["needs-assets", "in-review"]);
@@ -27,22 +45,24 @@ export const decide = internalMutation({
 	args: { siteId: v.id("sites"), postId: v.id("posts") },
 	handler: async (ctx, { siteId, postId }) => {
 		const got = await loadInSite(ctx, siteId, postId);
-		if (!got || !GATE_STATES.has(got.post.state)) return { action: "stop" as const, plan: [] as IAutopostFix[] };
+		if (!got || !GATE_STATES.has(got.post.state)) return { action: "stop" as const, plan: [] as IAutopostFix[], tasks: [] };
 		const { post, site } = got;
+		if (agentsLive()) await refreshOnPage(ctx, post);
 		const inputs = await gateInputs(ctx, site, post);
 		const decision = autopostDecision(inputs.post, evaluateGate(inputs.post, inputs.slots, inputs.manifest), inputs.site);
 		if (decision.action === "hold") {
 			await holdPost(ctx, site, post, decision.reason!);
-			return { action: "hold" as const, plan: [] as IAutopostFix[] };
+			return { action: "hold" as const, plan: [] as IAutopostFix[], tasks: [] };
 		}
-		return { action: "ship" as const, plan: decision.plan };
+		return { action: "ship" as const, plan: decision.plan, tasks: agentsLive() ? tasksFor(decision.plan, inputs.factDocs, post, inputs.checkDocs) : [] };
 	},
 });
 
 /** Step 3: apply the fixes, re-check, then approve and start shipPost (or hold). */
 export const applyAndShip = internalMutation({
-	args: { siteId: v.id("sites"), postId: v.id("posts") },
-	handler: async (ctx, { siteId, postId }) => {
+	args: { siteId: v.id("sites"), postId: v.id("posts"), agentEdits: v.optional(vSafeEdits) },
+	handler: async (ctx, { siteId, postId, agentEdits }) => {
+		const agentEdit = (taskId: string) => agentEdits?.edits.find((e) => e.taskId === taskId && e.op === "replace");
 		const got = await loadInSite(ctx, siteId, postId);
 		if (!got || !GATE_STATES.has(got.post.state)) return { shipped: false };
 		const { site } = got;
@@ -71,7 +91,8 @@ export const applyAndShip = internalMutation({
 				const b = blocks.find((x) => x.factMarkerIds?.includes(f._id)) ?? blocks.find((x) => x.text.includes(f.claim));
 				if (b) {
 					const before = b.text;
-					b.text = rewriteWithout(b.text, f.claim);
+					const e = agentEdit(`fact:${f._id}`);
+					b.text = e && e.blockId === b.id ? e.text : rewriteWithout(b.text, f.claim);
 					words = Math.max(0, words + countWords(b.text) - countWords(before));
 				}
 				for (const x of blocks) if (x.factMarkerIds) x.factMarkerIds = x.factMarkerIds.filter((id) => id !== f._id);
@@ -80,11 +101,24 @@ export const applyAndShip = internalMutation({
 				edits++;
 			} else if (fix.kind === "check") {
 				const row = inputs.checkDocs.find((c) => c.checkId === fix.id);
-				const r = fixCheck(fix.id, blocks, seoTitle, inputs.keyword, row?.value ?? "");
-				blocks = r.blocks;
-				seoTitle = r.seoTitle;
-				words += r.wordsDelta;
-				if (row) await ctx.db.patch(row._id, { status: "pass", value: r.check.value ?? row.value, evaluatedAt: now });
+				const e = agentEdits?.edits.find((x) => x.taskId === `check:${fix.id}`);
+				if (agentEdits && (e || (fix.id === "title-length" && agentEdits.seoTitle) || (fix.id === "meta-description" && agentEdits.metaDescription))) {
+					// The model's fix; the audit below re-checks it instead of trusting it.
+					if (e) {
+						const i = blocks.findIndex((b) => b.id === e.blockId);
+						if (e.op === "replace" && i >= 0) blocks[i] = { ...blocks[i]!, text: e.text };
+						else if (e.op === "insert_after") blocks.splice(i >= 0 ? i + 1 : blocks.length, 0, { id: `b-${fix.id}-${now}`, kind: e.kind, text: e.text });
+					}
+					if (fix.id === "title-length" && agentEdits.seoTitle) seoTitle = agentEdits.seoTitle;
+					if (fix.id === "meta-description" && agentEdits.metaDescription) await ctx.db.patch(postId, { metaDescription: agentEdits.metaDescription });
+					words = blocks.reduce((n, b) => n + countWords(b.text), 0);
+				} else {
+					const r = fixCheck(fix.id, blocks, seoTitle, inputs.keyword, row?.value ?? "");
+					blocks = r.blocks;
+					seoTitle = r.seoTitle;
+					words += r.wordsDelta;
+					if (row) await ctx.db.patch(row._id, { status: "pass", value: r.check.value ?? row.value, evaluatedAt: now });
+				}
 				await audit(ctx, { workspaceId: ws, siteId, postId, actor: AUTOPOST, action: "fixed check", target: post.title, detail: `${fix.label} · autopost` });
 				edits++;
 			} else if (fix.kind === "soft-fix") {
@@ -118,10 +152,12 @@ export const applyAndShip = internalMutation({
 			const runId = await createRun(ctx, { site, kind, trigger: "workflow", estimate: { usd: Math.round(usd * 100) / 100, budget: kind === "image-generation" ? "image" : "text", tier: "workhorse" }, idempotencyKey: `run:${siteId}:autopost-fix:${kind}:${postId}:${post.currentVersion}`, postId, output });
 			await finishRun(ctx, runId, { status: "succeeded", output });
 		};
-		if (textUsd > 0) await runFor("post-generation", textUsd, `Autopost gate · ${edits} fix${edits === 1 ? "" : "es"}`);
+		// Live: the agent's own run already carries the real cost; the placeholder estimate run is the stub world's record.
+		if (textUsd > 0 && !agentEdits) await runFor("post-generation", textUsd, `Autopost gate · ${edits} fix${edits === 1 ? "" : "es"}`);
 		if (imageUsd > 0) await runFor("image-generation", imageUsd, "Slots filled for autopost");
 
 		post = (await ctx.db.get(postId))!;
+		if (agentsLive()) await refreshOnPage(ctx, post);
 		inputs = await gateInputs(ctx, site, post);
 		const after = evaluateGate(inputs.post, inputs.slots, inputs.manifest);
 		if (!after.canApprove || !inputs.manifest) {

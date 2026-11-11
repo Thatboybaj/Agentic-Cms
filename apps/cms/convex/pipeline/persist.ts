@@ -11,6 +11,7 @@ import { audit } from "../lib/audit";
 import { notify, siteAudience } from "../lib/notify";
 import { finishRun } from "../lib/runs";
 import { mustTransition } from "../lib/transition";
+import { agentsLive, refreshOnPage } from "../lib/onpage";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflows/manager";
 import { vDraftOutput } from "./steps";
@@ -108,8 +109,10 @@ export const saveDraft = internalMutation({
 			if (!humanOnly) toFill.push({ slotId, provider });
 		}
 		await mustTransition(ctx, post, "needs-assets", {
-			extra: { blocks: draft.blocks, words: draft.words, seoTitle: draft.seoTitle, currentVersion: n, progress: { label: `Image sheet · ${draft.imageSheet.length} slots`, value: 60 } },
+			extra: { blocks: draft.blocks, words: draft.words, seoTitle: draft.seoTitle, ...(draft.metaDescription ? { metaDescription: draft.metaDescription } : {}), currentVersion: n, progress: { label: `Image sheet · ${draft.imageSheet.length} slots`, value: 60 } },
 		});
+		// On-page audit of the new draft (the optimizer's checks; live only, stub drafts keep stub rows).
+		if (agentsLive()) await refreshOnPage(ctx, (await ctx.db.get(postId))!);
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor, action: "generated draft", target: post.title, detail: `v${n} · ${draft.words} words · ${draft.imageSheet.length} image slots` });
 		return { stop: false as const, toFill };
 	},

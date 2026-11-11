@@ -9,7 +9,10 @@
  */
 
 import type * as access from "../access.js";
+import type * as agentEdits from "../agentEdits.js";
 import type * as agents_capped from "../agents/capped.js";
+import type * as agents_editor from "../agents/editor.js";
+import type * as agents_editorCore from "../agents/editorCore.js";
 import type * as agents_gateway from "../agents/gateway.js";
 import type * as agents_models from "../agents/models.js";
 import type * as agents_pricing from "../agents/pricing.js";
@@ -33,6 +36,7 @@ import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gateInputs from "../lib/gateInputs.js";
 import type * as lib_notify from "../lib/notify.js";
+import type * as lib_onpage from "../lib/onpage.js";
 import type * as lib_runs from "../lib/runs.js";
 import type * as lib_transition from "../lib/transition.js";
 import type * as members from "../members.js";
@@ -68,7 +72,10 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  agentEdits: typeof agentEdits;
   "agents/capped": typeof agents_capped;
+  "agents/editor": typeof agents_editor;
+  "agents/editorCore": typeof agents_editorCore;
   "agents/gateway": typeof agents_gateway;
   "agents/models": typeof agents_models;
   "agents/pricing": typeof agents_pricing;
@@ -92,6 +99,7 @@ declare const fullApi: ApiFromModules<{
   "lib/functions": typeof lib_functions;
   "lib/gateInputs": typeof lib_gateInputs;
   "lib/notify": typeof lib_notify;
+  "lib/onpage": typeof lib_onpage;
   "lib/runs": typeof lib_runs;
   "lib/transition": typeof lib_transition;
   members: typeof members;
