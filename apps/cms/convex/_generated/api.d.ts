@@ -9,10 +9,17 @@
  */
 
 import type * as access from "../access.js";
+import type * as clerkApi from "../clerkApi.js";
 import type * as clerkSync from "../clerkSync.js";
+import type * as devSeed from "../devSeed.js";
 import type * as http from "../http.js";
+import type * as invites from "../invites.js";
 import type * as lib_access from "../lib/access.js";
+import type * as lib_audit from "../lib/audit.js";
+import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
+import type * as lib_notify from "../lib/notify.js";
+import type * as members from "../members.js";
 import type * as sites from "../sites.js";
 import type * as users from "../users.js";
 import type * as workspace from "../workspace.js";
@@ -25,10 +32,17 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   access: typeof access;
+  clerkApi: typeof clerkApi;
   clerkSync: typeof clerkSync;
+  devSeed: typeof devSeed;
   http: typeof http;
+  invites: typeof invites;
   "lib/access": typeof lib_access;
+  "lib/audit": typeof lib_audit;
+  "lib/defaults": typeof lib_defaults;
   "lib/functions": typeof lib_functions;
+  "lib/notify": typeof lib_notify;
+  members: typeof members;
   sites: typeof sites;
   users: typeof users;
   workspace: typeof workspace;

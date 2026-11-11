@@ -4,8 +4,12 @@
 // knows about this person and workspace. The demo picker below it still drives the pages until the store adapter lands.
 
 import { OrganizationList, OrganizationSwitcher, SignIn as ClerkSignIn, useAuth, UserButton } from "@clerk/nextjs";
-import { useConvexAuth, useQuery } from "convex/react";
-import { Card, Callout, Chip, Skeleton, WORKSPACE_ROLE_LABEL } from "@/ds";
+import { useConvexAuth, useMutation, useQuery } from "convex/react";
+import { ConvexError } from "convex/values";
+import { useState } from "react";
+import { Button, Card, Callout, Chip, Skeleton, WORKSPACE_ROLE_LABEL } from "@/ds";
+import { ROLE_LABEL } from "@/lib/logic";
+import type { TRole } from "@/lib/types";
 import { api } from "../../../convex/_generated/api";
 
 function WorkspaceStatus() {
@@ -30,6 +34,51 @@ function WorkspaceStatus() {
 			<span className="text-xs text-ink-3">
 				{sites === undefined ? "Loading sites…" : sites.length === 0 ? "No sites yet in this workspace." : `${sites.length} site${sites.length === 1 ? "" : "s"} you can open`}
 			</span>
+			{sites && sites.length > 0 && (
+				<ul className="flex flex-col gap-1" aria-label="Sites in Convex">
+					{sites.map((s) => (
+						<li key={s._id} className="flex items-center justify-between gap-2 text-xs">
+							<span className="truncate text-ink">
+								{s.name} <span className="text-ink-3">· {s.domain}</span>
+							</span>
+							<Chip size="sm">{ROLE_LABEL[s.role as TRole] ?? s.role}</Chip>
+						</li>
+					))}
+				</ul>
+			)}
+			{sites && sites.length === 0 && workspace && workspace.role !== "member" && <SeedDemoSites />}
+		</div>
+	);
+}
+
+/** Dev deployments only (CMS_DEV_TOOLS=1): loads the prototype's demo sites into this workspace. */
+function SeedDemoSites() {
+	const devTools = useQuery(api.devSeed.enabled, {});
+	const seed = useMutation(api.devSeed.seedSites);
+	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
+	if (!devTools) return null;
+	return (
+		<div className="flex flex-col gap-1.5">
+			<Button
+				variant="secondary"
+				size="sm"
+				loading={busy}
+				onClick={async () => {
+					setBusy(true);
+					setError(null);
+					try {
+						await seed({});
+					} catch (e) {
+						setError(e instanceof ConvexError ? String((e.data as { reason?: string }).reason ?? "Couldn't load the demo sites") : "Couldn't load the demo sites");
+					} finally {
+						setBusy(false);
+					}
+				}}
+			>
+				Load demo sites (dev only)
+			</Button>
+			{error && <span className="text-xs text-block">{error}</span>}
 		</div>
 	);
 }
