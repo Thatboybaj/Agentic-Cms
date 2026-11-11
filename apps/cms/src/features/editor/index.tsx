@@ -30,7 +30,8 @@ import {
 	SoftLockBanner,
 } from "@/ds";
 import { checkCap, estimateRun, fmtUsd, INTENT_LABEL, mrRef, TIER_LABEL } from "@/lib/logic";
-import { useCms, useEditLock, useGate, useMrForPost, type IGateView, useSite } from "@/lib/store";
+import { type IGateView, useSite } from "@/lib/store";
+import { useSiteCms, useSiteEditLock, useSiteGate, useSiteMrForPost } from "@/features/shared/site-source";
 import type { IPost, TRole } from "@/lib/types";
 import { IdeaCostNote, RejectIdeaDialog } from "@/features/plan/idea-actions";
 import { DiffReadyBar, DraftBlocks, DraftToolbar, FormatProvider, SeoTitleField } from "./draft";
@@ -56,8 +57,8 @@ function readOnlyCopy(role: TRole, post: IPost): string {
 function ApproveAction({ post, gate, compact }: { post: IPost; gate: IGateView | null; compact?: boolean }) {
 	const { slug } = useSite();
 	const router = useRouter();
-	const { can, site, actions, state } = useCms();
-	const mr = useMrForPost(post.id);
+	const { can, site, actions, state } = useSiteCms();
+	const mr = useSiteMrForPost(post.id);
 	const [busy, setBusy] = useState(false);
 	if (post.state === "mr-open" && mr)
 		return (
@@ -119,7 +120,7 @@ function ApproveAction({ post, gate, compact }: { post: IPost; gate: IGateView |
 // ─── Draft states (F2) ───────────────────────────────────────────────────────
 
 function IdeaEmpty({ post }: { post: IPost }) {
-	const { actions, role, site } = useCms();
+	const { actions, role, site } = useSiteCms();
 	const [rejecting, setRejecting] = useState(false);
 	const auto = !!site.publishing?.autopost;
 	return (
@@ -152,8 +153,8 @@ function IdeaEmpty({ post }: { post: IPost }) {
 }
 
 function BriefPanel({ post }: { post: IPost }) {
-	const { actions, data, role, site } = useCms();
-	const gate = useGate(post.id);
+	const { actions, data, role, site } = useSiteCms();
+	const gate = useSiteGate(post.id);
 	const kw = data.keywords.find((k) => k.id === post.keywordId);
 	const pillar = data.pillars.find((p) => p.id === post.pillarId);
 	const strong = post.strongModel || post.contentType === "pillar" || post.contentType === "money-page";
@@ -210,9 +211,9 @@ function DraftingPanel({ post }: { post: IPost }) {
 
 function StateBanner({ post }: { post: IPost }) {
 	const { slug } = useSite();
-	const { actions, can, site } = useCms();
-	const gate = useGate(post.id);
-	const mr = useMrForPost(post.id);
+	const { actions, can, site } = useSiteCms();
+	const gate = useSiteGate(post.id);
+	const mr = useSiteMrForPost(post.id);
 	if (post.state === "needs-assets") {
 		const n = gate?.unfilledSlots.length ?? 0;
 		return (
@@ -291,7 +292,7 @@ function StateBanner({ post }: { post: IPost }) {
 // ─── Composer (region 5) ─────────────────────────────────────────────────────
 
 function ComposerArea({ post, canEdit, scopeId, onClearScope }: { post: IPost; canEdit: boolean; scopeId: string | null; onClearScope: () => void }) {
-	const { actions, role, state } = useCms();
+	const { actions, role, state } = useSiteCms();
 	const [value, setValue] = useState("");
 	const busy = state.jobs.some((j) => j.kind === "suggestion-ready" && j.siteId === state.siteId && j.payload.postId === post.id);
 	if (!canEdit) {
@@ -318,8 +319,8 @@ function ComposerArea({ post, canEdit, scopeId, onClearScope }: { post: IPost; c
 				busy={busy}
 				suggestions={SUGGESTIONS}
 				onSuggestion={(s) => actions.instructAgent(post.id, s.toLowerCase())}
-				onSubmit={(v) => {
-					const r = actions.instructAgent(post.id, v, scopeId ?? undefined);
+				onSubmit={async (v) => {
+					const r = await actions.instructAgent(post.id, v, scopeId ?? undefined);
 					if (r.ok) setValue("");
 				}}
 			/>
@@ -362,10 +363,10 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data, role, can, actions, site } = useCms();
+	const { data, role, can, actions, site } = useSiteCms();
 	const post = findPost(data, id);
-	const gate = useGate(post?.id);
-	const mr = useMrForPost(post?.id);
+	const gate = useSiteGate(post?.id);
+	const mr = useSiteMrForPost(post?.id);
 	const [scopeId, setScopeId] = useState<string | null>(null);
 	const [tab, setTab] = useState<"draft" | "preview" | "gate">("draft");
 	const [sendBack, setSendBack] = useState(false);
@@ -376,7 +377,7 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 
 	// Soft edit lock (multi-user): claim it while this person can edit, renew every minute, release on leave.
 	// When someone else holds a fresh lock the draft is view-only until they leave or you take over.
-	const lock = useEditLock(post?.id);
+	const lock = useSiteEditLock(post?.id);
 	const mayEdit = !!post && can("post.edit") && EDITABLE_STATES.includes(post.state);
 	const lockedOut = !!lock.holder;
 	useEffect(() => {
@@ -575,8 +576,8 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 							variant="primary"
 							icon="ArrowsClockwise"
 							disabled={!note.trim()}
-							onClick={() => {
-								const r = actions.sendBack(post.id, note);
+							onClick={async () => {
+								const r = await actions.sendBack(post.id, note);
 								if (r.ok) {
 									setSendBack(false);
 									setNote("");

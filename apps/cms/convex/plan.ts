@@ -55,6 +55,7 @@ export const bundle = siteQuery({
 			runs,
 			manifest,
 			members,
+			meId: ctx.access.user._id,
 			now: Date.now(),
 		};
 	},

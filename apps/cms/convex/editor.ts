@@ -22,7 +22,7 @@ export const editBlock = siteMutation({
 		if (post.workflowId) return { ok: false, reason: "An agent is working on this post · wait for it to finish" };
 		if (post.currentVersion !== baseVersion) return { ok: false, reason: "Someone changed this block" };
 		const lock = (await ctx.db.query("editLocks").withIndex("by_post", (q) => q.eq("postId", postId)).take(1))[0];
-		if (lock && lock.userId !== user._id) {
+		if (lock && lock.userId !== user._id && Date.now() - lock.heartbeatAt < COALESCE_MS) {
 			const holder = await ctx.db.get(lock.userId);
 			return { ok: false, reason: `${holder?.name ?? "Someone"} is editing` };
 		}

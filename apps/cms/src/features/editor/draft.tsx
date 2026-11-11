@@ -6,7 +6,8 @@ import { createContext, Fragment, useContext, useEffect, useRef, useState, type 
 import { AgentBadge, AgentDiff, Button, Callout, Chip, Dialog, FactHighlight, FactMarkerCard, HumanBadge, Icon, IconButton, OverrideReason, Tooltip } from "@/ds";
 import { now } from "@/lib/clock";
 import { fmtInt } from "@/lib/logic";
-import { useCms, useSlotsForPost, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteSlotsForPost } from "@/features/shared/site-source";
 import type { IAgentSuggestion, IFactMarker, IGateCheck, IImageSlot, IPost, IPostBlock } from "@/lib/types";
 import { diffContext, factsInBlock, isStale, narrowDiff, segmentFacts } from "./util";
 import { sitePath } from "@/lib/routes";
@@ -87,7 +88,7 @@ export function DraftToolbar({ post, canEdit, readOnlyNote }: { post: IPost; can
 // ─── SEO title (region 3) ────────────────────────────────────────────────────
 
 export function SeoTitleField({ post, canEdit, compact }: { post: IPost; canEdit: boolean; compact?: boolean }) {
-	const { actions } = useCms();
+	const { actions } = useSiteCms();
 	const [val, setVal] = useState(post.seoTitle);
 	useEffect(() => setVal(post.seoTitle), [post.seoTitle]);
 	const n = val.trim().length;
@@ -214,7 +215,7 @@ function Editable({ text, canEdit, label, onSave, onActivate, active, className,
 // ─── Disclaimer (regulated topic) ────────────────────────────────────────────
 
 function DisclaimerBlock({ post, block, canEdit }: { post: IPost; block: IPostBlock; canEdit: boolean }) {
-	const { actions, data } = useCms();
+	const { actions, data } = useSiteCms();
 	const [open, setOpen] = useState(false);
 	const [reason, setReason] = useState("");
 	const standard = (post.regulated && data.brandPack.disclaimers[post.regulated]) || block.text;
@@ -250,9 +251,9 @@ function DisclaimerBlock({ post, block, canEdit }: { post: IPost; block: IPostBl
 							variant="primary"
 							icon="Trash"
 							disabled={reason.trim().length < 20}
-							onClick={() => {
-								const r1 = actions.editBlock(post.id, block.id, "");
-								if (r1.ok) actions.addComment(post.id, `Override · removed the ${post.regulated ?? "regulated-topic"} disclaimer: ${reason.trim()}`);
+							onClick={async () => {
+								const r1 = await actions.editBlock(post.id, block.id, "");
+								if (r1.ok) await actions.addComment(post.id, `Override · removed the ${post.regulated ?? "regulated-topic"} disclaimer: ${reason.trim()}`);
 								setOpen(false);
 								setReason("");
 							}}
@@ -336,8 +337,8 @@ export interface IDraftBlocksProps {
 const RECENT_MS = 60 * 60 * 1000;
 
 export function DraftBlocks({ post, canEdit, scopeId, onScope, compact }: IDraftBlocksProps) {
-	const { actions, state } = useCms();
-	const slots = useSlotsForPost(post.id);
+	const { actions, state } = useSiteCms();
+	const slots = useSiteSlotsForPost(post.id);
 	const t = now().getTime();
 	const pending = post.suggestions.filter((s) => s.status === "pending");
 	const jobs = state.jobs.filter((j) => j.kind === "suggestion-ready" && j.siteId === state.siteId && j.payload.postId === post.id);
@@ -392,9 +393,9 @@ export function DraftBlocks({ post, canEdit, scopeId, onScope, compact }: IDraft
 							variant="agent"
 							size="sm"
 							icon="ArrowsClockwise"
-							onClick={() => {
-								const r = actions.instructAgent(post.id, s.instruction, block.id);
-								if (r.ok) actions.rejectSuggestion(post.id, s.id);
+							onClick={async () => {
+								const r = await actions.instructAgent(post.id, s.instruction, block.id);
+								if (r.ok) await actions.rejectSuggestion(post.id, s.id);
 							}}
 						>
 							Regenerate
@@ -536,7 +537,7 @@ export function DraftBlocks({ post, canEdit, scopeId, onScope, compact }: IDraft
 
 /** Mobile sticky "Agent edit ready" bar for the first pending diff (ref 02 mobile). */
 export function DiffReadyBar({ post }: { post: IPost }) {
-	const { actions } = useCms();
+	const { actions } = useSiteCms();
 	const s = post.suggestions.find((x) => x.status === "pending" && !isStale(x, post.blocks.find((b) => b.id === x.blockId)));
 	if (!s) return null;
 	return (

@@ -3,7 +3,7 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Button, Callout, DataGap, OriginTag, RoleGate, Sheet, SourceCodeFrame, VersionList } from "@/ds";
 import { fmtDateTime, fmtInt } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IPost } from "@/lib/types";
 import { clockAfter, diffSource, latestVersion, MARK_ADDED, MARK_REMOVED } from "./util";
 
@@ -16,7 +16,7 @@ export interface IVersionsSheetProps {
 
 /** S06 — restore or diff any version against the current one. Restoring creates a new version; history is never rewritten. */
 export function VersionsSheet({ post, open, onClose, initialId }: IVersionsSheetProps) {
-	const { actions, role } = useCms();
+	const { actions, role } = useSiteCms();
 	const cur = latestVersion(post);
 	const sorted = useMemo(() => [...post.versions].sort((a, b) => b.n - a.n), [post.versions]);
 	const fallback = sorted.find((v) => v.id !== cur?.id)?.id ?? null;
@@ -47,8 +47,8 @@ export function VersionsSheet({ post, open, onClose, initialId }: IVersionsSheet
 								variant="primary"
 								icon="ArrowUUpLeft"
 								disabled={!cmp.blocks}
-								onClick={() => {
-									const r = actions.restoreVersion(post.id, cmp.id);
+								onClick={async () => {
+									const r = await actions.restoreVersion(post.id, cmp.id);
 									if (r.ok) onClose();
 								}}
 							>

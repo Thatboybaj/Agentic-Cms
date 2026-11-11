@@ -31,7 +31,8 @@ import {
 } from "@/ds";
 import { evaluateGate, fmtInt, INTENT_LABEL } from "@/lib/logic";
 import { IDEA_SOURCE_LABEL, IdeaApprovalRow, IdeaCostNote } from "@/features/plan/idea-actions";
-import { useActiveManifest, useAutopostHold, useCms, useGate, useMergeRequest, usePendingIdeas, useStats, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { type ISiteCms, useSiteManifest, useSiteAutopostHold, useSiteCms, useSiteGate, useSiteMergeRequest, useSitePendingIdeas, useSiteStats } from "@/features/shared/site-source";
 import type { IGateView } from "@/lib/store";
 import type { IMergeRequest, IPost, TRole } from "@/lib/types";
 import { draftMr, hardBlocks, MIN_REASON, pendingSoft, readinessItems, withTypedOverrides, type IHardBlock } from "./gate-view";
@@ -51,8 +52,8 @@ export function Approvals() {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data } = useCms();
-	const ideas = usePendingIdeas();
+	const { data } = useSiteCms();
+	const ideas = useSitePendingIdeas();
 	const inReview = data.posts.filter((p) => p.state === "in-review").length;
 	const raw = params.get("tab");
 	const tab: TApprovalsTab = raw === "ideas" || raw === "review" ? raw : params.get("post") ? "review" : inReview === 0 && ideas.length > 0 ? "ideas" : "review";
@@ -78,8 +79,8 @@ export function Approvals() {
 
 function IdeasPanel() {
 	const { slug } = useSite();
-	const { data, site, role, can, why } = useCms();
-	const ideas = usePendingIdeas();
+	const { data, site, role, can, why } = useSiteCms();
+	const ideas = useSitePendingIdeas();
 	const auto = !!site.publishing?.autopost;
 	return (
 		<div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
@@ -154,11 +155,11 @@ function ContentReview() {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data, site, role, actions, can } = useCms();
-	const manifest = useActiveManifest();
+	const { data, site, role, actions, can } = useSiteCms();
+	const manifest = useSiteManifest();
 	const [query, setQuery] = useState("");
 	const auto = !!site.publishing?.autopost;
-	const { held } = useStats();
+	const { held } = useSiteStats();
 
 	// Queue = posts in review, freshest first (ref 05: Day 1 · Day 2 · Day 4).
 	const queue = useMemo(
@@ -289,14 +290,14 @@ interface IGateWorkspaceProps {
 	onNext: () => void;
 	canApproveRole: boolean;
 	role: TRole;
-	actions: ReturnType<typeof useCms>["actions"];
+	actions: ISiteCms["actions"];
 }
 
 function GateWorkspace({ post, position, approvedMrId, onApproved, onNext, canApproveRole, role, actions }: IGateWorkspaceProps) {
 	const { slug } = useSite();
-	const gate = useGate(post.id);
-	const approvedMr = useMergeRequest(approvedMrId);
-	const postMr = useMergeRequest(post.mrId);
+	const gate = useSiteGate(post.id);
+	const approvedMr = useSiteMergeRequest(approvedMrId);
+	const postMr = useSiteMergeRequest(post.mrId);
 
 	if (approvedMr) return <ApprovedPanel post={post} mr={approvedMr} onNext={onNext} hasNext={position.count > 0} />;
 	if (!gate) return null;
@@ -330,10 +331,10 @@ function GateWorkspace({ post, position, approvedMrId, onApproved, onNext, canAp
 
 function Gate({ gate, position, onApproved, canApproveRole, role, actions }: Omit<IGateWorkspaceProps, "post" | "approvedMrId" | "onNext"> & { gate: IGateView }) {
 	const { slug } = useSite();
-	const { data, site } = useCms();
+	const { data, site } = useSiteCms();
 	const { toast } = useToast();
 	const post = gate.post;
-	const held = useAutopostHold(post.id);
+	const held = useSiteAutopostHold(post.id);
 	const keyword = data.keywords.find((k) => k.id === post.keywordId);
 	const latest = post.versions[post.versions.length - 1];
 
@@ -381,8 +382,8 @@ function Gate({ gate, position, onApproved, canApproveRole, role, actions }: Omi
 		setBusy(true);
 		setError(null);
 		const typed = Object.fromEntries(pending.map((c) => [c.id, overrides[c.id]!.trim()]));
-		window.setTimeout(() => {
-			const r = actions.approve(post.id, typed);
+		window.setTimeout(async () => {
+			const r = await actions.approve(post.id, typed);
 			setBusy(false);
 			if (r.ok && r.id) onApproved(r.id);
 			else if (!r.ok) setError(r.reason);
@@ -585,7 +586,7 @@ interface IMobileGateProps {
 function MobileGate({ post, gate, position, overrides, setOverrides, asserts, setAsserts, hard, role, primary, onSendBack, error, branch, imageCount }: IMobileGateProps) {
 	const { slug } = useSite();
 	const [open, setOpen] = useState(false);
-	const tiles = readinessItems(gate, useCms().data.slots);
+	const tiles = readinessItems(gate, useSiteCms().data.slots);
 	return (
 		<div className="flex shrink-0 flex-col gap-3 md:hidden">
 			<div className="flex items-center gap-2">
@@ -669,8 +670,8 @@ function MobileGate({ post, gate, position, overrides, setOverrides, asserts, se
 
 function SendBackDialog({ open, onClose, post, actions }: { open: boolean; onClose: () => void; post: IPost; actions: IGateWorkspaceProps["actions"] }) {
 	const [note, setNote] = useState("");
-	const submit = () => {
-		const r = actions.sendBack(post.id, note);
+	const submit = async () => {
+		const r = await actions.sendBack(post.id, note);
 		if (r.ok) {
 			setNote("");
 			onClose();
@@ -704,7 +705,7 @@ function SendBackDialog({ open, onClose, post, actions }: { open: boolean; onClo
 
 function ApprovedPanel({ post, mr, onNext, hasNext }: { post: IPost; mr: IMergeRequest; onNext: () => void; hasNext: boolean }) {
 	const { slug } = useSite();
-	const { data, site } = useCms();
+	const { data, site } = useSiteCms();
 	const keyword = data.keywords.find((k) => k.id === post.keywordId);
 	return (
 		<>

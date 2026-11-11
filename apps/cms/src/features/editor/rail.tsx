@@ -22,7 +22,8 @@ import {
 } from "@/ds";
 import { LivePreview } from "@/features/preview";
 import { fmtDateTime } from "@/lib/logic";
-import { useCms, useGate, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteGate } from "@/features/shared/site-source";
 import type { IGateCheck, IPost, TTone } from "@/lib/types";
 import { clockAfter, latestVersion } from "./util";
 import { sitePath } from "@/lib/routes";
@@ -33,8 +34,8 @@ const MIN_REASON = 20;
 
 export function GateCard({ post, loading }: { post: IPost; loading?: boolean }) {
 	const { slug } = useSite();
-	const { actions, can, me } = useCms();
-	const gate = useGate(post.id);
+	const { actions, can, me } = useSiteCms();
+	const gate = useSiteGate(post.id);
 	const [overriding, setOverriding] = useState<IGateCheck | null>(null);
 	const [reason, setReason] = useState("");
 	const canFix = can("post.edit");
@@ -130,9 +131,9 @@ export function GateCard({ post, loading }: { post: IPost; loading?: boolean }) 
 						<Button
 							variant="primary"
 							disabled={reason.trim().length < MIN_REASON}
-							onClick={() => {
+							onClick={async () => {
 								if (!overriding) return;
-								const r = actions.overrideCheck(post.id, overriding.id, reason);
+								const r = await actions.overrideCheck(post.id, overriding.id, reason);
 								if (r.ok) close();
 							}}
 						>
@@ -193,7 +194,7 @@ export function FactsCard({ post }: { post: IPost }) {
 export function VersionsCard({ post, className }: { post: IPost; className?: string }) {
 	const { slug } = useSite();
 	const router = useRouter();
-	const { actions, can } = useCms();
+	const { actions, can } = useSiteCms();
 	const cur = latestVersion(post);
 	const recent = [...post.versions].sort((a, b) => b.n - a.n).slice(0, 3);
 	return (
@@ -236,7 +237,7 @@ const AUDIT_ICON: [RegExp, TIconName, TTone][] = [
 ];
 
 export function CommentsCard({ post, id }: { post: IPost; id?: string }) {
-	const { actions, can, data, role, me } = useCms();
+	const { actions, can, data, role, me } = useSiteCms();
 	const { toast } = useToast();
 	const items: ITimelineItem[] = useMemo(
 		() =>
@@ -258,8 +259,8 @@ export function CommentsCard({ post, id }: { post: IPost; id?: string }) {
 				comments={post.comments}
 				now={clockAfter(post.comments.map((c) => c.at))}
 				readOnly={!can("post.comment")}
-				onAdd={(text) => {
-					const r = actions.addComment(post.id, text);
+				onAdd={async (text) => {
+					const r = await actions.addComment(post.id, text);
 					if (r.ok) toast({ title: role === "specialist" || role === "admin" ? `Comment added as ${me.name}` : "Comment sent to Tolu B.", tone: "neutral" });
 				}}
 			/>
