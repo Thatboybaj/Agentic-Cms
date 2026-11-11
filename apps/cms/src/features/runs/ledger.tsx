@@ -3,15 +3,16 @@
 import { useState } from "react";
 import { Button, Card, CardHeader, EmptyState, Icon, LedgerItem, PaginationDots, RoleGate, SourceNote } from "@/ds";
 import { LEDGER_LABEL, PERMISSIONS } from "@/lib/logic";
-import { useCms, useLedger, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteLedger } from "@/features/shared/site-source";
 import { sitePath } from "@/lib/routes";
 
 const PAGE = 4;
 
 export function LedgerCard() {
 	const { slug } = useSite();
-	const { role, actions, can, why } = useCms();
-	const items = useLedger();
+	const { role, actions, can, why } = useSiteCms();
+	const items = useSiteLedger();
 	const [page, setPage] = useState(0);
 	const pages = Math.max(1, Math.ceil(items.length / PAGE));
 	const p = Math.min(page, pages - 1);

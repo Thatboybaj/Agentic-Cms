@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { BudgetCard, Button, Callout, Card, CardHeader, Icon, Menu, Meter, PageHeader, RoleGate, ScheduleRow, SourceNote, Tabs } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
 import { fmtUsd, fmtUsdWhole, PERMISSIONS } from "@/lib/logic";
-import { useCms, useStats, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteStats } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import { LedgerCard } from "./ledger";
 import { NotificationsCard } from "./notifications";
 import { useRunLauncher } from "./run-dialog";
@@ -17,8 +19,8 @@ type TTab = "schedules" | "log" | "ledger";
 
 export function RunsScreen() {
 	const { slug } = useSite();
-	const { site, data, role, actions, can, why } = useCms();
-	const stats = useStats();
+	const { site, data, role, actions, can, why, loading } = useSiteCms();
+	const stats = useSiteStats();
 	const router = useRouter();
 	const { request, dialog } = useRunLauncher();
 	const [tab, setTab] = useState<TTab>("schedules");
@@ -110,6 +112,7 @@ export function RunsScreen() {
 		</div>
 	);
 
+	if (loading) return <PageLoading rows={6} />;
 	return (
 		<>
 			<TopBarCta>{cta}</TopBarCta>

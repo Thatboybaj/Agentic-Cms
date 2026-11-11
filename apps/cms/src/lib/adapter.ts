@@ -3,6 +3,7 @@
 // `modelRouting.pillarPages` → "pillar-pages". Pure functions, no React, so they are unit-tested directly.
 import type { FunctionReturnType } from "convex/server";
 import type { api } from "../../convex/_generated/api";
+import { sitePath } from "./routes";
 import type { IImageSlot, IMember, IMembership, IMergeRequest, IPost, IRun, ISchedule, ISite, ISiteData, ITemplateManifest, IUser, IWorkspace, TPostState, TRole, TWorkspaceRole } from "./types";
 
 export type TPortfolioRow = FunctionReturnType<typeof api.portfolio.list>[number];
@@ -94,7 +95,8 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		reports: [],
 		kasSnapshots: [],
 		audit: b.audit.map((a) => ({ id: a.id, at: iso(a.at)!, actor: a.actor, action: a.action, target: a.target, ...(a.detail ? { detail: a.detail } : {}) })),
-		notifications: [],
+		// Stored hrefs are site-relative ("/merge-requests"); the page navigates to the full path.
+		notifications: b.notifications.map((n) => ({ id: n.id, at: iso(n.at)!, tone: n.tone, title: n.title, body: n.body, read: n.read, ...(n.href ? { href: n.href.startsWith("/s/") ? n.href : sitePath(b.site.slug, n.href) } : {}) })),
 		liveBaseline: s.liveBaseline,
 		routing: s.routing,
 		modelRouting: { ...restRouting, "pillar-pages": pillarPages },

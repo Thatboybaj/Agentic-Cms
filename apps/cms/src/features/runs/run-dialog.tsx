@@ -4,7 +4,8 @@
 import { useCallback, useMemo, useState } from "react";
 import { Button, Callout, Dialog, KeyValue, LockedAction, Meter } from "@/ds";
 import { fmtUsd, fmtUsdWhole, RUN_META } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { TRunKind } from "@/lib/types";
 import { planRun, refusalCopy, runningCopy } from "./run-plan";
 import { sitePath } from "@/lib/routes";
@@ -14,7 +15,7 @@ export function roleRunReason(why: string | null): string {
 }
 
 export function useRunLauncher() {
-	const { site, data, actions, can, why } = useCms();
+	const { site, data, actions, can, why } = useSiteCms();
 	const [kind, setKind] = useState<TRunKind | null>(null);
 
 	const request = useCallback(
@@ -38,8 +39,8 @@ export function useRunLauncher() {
 			canRun={can("run.trigger")}
 			roleReason={roleRunReason(why("run.trigger"))}
 			isAdmin={can("budget.set")}
-			onRun={() => {
-				const r = actions.runNow(plan.kind);
+			onRun={async () => {
+				const r = await actions.runNow(plan.kind);
 				if (r.ok) close();
 			}}
 			onClose={close}

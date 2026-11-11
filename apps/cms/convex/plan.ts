@@ -38,6 +38,8 @@ export const bundle = siteQuery({
 		const schedules = await ctx.db.query("schedules").withIndex("by_site_kind", (q) => q.eq("siteId", siteId)).take(20);
 		const ledger = await ctx.db.query("ledgerItems").withIndex("by_site_done", (q) => q.eq("siteId", siteId).eq("done", false)).take(200);
 		const runs = await ctx.db.query("runs").withIndex("by_site_started", (q) => q.eq("siteId", siteId)).order("desc").take(50);
+		// The signed-in user's notifications for this site (newest first); never anyone else's.
+		const notifications = (await ctx.db.query("notifications").withIndex("by_user_site", (q) => q.eq("userId", ctx.access.user._id).eq("siteId", siteId)).order("desc").take(60)).map((n) => ({ id: n._id, at: n.at, tone: n.tone, title: n.title, body: n.body, href: n.href, read: n.read }));
 		const manifest = await activeManifest(ctx, siteId);
 		const repo = await activeRepo(ctx, siteId);
 		// People on the site (names + effective roles) for "who does this" copy; never emails.
@@ -63,6 +65,7 @@ export const bundle = siteQuery({
 			schedules,
 			ledger,
 			runs,
+			notifications,
 			manifest,
 			members,
 			meId: ctx.access.user._id,

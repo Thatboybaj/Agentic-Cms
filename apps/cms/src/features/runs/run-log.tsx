@@ -23,7 +23,8 @@ import {
 	type TIconName,
 } from "@/ds";
 import { fmtDate, fmtDateTime, fmtDay, fmtInt, fmtTime, fmtUsd, RUN_META } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IRun, TTone } from "@/lib/types";
 import { fmtDuration } from "./run-plan";
 import { sitePath } from "@/lib/routes";
@@ -59,7 +60,7 @@ const tokenText = (r: IRun) => (r.budget === "image" && r.tokens === 0 ? "—" :
 
 export function RunLog({ nextScheduled }: { nextScheduled: string | null }) {
 	const { slug } = useSite();
-	const { data } = useCms();
+	const { data } = useSiteCms();
 	const [page, setPage] = useState(0);
 	const [openId, setOpenId] = useState<string | null>(null);
 	const runs = useMemo(() => [...data.runs].sort((a, b) => b.startedAt.localeCompare(a.startedAt)), [data.runs]);
@@ -143,7 +144,7 @@ export function RunLog({ nextScheduled }: { nextScheduled: string | null }) {
 
 function RunSheet({ run, onClose }: { run: IRun | null; onClose: () => void }) {
 	const { slug } = useSite();
-	const { data, site } = useCms();
+	const { data, site } = useSiteCms();
 	if (!run) return <Sheet open={false} onClose={onClose} title="Run">{null}</Sheet>;
 	const post = run.postId ? data.posts.find((p) => p.id === run.postId) : undefined;
 	const slot = run.slotId ? data.slots.find((s) => s.id === run.slotId) : undefined;

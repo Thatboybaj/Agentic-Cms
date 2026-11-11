@@ -29,6 +29,7 @@ import type * as devSeed from "../devSeed.js";
 import type * as editor from "../editor.js";
 import type * as git from "../git.js";
 import type * as http from "../http.js";
+import type * as inbox from "../inbox.js";
 import type * as invites from "../invites.js";
 import type * as lib_access from "../lib/access.js";
 import type * as lib_approval from "../lib/approval.js";
@@ -95,6 +96,7 @@ declare const fullApi: ApiFromModules<{
   editor: typeof editor;
   git: typeof git;
   http: typeof http;
+  inbox: typeof inbox;
   invites: typeof invites;
   "lib/access": typeof lib_access;
   "lib/approval": typeof lib_approval;

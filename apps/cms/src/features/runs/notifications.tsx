@@ -4,13 +4,13 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, type MouseEvent } from "react";
 import { Button, Card, CardHeader, DataTable, Dot, EmptyState, IconButton, PaginationDots, type IDataTableColumn } from "@/ds";
 import { fmtAgo } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { INotification } from "@/lib/types";
 
 const PAGE = 5;
 
 export function NotificationsCard() {
-	const { data, actions } = useCms();
+	const { data, actions } = useSiteCms();
 	const router = useRouter();
 	const [page, setPage] = useState(0);
 	const list = useMemo(() => [...data.notifications].sort((a, b) => b.at.localeCompare(a.at)), [data.notifications]);

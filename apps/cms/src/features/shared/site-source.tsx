@@ -47,6 +47,10 @@ export interface ISiteActions {
 	generateNow(postId: string): TMaybeAsync<TResult>;
 	movePostToWeek(postId: string, week: number): TMaybeAsync<TResult>;
 	runNow(kind: TRunKind): TMaybeAsync<TResult>;
+	toggleSchedule(kind: TRunKind): TMaybeAsync<TResult>;
+	resolveLedgerItem(itemId: string): TMaybeAsync<TResult>;
+	markNotificationRead(id: string): TMaybeAsync<TResult>;
+	markAllNotificationsRead(): TMaybeAsync<TResult>;
 	approve(postId: string, overrides?: Record<string, string>): TMaybeAsync<TResult>;
 	sendBack(postId: string, note: string): TMaybeAsync<TResult>;
 	shipNow(postId: string): TMaybeAsync<TResult>;
@@ -148,6 +152,10 @@ function useLiveSite(): ISiteCms {
 		generateNow: useMutation(api.posts.generateNow),
 		moveToWeek: useMutation(api.plan.moveToWeek),
 		runNow: useMutation(api.schedules.runNow),
+		toggleSchedule: useMutation(api.schedules.toggle),
+		resolveLedgerItem: useMutation(api.inbox.resolveLedgerItem),
+		markNotificationRead: useMutation(api.inbox.markNotificationRead),
+		markAllNotificationsRead: useMutation(api.inbox.markAllNotificationsRead),
 		approve: useMutation(api.posts.approve),
 		sendBack: useMutation(api.review.sendBack),
 		shipNow: useMutation(api.posts.shipNow),
@@ -226,6 +234,10 @@ function useLiveSite(): ISiteCms {
 			generateNow: (postId) => run(() => m.generateNow({ siteId: s, postId: asId(postId) }), { text: "Generating · the writer has started", tone: "agent" }),
 			movePostToWeek: (postId, week) => run(() => m.moveToWeek({ siteId: s, postId: asId(postId), week }), { text: `Rescheduled to W${week}` }),
 			runNow: (kind) => run(() => m.runNow({ siteId: s, kind }), { text: "Run started", tone: "agent" }),
+			toggleSchedule: (kind) => run(() => m.toggleSchedule({ siteId: s, kind })),
+			resolveLedgerItem: (itemId) => run(() => m.resolveLedgerItem({ siteId: s, itemId: itemId as Id<"ledgerItems"> }), { text: "Done · removed from the ledger", tone: "pass" }),
+			markNotificationRead: (id) => run(() => m.markNotificationRead({ siteId: s, notificationId: id as Id<"notifications"> })),
+			markAllNotificationsRead: () => run(() => m.markAllNotificationsRead({ siteId: s })),
 			approve: (postId, overrides = {}) => run(() => m.approve({ siteId: s, postId: asId(postId), overrides: Object.entries(overrides).map(([checkId, reason]) => ({ checkId, reason })) }), { text: "Approved · opening the merge request", tone: "pass" }),
 			sendBack: (postId, note) => run(() => m.sendBack({ siteId: s, postId: asId(postId), note }), { text: "Sent back · the agent is revising", tone: "agent" }),
 			shipNow: (postId) => run(() => m.shipNow({ siteId: s, postId: asId(postId) }), { text: "Running the autopost gate", tone: "agent" }),
