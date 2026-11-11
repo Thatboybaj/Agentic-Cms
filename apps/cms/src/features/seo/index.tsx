@@ -79,12 +79,16 @@ function ScGap({ what, compact }: { what: string; compact?: boolean }) {
 
 function TrajectoryCard({ range }: { range: TRange }) {
 	const { site, data } = useSiteCms();
-	const [metric, setMetric] = useState<TMetric>("sessions");
+	const [chosen, setMetric] = useState<TMetric>("sessions");
 	const [table, setTable] = useState(false);
 	const { points, wanted, short } = pointsFor(data.trajectory, range);
 	const gap = headlineGap(points);
 	const connected = site.searchConsole === "connected";
-	const complete = points.filter((p) => p.sessions !== null).length;
+	// Search Console has clicks and impressions, not sessions (those need an analytics connection), so a site with
+	// only Search Console charts impressions instead of showing nothing.
+	const hasSessions = points.some((p) => p.sessions !== null);
+	const metric: TMetric = hasSessions ? chosen : "impressions";
+	const complete = points.filter((p) => p.sessions !== null || p.impressions !== null).length;
 	const projLabel = `Month ${Math.max(1, site.ageMonths)} projection`;
 
 	if (!connected)
@@ -121,7 +125,7 @@ function TrajectoryCard({ range }: { range: TRange }) {
 					/>
 				)}
 				<div className="ms-auto flex items-center gap-2 max-md:ms-0">
-					<SegmentedControl
+					{hasSessions && <SegmentedControl
 						size="sm"
 						label="Trajectory metric"
 						value={metric}
@@ -131,7 +135,7 @@ function TrajectoryCard({ range }: { range: TRange }) {
 							{ value: "impressions", label: "Impressions" },
 						]}
 						className="bg-sunken"
-					/>
+					/>}
 				</div>
 			</div>
 			{gap && gap.skipped.length > 0 && (
@@ -159,7 +163,7 @@ function TrajectoryCard({ range }: { range: TRange }) {
 				<Button variant="ghost" size="sm" icon={table ? "ChartLineUp" : "ListBullets"} onClick={() => setTable((t) => !t)}>
 					{table ? "Show as chart" : "Show as table"}
 				</Button>
-				{metric === "impressions" && <span className="text-xs text-ink-3">The action plan projects sessions only · no impressions projection is drawn.</span>}
+				{metric === "impressions" && <span className="text-xs text-ink-3">{hasSessions ? "The action plan projects sessions only · no impressions projection is drawn." : "Sessions need an analytics connection · Search Console gives impressions, shown here. The action plan projects sessions only."}</span>}
 				{short && (
 					<span className="text-xs text-ink-3">
 						{range === "quarter" ? `Quarter needs ${wanted} weeks` : "Since launch"} · {points.length} weeks of Search Console data stored ({points[0]?.week}–{points[points.length - 1]?.week})
