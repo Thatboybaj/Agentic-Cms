@@ -245,8 +245,8 @@ export const importSite = internalAction({
 		const prop = { token: t.token, propertyUri: t.propertyUri };
 		const end = iso(Date.now() - LAG_DAYS * DAY);
 		const start = t.lastImportedDate ? iso(Date.parse(t.lastImportedDate) + DAY) : iso(Date.now() - (LAG_DAYS + BACKFILL_DAYS) * DAY);
-		if (start > end) return;
-		const raw = await searchAnalytics(ctx, siteId, prop, { startDate: start, endDate: end, dimensions: ["query", "page", "date"] });
+		// No new days yet: still refresh the weekly totals below (Google finalises recent days late).
+		const raw = start <= end ? await searchAnalytics(ctx, siteId, prop, { startDate: start, endDate: end, dimensions: ["query", "page", "date"] }) : [];
 		if (!raw) return;
 		const rows = queryRows(raw);
 		// Site-wide daily totals (every query, tracked or not) for the weekly impressions series: one small request,
@@ -255,7 +255,7 @@ export const importSite = internalAction({
 		if (!days) return;
 		const daily: TDaily[] = days.map((d) => ({ date: d.keys[0]!, clicks: d.clicks, impressions: d.impressions }));
 		for (let i = 0; i < rows.length; i += 2000) await ctx.runMutation(internal.gsc.writeRows, { siteId, rows: rows.slice(i, i + 2000) });
-		await ctx.runMutation(internal.gsc.finishImport, { siteId, lastImportedDate: end, rowCount: rows.length, daily });
+		await ctx.runMutation(internal.gsc.finishImport, { siteId, lastImportedDate: t.lastImportedDate && t.lastImportedDate > end ? t.lastImportedDate : end, rowCount: rows.length, daily });
 	},
 });
 
