@@ -19,6 +19,12 @@ importers:
       '@convex-dev/rate-limiter':
         specifier: ^0.4.3
         version: 0.4.3(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+      '@convex-dev/workflow':
+        specifier: ^0.4.10
+        version: 0.4.10(@convex-dev/workpool@0.4.16(@standard-schema/spec@1.1.0)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))
+      '@convex-dev/workpool':
+        specifier: ^0.4.16
+        version: 0.4.16(@standard-schema/spec@1.1.0)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
       '@modelcontextprotocol/sdk':
         specifier: ^1.30.1
         version: 1.32.2(zod@3.25.76)
@@ -163,6 +169,11 @@ packages:
     peerDependencies:
       convex: ^1.43.0
 
+  '@convex-dev/batch-worker@0.3.6':
+    resolution: {integrity: sha512-tR+9DaHR3jG3oqkIFX0ok/6944h7UHEQgT6HTmiuxU+lERYuYMsxA2IWwFD5yTFbCpO3YJhqXU4QdGY90sgUqQ==}
+    peerDependencies:
+      convex: ^1.43.0
+
   '@convex-dev/rate-limiter@0.4.3':
     resolution: {integrity: sha512-IXIEGbZBANC5B23pGmIui7p49kSiltNWyJ7wX7nFmkR396X/Oj9ebgScgxSJMAW7DkhpUtt1NAnQHhjB0v6a/A==}
     peerDependencies:
@@ -171,6 +182,19 @@ packages:
     peerDependenciesMeta:
       react:
         optional: true
+
+  '@convex-dev/workflow@0.4.10':
+    resolution: {integrity: sha512-BHEDZEJUhZQOuqtop4bZRgomoKFA+JNECat+c9/cAuQmCegn7F0xlAiFiCPtYNm2xyUh3Rv+fJuNhnqs4th1cw==}
+    peerDependencies:
+      '@convex-dev/workpool': ^0.4.4
+      convex: ^1.46.0
+      convex-helpers: ^0.1.127
+
+  '@convex-dev/workpool@0.4.16':
+    resolution: {integrity: sha512-QtR9lEidys0yGtjlbtJzhcC6RGxs4uICnewWZmiolDnUlX4Y8z5v4hGwDzON3TRDIzL3Pd/WPY/jXRKZnQW4Bg==}
+    peerDependencies:
+      convex: ^1.43.0
+      convex-helpers: ^0.1.94
 
   '@edge-runtime/primitives@6.0.0':
     resolution: {integrity: sha512-FqoxaBT+prPBHBwE1WXS1ocnu/VLTQyZ6NMUBAdbP7N2hsFTTxMC/jMu2D/8GAlMQfxeuppcPuCUk/HO3fpIvA==}
@@ -831,6 +855,9 @@ packages:
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
+
+  async-channel@0.2.0:
+    resolution: {integrity: sha512-BJyjI/sfKlyijaBt2hbOSxT28xGNtLR0QLzAKO1Hlnv5BULY7sAoYoTPW3lfr1ZIC7y+FxabxO9T8GXpyoofGg==}
 
   body-parser@2.4.0:
     resolution: {integrity: sha512-Ifk1KcLrxaGt1occQagQNFNNOqRt1LFuehEnHHzB8Z6cRgIxRU1TBaiIsUiCdA+gy5PL7Y1IX31DNKkRmxtXjQ==}
@@ -1817,6 +1844,18 @@ snapshots:
       - typescript
       - zod
 
+  '@convex-dev/batch-worker@0.3.6(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)':
+    dependencies:
+      convex: 1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
+      convex-helpers: 0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+    transitivePeerDependencies:
+      - '@standard-schema/spec'
+      - hono
+      - prettier
+      - react
+      - typescript
+      - zod
+
   '@convex-dev/rate-limiter@0.4.3(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)':
     dependencies:
       '@convex-dev/batch-worker': 0.3.5(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
@@ -1827,6 +1866,26 @@ snapshots:
       - '@standard-schema/spec'
       - hono
       - prettier
+      - typescript
+      - zod
+
+  '@convex-dev/workflow@0.4.10(@convex-dev/workpool@0.4.16(@standard-schema/spec@1.1.0)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))':
+    dependencies:
+      '@convex-dev/workpool': 0.4.16(@standard-schema/spec@1.1.0)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+      async-channel: 0.2.0
+      convex: 1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
+      convex-helpers: 0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+
+  '@convex-dev/workpool@0.4.16(@standard-schema/spec@1.1.0)(convex-helpers@0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76))(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)':
+    dependencies:
+      '@convex-dev/batch-worker': 0.3.6(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+      convex: 1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1)
+      convex-helpers: 0.1.134(@standard-schema/spec@1.1.0)(convex@1.49.0(@clerk/react@6.18.6(react-dom@19.3.1(react@19.3.1))(react@19.3.1))(react@19.3.1))(hono@4.13.16)(prettier@3.9.10)(react@19.3.1)(typescript@5.9.3)(zod@3.25.76)
+    transitivePeerDependencies:
+      - '@standard-schema/spec'
+      - hono
+      - prettier
+      - react
       - typescript
       - zod
 
@@ -2301,6 +2360,8 @@ snapshots:
       require-from-string: 2.0.2
 
   assertion-error@2.0.1: {}
+
+  async-channel@0.2.0: {}
 
   body-parser@2.4.0:
     dependencies:
