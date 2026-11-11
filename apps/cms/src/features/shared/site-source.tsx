@@ -31,7 +31,7 @@ import {
 	type ILedgerView,
 	type TResult,
 } from "@/lib/store";
-import type { IImageSlot, IJob, ILedgerItem, IMember, IMergeRequest, IPost, ISite, ISiteData, ITemplateManifest, TRole, TRunKind } from "@/lib/types";
+import type { ICandidate, IImageSlot, IJob, ILedgerItem, IMember, IMergeRequest, IPost, ISite, ISiteData, ITemplateManifest, TProvider, TRole, TRunKind, TSlotType } from "@/lib/types";
 import { activeManifest, computeStats, type IEditLockHolder } from "@/lib/workspace";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
@@ -63,6 +63,16 @@ export interface ISiteActions {
 	addComment(postId: string, text: string): TMaybeAsync<TResult>;
 	startEditing(postId: string, opts?: { takeOver?: boolean }): TMaybeAsync<TLockResult>;
 	stopEditing(postId: string): TMaybeAsync<TResult>;
+	sendToReview(postId: string): TMaybeAsync<TResult>;
+	pickCandidate(slotId: string, candidateId: string): TMaybeAsync<TResult>;
+	useCandidate(slotId: string): TMaybeAsync<TResult>;
+	markHumanOnly(slotId: string): TMaybeAsync<TResult>;
+	regenerateSlot(slotId: string, prompt?: string): TMaybeAsync<TResult>;
+	uploadOwn(slotId: string, fileName: string): TMaybeAsync<TResult>;
+	setSlotCandidates(slotId: string, candidates: ICandidate[], meta?: { provider: TProvider; model?: string }): TMaybeAsync<TResult>;
+	setRouting(slotType: TSlotType, provider: TProvider): TMaybeAsync<TResult>;
+	mergeMr(mrId: string): TMaybeAsync<TResult>;
+	rebaseMr(mrId: string): TMaybeAsync<TResult>;
 }
 
 export interface ISiteCms {
@@ -115,7 +125,7 @@ function sessionId(): string {
 
 // ─── Convex: site ─────────────────────────────────────────────────────────────
 
-const asId = <T extends "posts" | "pillars" | "factMarkers" | "suggestions" | "postVersions">(id: string) => id as Id<T>;
+const asId = <T extends "posts" | "pillars" | "factMarkers" | "suggestions" | "postVersions" | "imageSlots" | "candidates" | "mergeRequests">(id: string) => id as Id<T>;
 const reasonOf = (e: unknown) => (e instanceof ConvexError ? String((e.data as { reason?: string })?.reason ?? "Not allowed") : "Couldn't reach the server. Try again.");
 
 function useLiveSite(): ISiteCms {
@@ -154,6 +164,16 @@ function useLiveSite(): ISiteCms {
 		addComment: useMutation(api.postEdits.addComment),
 		startEditing: useMutation(api.postEdits.startEditing),
 		stopEditing: useMutation(api.postEdits.stopEditing),
+		sendToReview: useMutation(api.posts.sendToReview),
+		pickCandidate: useMutation(api.slots.pickCandidate),
+		useCandidate: useMutation(api.slots.useCandidate),
+		markHumanOnly: useMutation(api.slots.markHumanOnly),
+		regenerateSlot: useMutation(api.slots.regenerateSlot),
+		uploadOwn: useMutation(api.slots.uploadOwn),
+		setSlotCandidates: useMutation(api.slots.setSlotCandidates),
+		setRouting: useMutation(api.slots.setRouting),
+		mergeMr: useMutation(api.git.mergeMr),
+		rebaseMr: useMutation(api.git.rebaseMr),
 	};
 
 	const mapped = useMemo(() => {
@@ -229,6 +249,24 @@ function useLiveSite(): ISiteCms {
 					return { ok: false, reason: reasonOf(e) };
 				}
 			},
+			sendToReview: (postId) => run(() => m.sendToReview({ siteId: s, postId: asId(postId) }), { text: "In review" }),
+			pickCandidate: (slotId, candidateId) => run(() => m.pickCandidate({ siteId: s, slotId: asId<"imageSlots">(slotId), candidateId: asId<"candidates">(candidateId) })),
+			useCandidate: (slotId) => run(() => m.useCandidate({ siteId: s, slotId: asId<"imageSlots">(slotId) }), { text: "Selected · it ships with the post", tone: "pass" }),
+			markHumanOnly: (slotId) => run(() => m.markHumanOnly({ siteId: s, slotId: asId<"imageSlots">(slotId) }), { text: "Sent to your task queue with the brief attached · the post holds in Needs assets", tone: "human" }),
+			regenerateSlot: (slotId, prompt) => run(() => m.regenerateSlot({ siteId: s, slotId: asId<"imageSlots">(slotId), ...(prompt ? { prompt } : {}) }), { text: "Regenerating", tone: "agent" }),
+			uploadOwn: (slotId, fileName) => run(() => m.uploadOwn({ siteId: s, slotId: asId<"imageSlots">(slotId), fileName }), { text: "Upload recorded · the file is stored when image storage lands", tone: "pass" }),
+			setSlotCandidates: (slotId, candidates, meta) =>
+				run(() =>
+					m.setSlotCandidates({
+						siteId: s,
+						slotId: asId<"imageSlots">(slotId),
+						candidates: candidates.map((c) => ({ label: c.label, hue: c.hue, ...(c.url ? { url: c.url } : {}), ...(c.source ? { source: c.source } : {}) })),
+						...(meta ? { meta } : {}),
+					}),
+				),
+			setRouting: (slotType, provider) => run(() => m.setRouting({ siteId: s, slotType, provider })),
+			mergeMr: (mrId) => run(() => m.mergeMr({ siteId: s, mrId: asId<"mergeRequests">(mrId) }), { text: "Merging", tone: "pass" }),
+			rebaseMr: (mrId) => run(() => m.rebaseMr({ siteId: s, mrId: asId<"mergeRequests">(mrId) }), { text: "Rebased and re-rendered · waiting for CI", tone: "agent" }),
 			stopEditing: async (postId) => {
 				if (!siteId) return { ok: true };
 				try {

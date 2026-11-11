@@ -26,7 +26,9 @@ import {
 	type IDataTableColumn,
 } from "@/ds";
 import { fmtAgo, fmtDate, fmtDateTime, mrRef, postUrl } from "@/lib/logic";
-import { useCms, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import type { IMergeRequest, IPost, TRole } from "@/lib/types";
 import { ciSince, mergeSha, mrTimeline, sitemapSides } from "./timeline";
 import { sitePath } from "@/lib/routes";
@@ -52,7 +54,7 @@ export function MergeRequests() {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data, site } = useCms();
+	const { data, site, loading } = useSiteCms();
 	const desktop = useMediaQuery("(min-width: 1024px)");
 	const [filter, setFilter] = useState<TFilter>("all");
 
@@ -118,6 +120,13 @@ export function MergeRequests() {
 		/>
 	);
 
+	if (loading)
+		return (
+			<div className="flex flex-col gap-4">
+				{header}
+				<PageLoading />
+			</div>
+		);
 	if (!site.repo) {
 		return (
 			<div className="flex flex-col gap-4">
@@ -200,7 +209,7 @@ export function MergeRequests() {
 
 function MrDetail({ mr, post }: { mr: IMergeRequest; post: IPost | undefined }) {
 	const { slug } = useSite();
-	const { data, site, role, can, why, actions } = useCms();
+	const { data, site, role, can, why, actions } = useSiteCms();
 	const repo = site.repo!;
 	const isDev = can("mr.merge");
 	const hostName = mr.host === "github" ? "GitHub" : "GitLab";

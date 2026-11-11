@@ -33,6 +33,7 @@ import { evaluateGate, fmtInt, INTENT_LABEL } from "@/lib/logic";
 import { IDEA_SOURCE_LABEL, IdeaApprovalRow, IdeaCostNote } from "@/features/plan/idea-actions";
 import { useSite } from "@/lib/store";
 import { type ISiteCms, useSiteManifest, useSiteAutopostHold, useSiteCms, useSiteGate, useSiteMergeRequest, useSitePendingIdeas, useSiteStats } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import type { IGateView } from "@/lib/store";
 import type { IMergeRequest, IPost, TRole } from "@/lib/types";
 import { draftMr, hardBlocks, MIN_REASON, pendingSoft, readinessItems, withTypedOverrides, type IHardBlock } from "./gate-view";
@@ -155,7 +156,7 @@ function ContentReview() {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data, site, role, actions, can } = useSiteCms();
+	const { data, site, role, actions, can, loading } = useSiteCms();
 	const manifest = useSiteManifest();
 	const [query, setQuery] = useState("");
 	const auto = !!site.publishing?.autopost;
@@ -271,6 +272,8 @@ function ContentReview() {
 							role={role}
 							actions={actions}
 						/>
+					) : loading ? (
+						<PageLoading rows={4} />
 					) : (
 						<Card variant="solid" padding="lg" className="flex-1">
 							<EmptyState icon="MagnifyingGlass" title="Post not found" body="It may have moved on or been deleted. Pick one from the queue." />

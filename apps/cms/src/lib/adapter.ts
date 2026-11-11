@@ -39,7 +39,10 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 	};
 	const slots: IImageSlot[] = b.slots.map((x) => ({
 		id: x._id, postId: x.postId, name: x.name, type: x.type, placement: x.placement, width: x.width, height: x.height, format: x.format, breakpoints: x.breakpoints,
-		filename: x.filename, alt: x.alt, prompt: x.prompt, styleKeywords: x.styleKeywords, provider: x.provider, model: x.model, status: x.status, candidates: [], estimateUsd: x.estimateUsd,
+		filename: x.filename, alt: x.alt, prompt: x.prompt, styleKeywords: x.styleKeywords, provider: x.provider, model: x.model, status: x.status, estimateUsd: x.estimateUsd,
+		candidates: b.candidates
+			.filter((c) => c.slotId === x._id)
+			.map((c) => ({ id: c._id, label: c.label, hue: c.hue, selected: c.selected, ...(c.source?.sourceUrl ? { url: c.source.sourceUrl } : {}), ...(c.source ? { source: c.source } : {}) })),
 		...(x.generatedAt ? { generatedAt: iso(x.generatedAt) } : {}),
 		...(x.humanPinned ? { humanPinned: true } : {}),
 	}));
@@ -90,7 +93,7 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		planStatus: [],
 		reports: [],
 		kasSnapshots: [],
-		audit: [],
+		audit: b.audit.map((a) => ({ id: a.id, at: iso(a.at)!, actor: a.actor, action: a.action, target: a.target, ...(a.detail ? { detail: a.detail } : {}) })),
 		notifications: [],
 		liveBaseline: s.liveBaseline,
 		routing: s.routing,

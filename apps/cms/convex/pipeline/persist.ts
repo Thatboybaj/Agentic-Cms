@@ -114,7 +114,13 @@ export const saveSlot = internalMutation({
 			return;
 		}
 		const auto = site.publishing.autopost;
-		await ctx.db.patch(slotId, { status: auto ? "selected" : "candidates", generatedAt: Date.now() });
+		// Placeholder candidates (hue art, no file) until 04 stores real images; autopost selects the first.
+		let first: Id<"candidates"> | undefined;
+		for (let i = 0; i < candidates; i++) {
+			const id = await ctx.db.insert("candidates", { siteId, postId: post._id, slotId, label: `candidate ${i + 1}`, hue: (slot.order * 97 + i * 53) % 360, selected: auto && i === 0, source: { kind: slot.provider === "inline-svg" ? "diagram" : "generated", provider: slot.provider }, createdAt: Date.now() });
+			if (i === 0) first = id;
+		}
+		await ctx.db.patch(slotId, { status: auto ? "selected" : "candidates", generatedAt: Date.now(), ...(auto && first ? { selectedCandidateId: first } : {}) });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId: post._id, actor: { system: VISUAL_AGENT }, action: auto ? "selected asset" : "returned candidates", target: slot.name, detail: auto ? `${post.title} · autopost` : `${candidates} candidate${candidates === 1 ? "" : "s"} · ${post.title}` });
 	},
 });

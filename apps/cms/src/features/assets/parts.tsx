@@ -3,7 +3,7 @@
 // Shared image-pipeline pieces (S07 per-post pipeline + S08 cross-post queue).
 import { useEffect, useState } from "react";
 import { Button, Callout, FileDrop, Sheet, TextArea } from "@/ds";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IImageSlot, TProvider } from "@/lib/types";
 
 export const ROUTABLE: TProvider[] = ["higgsfield", "openai", "open-source"];
@@ -73,7 +73,7 @@ export function ChartSchematic({ slot }: { slot: IImageSlot }) {
 
 /** F4c — upload your own image into a slot (FileDrop → alt text → Use upload). */
 export function UploadSheet({ slot, open, onClose }: { slot: IImageSlot | undefined; open: boolean; onClose: () => void }) {
-	const { actions } = useCms();
+	const { actions } = useSiteCms();
 	const [file, setFile] = useState<File | null>(null);
 	const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
 	const [alt, setAlt] = useState(slot?.alt ?? "");
@@ -99,9 +99,9 @@ export function UploadSheet({ slot, open, onClose }: { slot: IImageSlot | undefi
 						variant="primary"
 						icon="Check"
 						disabled={!file || !!small || !alt.trim()}
-						onClick={() => {
+						onClick={async () => {
 							if (!file) return;
-							const r = actions.uploadOwn(slot.id, file.name);
+							const r = await actions.uploadOwn(slot.id, file.name);
 							if (r.ok) onClose();
 						}}
 					>

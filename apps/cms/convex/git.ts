@@ -8,6 +8,7 @@ import { internal } from "./_generated/api";
 import type { Doc } from "./_generated/dataModel";
 import { internalAction, internalMutation, type MutationCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
+import { activeManifest } from "./lib/gateInputs";
 import { capSite } from "./lib/budget";
 import { siteMutation, siteQuery } from "./lib/functions";
 import { notify, siteAudience, siteAudienceWith } from "./lib/notify";
@@ -96,6 +97,25 @@ export const mergeMr = siteMutation({
 		if (mr.ci === "failing") return { ok: false, reason: "CI is failing. Fix the build first" };
 		if (mr.ci === "pending") return { ok: false, reason: "CI is still running" };
 		await ctx.scheduler.runAfter(0, internal.git.requestMerge, { mrId, by: ctx.access.user.name });
+		return { ok: true };
+	},
+});
+
+/**
+ * A developer rebases a conflicted or red MR and re-renders it with the current manifest (api-map §6). STUB (06):
+ * the real branch rebase happens through the GitHub App; CI then reports back through onCi. No CI result is faked here.
+ */
+export const rebaseMr = siteMutation({
+	permission: "mr.rebase",
+	args: { mrId: v.id("mergeRequests") },
+	handler: async (ctx, { siteId, mrId }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const mr = await ctx.db.get(mrId);
+		if (!mr || mr.siteId !== siteId) return { ok: false, reason: "Merge request not found" };
+		if (mr.status !== "conflict" && mr.ci !== "failing") return { ok: false, reason: "Nothing to rebase: the MR applies cleanly" };
+		const manifest = await activeManifest(ctx, siteId);
+		await ctx.db.patch(mrId, { status: "open", ci: "pending", conflictDetail: undefined, ciDetail: undefined, ...(manifest ? { manifestVersion: manifest.version } : {}) });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, ...(mr.postId ? { postId: mr.postId } : {}), actor: user, action: "rebased and re-rendered", target: `${mrRef(mr)} ${mr.branch}`, detail: `onto ${mr.base} · manifest v${manifest?.version ?? "?"}` });
 		return { ok: true };
 	},
 });

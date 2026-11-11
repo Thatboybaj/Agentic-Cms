@@ -32,6 +32,7 @@ import {
 import { checkCap, estimateRun, fmtUsd, INTENT_LABEL, mrRef, TIER_LABEL } from "@/lib/logic";
 import { type IGateView, useSite } from "@/lib/store";
 import { useSiteCms, useSiteEditLock, useSiteGate, useSiteMrForPost } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import type { IPost, TRole } from "@/lib/types";
 import { IdeaCostNote, RejectIdeaDialog } from "@/features/plan/idea-actions";
 import { DiffReadyBar, DraftBlocks, DraftToolbar, FormatProvider, SeoTitleField } from "./draft";
@@ -363,7 +364,7 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 	const { slug } = useSite();
 	const router = useRouter();
 	const params = useSearchParams();
-	const { data, role, can, actions, site } = useSiteCms();
+	const { data, role, can, actions, site, loading } = useSiteCms();
 	const post = findPost(data, id);
 	const gate = useSiteGate(post?.id);
 	const mr = useSiteMrForPost(post?.id);
@@ -391,6 +392,7 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 		};
 	}, [post?.id, mayEdit, lockedOut, actions]);
 
+	if (!post && loading) return <PageLoading rows={5} />;
 	if (!post)
 		return (
 			<Card variant="solid" padding="lg" className="rounded-3xl">

@@ -40,7 +40,9 @@ import {
 	type IMenuItem,
 } from "@/ds";
 import { checkCap, fmtUsdWhole, isFilled } from "@/lib/logic";
-import { useCms, useLedger, useSlotsForPost, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteLedger, useSiteSlotsForPost } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import type { IImageSlot, IPost } from "@/lib/types";
 import { findPost } from "../editor/util";
 import { ConnectionsSummary } from "../settings/connections";
@@ -53,7 +55,7 @@ const cap1 = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 // ─── Header pieces ───────────────────────────────────────────────────────────
 
 function BudgetPill() {
-	const { site } = useCms();
+	const { site } = useSiteCms();
 	return (
 		<div className="flex min-h-11 shrink-0 items-center gap-2.5 rounded-pill bg-surface py-1.5 ps-4 pe-5">
 			<Icon name="Wallet" size={16} />
@@ -64,7 +66,7 @@ function BudgetPill() {
 
 function SendAction({ post, slots, compact }: { post: IPost; slots: IImageSlot[]; compact?: boolean }) {
 	const { slug } = useSite();
-	const { actions, can } = useCms();
+	const { actions, can } = useSiteCms();
 	const filled = slots.filter(isFilled).length;
 	const count = `${filled} / ${slots.length} filled`;
 	if (post.state === "in-review")
@@ -91,7 +93,7 @@ function SendAction({ post, slots, compact }: { post: IPost; slots: IImageSlot[]
 }
 
 function ProviderControl({ slot }: { slot: IImageSlot }) {
-	const { actions, can, data } = useCms();
+	const { actions, can, data } = useSiteCms();
 	if (slot.provider === "inline-svg" || slot.provider === "human" || !can("routing.set"))
 		return (
 			<Tooltip label={slot.type === "chart" ? "Charts are rendered from the post's data, never generated" : slot.provider === "inline-svg" ? "Drawn as SVG from the post by the visual agent" : "Routing is set per slot type by an agency admin"}>
@@ -119,8 +121,8 @@ function ProviderControl({ slot }: { slot: IImageSlot }) {
 
 function SlotStage({ post, slot, onUpload }: { post: IPost; slot: IImageSlot; onUpload: () => void }) {
 	const { slug } = useSite();
-	const { actions, role } = useCms();
-	const ledger = useLedger();
+	const { actions, role } = useSiteCms();
+	const ledger = useSiteLedger();
 	const canAct = role === "specialist" || role === "admin";
 	if (slot.type === "chart")
 		return (
@@ -212,7 +214,7 @@ function SlotStage({ post, slot, onUpload }: { post: IPost; slot: IImageSlot; on
 }
 
 function PromptBlock({ slot, onUpload, onHumanOnly }: { slot: IImageSlot; onUpload: () => void; onHumanOnly: () => void }) {
-	const { actions, role, site, state } = useCms();
+	const { actions, role, site, state } = useSiteCms();
 	const [prompt, setPrompt] = useState(slot.prompt);
 	const [refused, setRefused] = useState(false);
 	useEffect(() => {
@@ -274,7 +276,7 @@ function useAlt(slot: IImageSlot | undefined) {
 }
 
 function CommitAction({ slot, alt, next, onNext, full }: { slot: IImageSlot; alt: string; next?: IImageSlot; onNext: (id: string) => void; full?: boolean }) {
-	const { actions, role } = useCms();
+	const { actions, role } = useSiteCms();
 	const pickIdx = slot.candidates.findIndex((c) => c.selected);
 	const label = pickIdx >= 0 ? `Use candidate ${pickIdx + 1}` : "Use candidate";
 	const canAct = role === "specialist" || role === "admin";
@@ -309,7 +311,7 @@ function CommitAction({ slot, alt, next, onNext, full }: { slot: IImageSlot; alt
 }
 
 function SpecCard({ slot, alt, setAlt }: { slot: IImageSlot; alt: string; setAlt: (v: string) => void }) {
-	const { role } = useCms();
+	const { role } = useSiteCms();
 	return (
 		<Card variant="solid" padding="md" className="flex flex-col gap-3">
 			<h3 className="font-display text-lg">Slot spec</h3>
@@ -339,9 +341,9 @@ function SpecCard({ slot, alt, setAlt }: { slot: IImageSlot; alt: string; setAlt
 export function PostAssets({ id }: { id: string }) {
 	const { slug } = useSite();
 	const params = useSearchParams();
-	const { data, role, actions } = useCms();
+	const { data, role, actions, loading } = useSiteCms();
 	const post = findPost(data, id);
-	const slots = useSlotsForPost(post?.id);
+	const slots = useSiteSlotsForPost(post?.id);
 	const [selId, setSelId] = useState<string | null>(params.get("slot"));
 	const [upload, setUpload] = useState(false);
 	const [humanOnly, setHumanOnly] = useState(false);
@@ -354,6 +356,7 @@ export function PostAssets({ id }: { id: string }) {
 		if (!selId && slot) setSelId(slot.id);
 	}, [selId, slot]);
 
+	if (!post && loading) return <PageLoading rows={4} />;
 	if (!post)
 		return (
 			<Card variant="solid" padding="lg" className="rounded-3xl">

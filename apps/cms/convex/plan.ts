@@ -24,6 +24,14 @@ export const bundle = siteQuery({
 			posts.push({ ...p, checks, facts });
 		}
 		const slots = await ctx.db.query("imageSlots").withIndex("by_site_status", (q) => q.eq("siteId", siteId)).take(2000);
+		// Candidates only where a person may pick (the image pipeline shows them); bounded per slot.
+		const candidates = [];
+		for (const s of slots) {
+			if (s.status !== "candidates" && s.status !== "selected") continue;
+			candidates.push(...(await ctx.db.query("candidates").withIndex("by_slot", (q) => q.eq("slotId", s._id)).take(12)));
+		}
+		// Recent site activity (MR timelines, editor activity outside the focused post).
+		const audit = (await ctx.db.query("auditEvents").withIndex("by_site_at", (q) => q.eq("siteId", siteId)).order("desc").take(150)).map((a) => ({ id: a._id, at: a.at, actor: a.actor, action: a.action, target: a.target, detail: a.detail, postId: a.postId }));
 		const keywords = await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(2000);
 		const pillars = await ctx.db.query("pillars").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(100);
 		const mergeRequests = await ctx.db.query("mergeRequests").withIndex("by_site_status", (q) => q.eq("siteId", siteId)).take(500);
@@ -47,6 +55,8 @@ export const bundle = siteQuery({
 			repo: repo ? { host: repo.host, repo: repo.repo, baseBranch: repo.baseBranch, contentDir: repo.contentDir, assetDir: repo.assetDir, branchPattern: repo.branchPattern, installedAs: repo.installedAs } : null,
 			posts,
 			slots,
+			candidates,
+			audit,
 			keywords,
 			pillars,
 			mergeRequests,

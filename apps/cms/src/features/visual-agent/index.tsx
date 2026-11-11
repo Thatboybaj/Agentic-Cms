@@ -6,7 +6,7 @@
 import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from "react";
 import { AgentBadge, Button, Callout, Chip, Icon, LockedAction, Select, Skeleton } from "@/ds";
 import { isFilled } from "@/lib/logic";
-import { useCms } from "@/lib/store";
+import { useSiteCms } from "@/features/shared/site-source";
 import type { IImageSlot, IPost } from "@/lib/types";
 import { useConnections, type IConnection } from "@/features/connections";
 import { availableOverrides, chooseRoute, onlyWebSources } from "@/server/visual-agent/route";
@@ -42,7 +42,7 @@ const Ctx = createContext<IVisualAgentCtx | null>(null);
 export const fillable = (s: IImageSlot) => !isFilled(s) && s.type !== "chart" && !s.humanPinned && s.candidates.length === 0;
 
 export function VisualAgentProvider({ post, children }: { post: IPost; children: ReactNode }) {
-	const { site, data, actions } = useCms();
+	const { site, data, actions } = useSiteCms();
 	const { connections, loading, error: connError } = useConnections(site.id);
 	const [busy, setBusy] = useState<ReadonlySet<string>>(new Set());
 	const [runs, setRuns] = useState<Record<string, ISlotRun>>({});
@@ -66,7 +66,7 @@ export function VisualAgentProvider({ post, children }: { post: IPost; children:
 				let applyError: string | undefined;
 				// Charts are never stored as candidates (the store refuses them); the preview stays in the panel.
 				if (result.candidates.length && result.route !== "chart-svg" && result.route !== "hold") {
-					const r = actions.setSlotCandidates(slot.id, result.candidates, result.meta);
+					const r = await actions.setSlotCandidates(slot.id, result.candidates, result.meta);
 					if (!r.ok) applyError = r.reason;
 				}
 				setRuns((r) => ({ ...r, [slot.id]: { result, applyError } }));
@@ -114,7 +114,7 @@ const usd = (n: number) => (n > 0 ? `Est. $${n.toFixed(2)}` : "No generation cos
 
 /** The slot panel's agent row: chosen route, override, estimate, Run, and the last result or hold. */
 export function VisualAgentRow({ slot, primary }: { slot: IImageSlot; primary?: boolean }) {
-	const { can, why } = useCms();
+	const { can, why } = useSiteCms();
 	const va = useVisualAgent();
 	const decision = va.decisionFor(slot);
 	const busy = va.busy.has(slot.id);
@@ -209,7 +209,7 @@ function RunOutcome({ slot, run }: { slot: IImageSlot; run?: ISlotRun }) {
 
 /** Header action: run the agent across every unfilled slot, one after another, with progress. */
 export function FillAllButton({ slots, compact }: { slots: IImageSlot[]; compact?: boolean }) {
-	const { can } = useCms();
+	const { can } = useSiteCms();
 	const va = useVisualAgent();
 	const todo = slots.filter(fillable);
 	if (!can("asset.manage")) return null;

@@ -41,6 +41,7 @@ import type * as posts from "../posts.js";
 import type * as review from "../review.js";
 import type * as schedules from "../schedules.js";
 import type * as sites from "../sites.js";
+import type * as slots from "../slots.js";
 import type * as users from "../users.js";
 import type * as workflows_autopostGate from "../workflows/autopostGate.js";
 import type * as workflows_manager from "../workflows/manager.js";
@@ -90,6 +91,7 @@ declare const fullApi: ApiFromModules<{
   review: typeof review;
   schedules: typeof schedules;
   sites: typeof sites;
+  slots: typeof slots;
   users: typeof users;
   "workflows/autopostGate": typeof workflows_autopostGate;
   "workflows/manager": typeof workflows_manager;

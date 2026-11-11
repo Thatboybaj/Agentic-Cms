@@ -24,7 +24,9 @@ import {
 	DataGap,
 } from "@/ds";
 import { fmtDateTime, fmtUsd, isFilled } from "@/lib/logic";
-import { useCms, useLedger, useSite } from "@/lib/store";
+import { useSite } from "@/lib/store";
+import { useSiteCms, useSiteLedger } from "@/features/shared/site-source";
+import { PageLoading } from "@/features/shared/page-loading";
 import type { IImageSlot, TProvider } from "@/lib/types";
 import { slotStatusWord, UploadSheet } from "./parts";
 import { sitePath } from "@/lib/routes";
@@ -40,8 +42,8 @@ const MODEL_PROVIDER: [RegExp, TProvider][] = [
 export function AssetsQueue() {
 	const { slug } = useSite();
 	const router = useRouter();
-	const { data, site, role, can } = useCms();
-	const ledger = useLedger();
+	const { data, site, role, can, loading } = useSiteCms();
+	const ledger = useSiteLedger();
 	const [view, setView] = useState<TView>("open");
 	const [uploadId, setUploadId] = useState<string | null>(null);
 	const postOf = (s: IImageSlot) => data.posts.find((p) => p.id === s.postId);
@@ -79,7 +81,7 @@ export function AssetsQueue() {
 		<div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1">
 			<PageHeader
 				title="Image pipeline"
-				subtitle={open.length ? `${open.length} slot${open.length > 1 ? "s" : ""} open across ${postsOpen} post${postsOpen > 1 ? "s" : ""} · ${human.length} human-only` : "Every slot is filled"}
+				subtitle={open.length ? `${open.length} slot${open.length > 1 ? "s" : ""} open across ${postsOpen} post${postsOpen > 1 ? "s" : ""} · ${human.length} human-only` : loading ? "Loading slots…" : "Every slot is filled"}
 				actions={
 					<SegmentedControl<TView>
 						label="Slot filter"
@@ -95,7 +97,8 @@ export function AssetsQueue() {
 			/>
 			<div className="flex flex-col gap-4 lg:min-h-0 lg:flex-1 lg:flex-row">
 				<div className="thin-scrollbar flex min-h-0 min-w-0 flex-1 flex-col gap-6 lg:overflow-y-auto">
-					{view !== "filled" && open.length === 0 && (
+					{loading && <PageLoading />}
+					{!loading && view !== "filled" && open.length === 0 && (
 						<Card variant="solid" padding="lg">
 							<EmptyState icon="CheckCircle" title="Every slot is filled" body="New slots arrive with each draft's image sheet." />
 						</Card>
