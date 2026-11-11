@@ -128,10 +128,14 @@ export function SignIn() {
 	return (
 		<AppFrame wash="blue-peach">
 			<div className="grid min-h-full place-items-center gap-6 py-6">
-				{BACKEND_ENABLED && <BackendPanel />}
-				<CmsProvider fallback={<Loading />}>
-					<SignInCard />
-				</CmsProvider>
+				{/* Real sign-in (Clerk) when the backend is on; the prototype's pick-a-person card only stands in for it when it's off. */}
+				{BACKEND_ENABLED ? (
+					<BackendPanel />
+				) : (
+					<CmsProvider fallback={<Loading />}>
+						<SignInCard />
+					</CmsProvider>
+				)}
 			</div>
 		</AppFrame>
 	);
