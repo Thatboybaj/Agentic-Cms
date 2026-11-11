@@ -401,3 +401,143 @@ describe("human approval", () => {
 		expect(await as(t).mutation(api.posts.approve, { siteId: site, postId: id })).toEqual({ ok: false, reason: "1 hard block: 1 unresolved fact marker" });
 	});
 });
+
+// ─── Slice 3: send back + revise, edits after approval, schedules ─────────────
+
+describe("send back → revise", () => {
+	test("needs a note; drafting with the note and a comment; the writer returns it to review with a new version", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		const id = await seedPost(t, site, { state: "in-review" });
+		await t.run(async (ctx) => void (await ctx.db.insert("ledgerItems", { siteId: site, title: "Review implant cost", owner: "Content specialist", createdAt: 0, downstream: "", postId: id, origin: "human", done: false })));
+		expect(await as(t).mutation(api.review.sendBack, { siteId: site, postId: id, note: "  " })).toEqual({ ok: false, reason: "Tell the agent what to change" });
+		expect(await as(t).mutation(api.review.sendBack, { siteId: site, postId: id, note: "Add a cost table" })).toEqual({ ok: true });
+		const mid = await postOf(t, id);
+		expect(mid).toMatchObject({ state: "drafting", sendBackNote: "Add a cost table" });
+		expect(await as(t).mutation(api.review.sendBack, { siteId: site, postId: id, note: "again" })).toEqual({ ok: false, reason: "Only posts in review can be sent back" });
+		await settle(t);
+		const post = await postOf(t, id);
+		expect(post).toMatchObject({ state: "in-review", currentVersion: 2 });
+		expect(post.sendBackNote).toBeUndefined();
+		expect(post.workflowId).toBeUndefined();
+		const out = await t.run(async (ctx) => ({
+			versions: (await ctx.db.query("postVersions").collect()).map((v) => [v.n, v.origin, v.note ?? null]),
+			comments: (await ctx.db.query("comments").collect()).map((c) => c.text),
+			notes: (await ctx.db.query("notifications").collect()).map((n) => n.title),
+			ledger: (await ctx.db.query("ledgerItems").collect()).map((l) => l.done),
+			run: (await ctx.db.query("runs").collect()).map((r) => [r.status, r.output]),
+		}));
+		expect(out.versions).toEqual([[1, "agent-generation", null], [2, "agent-edit", 'Revised from note: "Add a cost table"']]);
+		expect(out.comments).toEqual(["Sent back: Add a cost table"]);
+		expect(out.notes).toContain("Revision ready");
+		expect(out.ledger).toEqual([true]);
+		expect(out.run).toEqual([["succeeded", "Revision ready for review"]]);
+		expect(await actions(t, id)).toContain("owner · sent back");
+	});
+});
+
+describe("editor", () => {
+	test("an edit after the MR opened sends the post back to review; stale base versions are refused; removing a claim resolves it", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await connect(t, site);
+		const id = await seedPost(t, site, { state: "in-review", claim: "90% of people agree" });
+		expect(await as(t).mutation(api.editor.editBlock, { siteId: site, postId: id, blockId: "b1", text: "Implants are common. Ask us anything.", baseVersion: 1 })).toEqual({ ok: true });
+		expect((await t.run((ctx) => ctx.db.query("factMarkers").collect())).map((f) => f.status)).toEqual(["resolved"]);
+		expect(await as(t).mutation(api.editor.editBlock, { siteId: site, postId: id, blockId: "b1", text: "x", baseVersion: 1 })).toEqual({ ok: false, reason: "Someone changed this block" });
+		expect(await as(t).mutation(api.posts.approve, { siteId: site, postId: id })).toEqual({ ok: true });
+		await settle(t);
+		const shipped = await postOf(t, id);
+		expect(shipped.state).toBe("mr-open");
+		expect(await as(t).mutation(api.editor.editBlock, { siteId: site, postId: id, blockId: "b1", text: "Implants are common. Book a consult.", baseVersion: shipped.currentVersion })).toEqual({ ok: true });
+		const edited = await postOf(t, id);
+		expect(edited.state).toBe("in-review");
+		expect(edited.currentVersion).toBeGreaterThan(edited.approvedVersion!);
+		expect((await mrOf(t, id)).status).toBe("open"); // the PR stays; the next approval updates it
+		expect(await actions(t, id)).toContain("owner · moved to In review");
+	});
+});
+
+describe("schedules", () => {
+	async function schedule(t: T, siteId: Id<"sites">, kind: "keyword-swarm" | "post-generation" | "link-prospecting", opts: { due?: boolean; enabled?: boolean } = {}) {
+		return t.run((ctx) =>
+			ctx.db.insert("schedules", { siteId, kind, label: kind, cadence: "", rule: kind === "post-generation" ? "per-publish-slot" : "weekly:mon@07:00", produces: "", nextAt: opts.due === false ? Date.now() + 86_400_000 : Date.now() - 1000, enabled: opts.enabled ?? true }),
+		);
+	}
+
+	test("tick starts a due keyword swarm once; its ideas land in Idea, deduped; the slot advances", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await idea(t, site, "dental cost guide"); // the stub swarm proposes this term too: deduped
+		const sid = await schedule(t, site, "keyword-swarm");
+		expect(await t.mutation(internal.schedules.tick, {})).toEqual({ due: 1, started: 1 });
+		expect(await t.mutation(internal.schedules.tick, {})).toEqual({ due: 0, started: 0 });
+		await settle(t);
+		const out = await t.run(async (ctx) => ({
+			sched: (await ctx.db.get(sid))!,
+			runs: (await ctx.db.query("runs").collect()).map((r) => [r.kind, r.trigger, r.status, r.output]),
+			ideas: (await ctx.db.query("posts").collect()).filter((p) => p.source === "keyword-swarm").map((p) => p.title).sort(),
+		}));
+		expect(out.sched.nextAt).toBeGreaterThan(Date.now());
+		expect(out.runs).toEqual([["keyword-swarm", "scheduled", "succeeded", "3 ideas · 1 deduplicated against live and planned · 2 new in Idea"]]);
+		expect(out.ideas).toEqual(["dental near me", "how to choose a dental provider"]);
+	});
+
+	test("paused sites and disabled schedules don't run; per-publish-slot generates the oldest due briefed post", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await schedule(t, site, "keyword-swarm", { enabled: false });
+		const id = await idea(t, site);
+		await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id });
+		await t.run((ctx) => ctx.db.patch(id, { week: 1 }));
+		await schedule(t, site, "post-generation");
+		await t.run((ctx) => ctx.db.patch(site, { status: "paused" }));
+		expect(await t.mutation(internal.schedules.tick, {})).toEqual({ due: 1, started: 0 });
+		await t.run(async (ctx) => {
+			await ctx.db.patch(site, { status: "active" });
+			for (const s of await ctx.db.query("schedules").collect()) if (s.enabled) await ctx.db.patch(s._id, { nextAt: Date.now() - 1000 });
+		});
+		expect(await t.mutation(internal.schedules.tick, {})).toEqual({ due: 1, started: 1 });
+		await settle(t);
+		expect((await postOf(t, id)).state).toBe("needs-assets");
+	});
+
+	test("runNow: permission, refusals with the prototype's wording, and a failing artifact settles as failed", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await expect(as(t, "kemi").mutation(api.schedules.runNow, { siteId: site, kind: "qa-sweep" })).rejects.toMatchObject({ data: { code: "FORBIDDEN" } });
+		expect(await as(t).mutation(api.schedules.runNow, { siteId: site, kind: "post-generation" })).toEqual({ ok: false, reason: "No briefed posts to generate. Promote an idea first" });
+		expect((await as(t).mutation(api.schedules.runNow, { siteId: site, kind: "link-prospecting" })).ok).toBe(true);
+		await settle(t);
+		const runs = await t.run((ctx) => ctx.db.query("runs").collect());
+		expect(runs.map((r) => [r.kind, r.trigger, r.status, r.output])).toEqual([["link-prospecting", "manual", "failed", "Failed: no Ahrefs or Semrush connection for backlink data."]]);
+		expect(await t.run(async (ctx) => (await ctx.db.query("auditEvents").collect()).map((a) => a.action))).toContain("triggered run");
+	});
+
+	test("toggle pauses and resumes with the prototype's audit wording", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await schedule(t, site, "keyword-swarm");
+		await as(t).mutation(api.schedules.toggle, { siteId: site, kind: "keyword-swarm" });
+		await as(t).mutation(api.schedules.toggle, { siteId: site, kind: "keyword-swarm" });
+		expect(await t.run(async (ctx) => (await ctx.db.query("auditEvents").collect()).map((a) => a.action))).toEqual(["paused schedule", "resumed schedule"]);
+	});
+});
+
+describe("spend", () => {
+	test("stub runs cost $0; a measured cost is debited once, even if the run is settled twice", async () => {
+		const t = await setup();
+		const { site } = await world(t);
+		await t.run(async (ctx) => {
+			const s = (await ctx.db.get(site))!;
+			const { createRun, finishRun } = await import("./lib/runs");
+			const est = { usd: 1, budget: "text" as const, tier: "workhorse" as const };
+			const free = await createRun(ctx, { site: s, kind: "qa-sweep", trigger: "manual", estimate: est, idempotencyKey: "k1", output: "" });
+			await finishRun(ctx, free, { status: "succeeded", output: "ok" });
+			const paid = await createRun(ctx, { site: s, kind: "qa-sweep", trigger: "manual", estimate: est, idempotencyKey: "k2", output: "" });
+			await finishRun(ctx, paid, { status: "succeeded", output: "ok", costUsd: 0.42 });
+			await finishRun(ctx, paid, { status: "succeeded", output: "again", costUsd: 0.42 });
+			expect((await ctx.db.get(site))!.spend.textMicroUsd).toBe(420_000);
+		});
+	});
+});

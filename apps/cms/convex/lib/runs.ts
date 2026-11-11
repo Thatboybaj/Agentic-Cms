@@ -1,6 +1,7 @@
 // Run rows (handoff 02 step 3): the billable record of every agent run. One row per idempotency key: a retried step
-// finds its row instead of making a second one. Spend is debited once when a run settles (real token costs arrive in
-// 03 with cappedInference; until then a stub cost of 94% of the estimate, like the prototype's finishRun).
+// finds its row instead of making a second one. Spend is debited once when a run settles, with the cost the caller
+// measured. Steps are stubs until 03 (cappedInference records real token costs), so they cost $0: the spend cache and
+// caps must only ever reflect real money (the prototype simulated 94% of the estimate; we don't).
 import { MODELS } from "@studio/seo-harness";
 import { RUN_META, type ICapCheck, type IEstimate } from "../../src/lib/logic";
 import type { TRunKind } from "../../src/lib/types";
@@ -84,7 +85,7 @@ export async function refuseRun(ctx: MutationCtx, r: Omit<IRunStart, "status">, 
 export async function finishRun(ctx: MutationCtx, runId: Id<"runs">, outcome: { status: "succeeded" | "failed" | "cancelled"; output: string; error?: string; costUsd?: number }) {
 	const run = await ctx.db.get(runId);
 	if (!run || (run.status !== "running" && run.status !== "queued")) return;
-	const raw = outcome.costUsd ?? (outcome.status === "succeeded" ? run.estimateUsd * 0.94 : outcome.status === "failed" ? run.estimateUsd * 0.1 : 0);
+	const raw = outcome.costUsd ?? 0;
 	const costUsd = Math.round(raw * 100) / 100;
 	await ctx.db.patch(runId, { status: outcome.status, output: outcome.output, finishedAt: Date.now(), costUsd, ...(outcome.error ? { error: outcome.error } : {}) });
 	const site = await ctx.db.get(run.siteId);

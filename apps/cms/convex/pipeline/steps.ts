@@ -121,3 +121,56 @@ export const openPrStep = internalAction({
 	returns: vOpenPrOutput,
 	handler: async (_ctx, a) => ({ headSha: `stub-${a.postId.slice(-8)}`, previewUrl: `https://${a.domain.split(".")[0]}-git-${a.branch.replace(/\//g, "-")}.vercel.app/blog/${a.slug}` }),
 });
+
+// ─── Revise + scheduled runs (handoff 02 steps 8–9) ───────────────────────────
+
+const vBlockIn = v.object({ id: v.string(), kind: v.string(), text: v.string() });
+
+/** STUB (03): the blog writer applies a reviewer's note to the current draft. Returns the revised blocks unchanged in
+ *  shape; until 03 it only records that the note was applied. */
+export const reviseStep = internalAction({
+	args: { siteId: v.id("sites"), postId: v.id("posts"), note: v.string(), blocks: v.array(vBlockIn), seoTitle: v.string() },
+	returns: v.object({ blocks: v.array(vBlockIn), seoTitle: v.string(), tokens: v.object({ input: v.number(), output: v.number() }) }),
+	handler: async (_ctx, a) => ({ blocks: a.blocks, seoTitle: a.seoTitle, tokens: { input: 0, output: 0 } }),
+});
+
+export const vRunArtifact = v.object({
+	status: v.union(v.literal("succeeded"), v.literal("failed")),
+	output: v.string(),
+	/** keyword-swarm: new keyword ideas for the plan (deduped against existing terms by the persist step). */
+	ideas: v.array(v.object({ term: v.string(), intent: v.union(v.literal("informational"), v.literal("commercial"), v.literal("transactional"), v.literal("navigational")), difficulty: v.number(), evidence: v.string() })),
+});
+
+/** STUB (03 / 07): the harness agent(s) for a scheduled run kind. Canned artifacts with the prototype's wording. */
+export const runKindStep = internalAction({
+	args: { siteId: v.id("sites"), kind: v.string(), siteName: v.string(), searchConsole: v.string(), rankSource: v.union(v.string(), v.null()), industry: v.string() },
+	returns: vRunArtifact,
+	handler: async (_ctx, a) => {
+		const none = [] as { term: string; intent: "informational" | "commercial" | "transactional" | "navigational"; difficulty: number; evidence: string }[];
+		switch (a.kind) {
+			case "keyword-swarm": {
+				const base = a.industry.toLowerCase();
+				const ideas = [
+					{ term: `${base} cost guide`, intent: "commercial" as const, difficulty: 22, evidence: "stub · SERP" },
+					{ term: `how to choose a ${base} provider`, intent: "informational" as const, difficulty: 14, evidence: "stub · SERP" },
+					{ term: `${base} near me`, intent: "transactional" as const, difficulty: 9, evidence: "stub · SERP" },
+				];
+				return { status: "succeeded" as const, output: "", ideas };
+			}
+			case "technical-monitor":
+				return { status: "succeeded" as const, output: `Health ${a.searchConsole === "connected" ? 96 : 88} · 0 new issues`, ideas: none };
+			case "qa-sweep":
+				return { status: "succeeded" as const, output: "Light sweep · scorecard 11/12 · ledger unchanged", ideas: none };
+			case "content-refresh":
+				return { status: "succeeded" as const, output: "Prune list refreshed · 0 decaying posts ranked for refresh", ideas: none };
+			case "link-prospecting":
+				return a.rankSource ? { status: "succeeded" as const, output: "12 prospects · 5 outreach drafts", ideas: none } : { status: "failed" as const, output: "Failed: no Ahrefs or Semrush connection for backlink data.", ideas: none };
+			case "kas-recalc":
+				return { status: "succeeded" as const, output: a.searchConsole === "connected" ? "Scores recalculated" : "Data gap: Search Console not connected. No scores written.", ideas: none };
+			case "biweekly-report":
+				return { status: "succeeded" as const, output: "Report drafted · ready to share", ideas: none };
+			default:
+				return { status: "succeeded" as const, output: "Done", ideas: none };
+		}
+	},
+});

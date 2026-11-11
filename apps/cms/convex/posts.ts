@@ -117,7 +117,7 @@ export const addIdea = siteMutation({
 });
 
 /** Starts postPipeline for a briefed/decaying post after a cap check. Refused → run row, audit, notify (+ ledger under autopost). */
-async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, by: { user?: Doc<"users">; trigger: "manual" | "workflow" }): Promise<TResult> {
+export async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, by: { user?: Doc<"users">; trigger: "manual" | "workflow" }): Promise<TResult> {
 	if (post.workflowId) return fail("Already generating · wait for the current run to finish");
 	const strong = post.strongModel || post.contentType === "pillar" || post.contentType === "money-page";
 	const est = estimateRun("post-generation", capSite(site), { strongModel: strong });
