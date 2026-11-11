@@ -83,3 +83,41 @@ export const fillSlotStep = internalAction({
 	returns: vFillSlotOutput,
 	handler: async (_ctx, { provider }) => ({ ok: true, candidates: provider === "inline-svg" ? 1 : 3, note: `stub ${provider}`, costUsd: 0 }),
 });
+
+// ─── Autopost gate + ship (handoff 02 steps 5–6) ───────────────────────────────
+
+/** STUB (03): the agent's text fixes for the gate's plan (rewrite claims, on-page fixes). Until 03 the fixes are the
+ *  deterministic ports in fixes.ts, applied by gate.applyAndShip; this step is the seam where a model call goes. */
+export const fixStep = internalAction({
+	args: { siteId: v.id("sites"), postId: v.id("posts"), fixes: v.number() },
+	returns: v.object({ applied: v.number() }),
+	handler: async (_ctx, { fixes }) => ({ applied: fixes }),
+});
+
+export const vRenderOutput = v.object({
+	/** Structures the template can't render (fidelity rule): non-empty → hold, never invent markup. */
+	held: v.array(v.string()),
+	files: v.array(v.object({ path: v.string(), change: v.string(), kind: v.union(v.literal("post"), v.literal("assets"), v.literal("index")) })),
+});
+
+/** STUB (05): renderer in publish mode. Returns the files the PR will carry. */
+export const renderStep = internalAction({
+	args: { siteId: v.id("sites"), postId: v.id("posts"), slug: v.string(), words: v.number(), output: v.string(), contentDir: v.string(), assetDir: v.string(), rasterSlots: v.number(), svgSlots: v.number() },
+	returns: vRenderOutput,
+	handler: async (_ctx, a) => {
+		const ext = ({ mdx: "mdx", html: "html", json: "json", component: "tsx" } as Record<string, string>)[a.output] ?? "mdx";
+		const files: { path: string; change: string; kind: "post" | "assets" | "index" }[] = [{ path: `${a.contentDir}/${a.slug}.${ext}`, change: `+${Math.max(40, Math.round(a.words / 7.6))}`, kind: "post" }];
+		if (a.rasterSlots + a.svgSlots) files.push({ path: `${a.assetDir}/ · ${a.rasterSlots} WebP${a.svgSlots ? ` · ${a.svgSlots} SVG` : ""}`, change: `${a.rasterSlots * 78} KB`, kind: "assets" });
+		files.push({ path: "public/sitemap.xml", change: "+1", kind: "index" });
+		return { held: [], files };
+	},
+});
+
+export const vOpenPrOutput = v.object({ number: v.optional(v.number()), externalId: v.optional(v.string()), headSha: v.string(), previewUrl: v.optional(v.string()) });
+
+/** STUB (06): GitHub App: branch content/{slug}, commit files, open (or update) the PR. Never pushes to base. */
+export const openPrStep = internalAction({
+	args: { siteId: v.id("sites"), postId: v.id("posts"), branch: v.string(), base: v.string(), title: v.string(), domain: v.string(), slug: v.string() },
+	returns: vOpenPrOutput,
+	handler: async (_ctx, a) => ({ headSha: `stub-${a.postId.slice(-8)}`, previewUrl: `https://${a.domain.split(".")[0]}-git-${a.branch.replace(/\//g, "-")}.vercel.app/blog/${a.slug}` }),
+});

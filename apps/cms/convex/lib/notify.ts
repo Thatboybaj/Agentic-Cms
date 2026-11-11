@@ -3,6 +3,8 @@
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import type { TTone } from "../../src/lib/types";
+import { PERMISSIONS, type TPermission } from "../../src/lib/logic";
+import { siteRoleFor } from "./access";
 
 /** Active people who can open the site: its members plus workspace owners/admins. */
 export async function siteAudience(ctx: MutationCtx, site: Doc<"sites">): Promise<Id<"users">[]> {
@@ -19,6 +21,16 @@ export async function siteAudience(ctx: MutationCtx, site: Doc<"sites">): Promis
 	const active = new Set(ws.filter((w) => w.status === "active").map((w) => w.userId));
 	for (const w of ws) if (w.status === "active" && (w.role === "owner" || w.role === "admin")) ids.add(w.userId);
 	return [...ids].filter((id) => active.has(id));
+}
+
+/** The site's people whose effective role has this permission (api-map §9 fan-out: approvers, mergers…). */
+export async function siteAudienceWith(ctx: MutationCtx, site: Doc<"sites">, permission: TPermission): Promise<Id<"users">[]> {
+	const out: Id<"users">[] = [];
+	for (const userId of await siteAudience(ctx, site)) {
+		const role = await siteRoleFor(ctx, site, userId);
+		if (role && PERMISSIONS[permission].includes(role)) out.push(userId);
+	}
+	return out;
 }
 
 export interface INotifyInput {

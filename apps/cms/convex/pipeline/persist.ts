@@ -11,6 +11,8 @@ import { audit } from "../lib/audit";
 import { notify, siteAudience } from "../lib/notify";
 import { finishRun } from "../lib/runs";
 import { mustTransition } from "../lib/transition";
+import { internal } from "../_generated/api";
+import { workflow } from "../workflows/manager";
 import { vDraftOutput } from "./steps";
 
 async function load(ctx: MutationCtx, siteId: Id<"sites">, postId: Id<"posts">) {
@@ -118,9 +120,9 @@ export const saveSlot = internalMutation({
 });
 
 /**
- * End of the pipeline. All slots selected → needs-assets → in-review and "Approval requested". Otherwise the post waits
- * in Needs assets for a person (pick candidates, fill a human-only slot). The autopost gate (ship or hold) is the next
- * slice of handoff 02: until it lands, autopost posts also stop at In review.
+ * End of the pipeline. Autopost on → the autopost gate decides (ship or hold), unless a person pinned a slot as
+ * human-only (then the post waits for them, as in the prototype). Autopost off: all slots selected → In review and
+ * "Approval requested"; otherwise it waits in Needs assets for a person to pick or fill images.
  */
 export const finishPipeline = internalMutation({
 	args: { siteId: v.id("sites"), postId: v.id("posts"), runId: v.id("runs") },
@@ -130,13 +132,18 @@ export const finishPipeline = internalMutation({
 		const waiting = slots.filter((s) => s.status !== "selected");
 		await finishRun(ctx, runId, { status: "succeeded", output: waiting.length ? `Draft v${post.currentVersion} · ${waiting.length} image slot${waiting.length === 1 ? "" : "s"} need a person` : `Draft v${post.currentVersion} · ready for review` });
 		if (post.state !== "needs-assets") return;
+		if (site.publishing.autopost && !slots.some((s) => s.status === "human-only" && s.humanPinned) && !slots.some((s) => s.status === "generating")) {
+			await ctx.db.patch(postId, { progress: { label: "Autopost gate", value: 80 } });
+			await workflow.start(ctx, internal.workflows.autopostGate.autopostGate, { siteId, postId }, { startAsync: true });
+			return;
+		}
 		if (waiting.length) {
 			await ctx.db.patch(postId, { progress: undefined, updatedAt: Date.now() });
 			await notify(ctx, { workspaceId: site.workspaceId, siteId, userIds: await siteAudience(ctx, site), tone: "human", title: "Images need you", body: `${post.title} · ${waiting.length} slot${waiting.length === 1 ? "" : "s"} to pick or fill`, href: `/posts/${postId}/assets`, dedupeKey: `assets:${postId}` });
 			return;
 		}
 		await mustTransition(ctx, post, "in-review");
-		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: actorFor(site), action: "moved to In review", target: post.title, detail: site.publishing.autopost ? "All images selected · autopost gate arrives with the next backend step" : "All images selected" });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: actorFor(site), action: "moved to In review", target: post.title, detail: "All images selected" });
 		await notify(ctx, { workspaceId: site.workspaceId, siteId, userIds: await siteAudience(ctx, site), tone: "human", title: "Approval requested", body: post.title, href: `/posts/${postId}`, dedupeKey: `review:${postId}:${post.currentVersion}` });
 	},
 });

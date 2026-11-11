@@ -1,16 +1,18 @@
 // Posts: ideas, approval, generation (api-map §3). Wording and refusals match src/lib/store.tsx so the UI copy holds.
 // State changes go through lib/transition.ts only; generation runs as the postPipeline workflow.
 import { v } from "convex/values";
-import { AUTOPOST_ACTOR, checkCap, estimateRun } from "../src/lib/logic";
+import { AUTOPOST_ACTOR, checkCap, estimateRun, evaluateGate } from "../src/lib/logic";
 import type { TPostState } from "../src/lib/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { loadPostInSite } from "./lib/access";
+import { approveAndShip } from "./lib/approval";
+import { gateInputs } from "./lib/gateInputs";
 import { audit } from "./lib/audit";
 import { capSite, fmtUsd } from "./lib/budget";
 import { siteMutation, siteQuery } from "./lib/functions";
-import { notify, siteAudience } from "./lib/notify";
+import { notify, siteAudience, siteAudienceWith } from "./lib/notify";
 import { createRun, refuseRun } from "./lib/runs";
 import { transitionPost } from "./lib/transition";
 import { workflow } from "./workflows/manager";
@@ -144,7 +146,7 @@ async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"
 	return { ok: true, id: runId };
 }
 
-async function approve(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, user: Doc<"users">): Promise<TResult> {
+async function approveIdeaFor(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, user: Doc<"users">): Promise<TResult> {
 	if (post.state !== "idea") return fail("Only ideas wait for approval");
 	if (post.ideaStatus !== "pending") return fail("This idea is already approved");
 	if (site.status === "paused") return fail("This site is paused · resume it to approve ideas");
@@ -160,7 +162,7 @@ async function approve(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">,
 export const approveIdea = siteMutation({
 	permission: "idea.approve",
 	args: { postId: v.id("posts") },
-	handler: async (ctx, { siteId, postId }) => approve(ctx, ctx.access.site, await loadPostInSite(ctx, siteId, postId), ctx.access.user),
+	handler: async (ctx, { siteId, postId }) => approveIdeaFor(ctx, ctx.access.site, await loadPostInSite(ctx, siteId, postId), ctx.access.user),
 });
 
 export const rejectIdea = siteMutation({
@@ -185,7 +187,7 @@ export const promoteToBrief = siteMutation({
 	handler: async (ctx, { siteId, postId }): Promise<TResult> => {
 		const { site, user } = ctx.access;
 		const post = await loadPostInSite(ctx, siteId, postId);
-		if (post.state === "idea" && post.ideaStatus === "pending") return approve(ctx, site, post, user);
+		if (post.state === "idea" && post.ideaStatus === "pending") return approveIdeaFor(ctx, site, post, user);
 		if (post.ideaStatus === "rejected") return fail("This idea was rejected · add it again to reconsider");
 		const r = await transitionPost(ctx, post, "briefed");
 		if (!r.ok) return fail(r.reason);
@@ -205,6 +207,79 @@ export const generateNow = siteMutation({
 		const allowed: TPostState[] = ["briefed", "decaying"];
 		if (!allowed.includes(post.state)) return fail(`Generate now works on Briefed or Decaying posts, not ${post.state.replace("-", " ")}`);
 		return startGeneration(ctx, site, post, { user, trigger: "manual" });
+	},
+});
+
+// ─── Review, approval, ship (handoff 02 step 8) ───────────────────────────────
+
+/** Server-side gate for the editor and Approvals (api-map `gate.evaluate`): same evaluateGate() the UI runs. */
+export const gate = siteQuery({
+	permission: "plan.view",
+	args: { postId: v.id("posts") },
+	handler: async (ctx, { siteId, postId }) => {
+		const post = await loadPostInSite(ctx, siteId, postId);
+		const inputs = await gateInputs(ctx, ctx.access.site, post);
+		return evaluateGate(inputs.post, inputs.slots, inputs.manifest);
+	},
+});
+
+export const sendToReview = siteMutation({
+	permission: "post.sendToReview",
+	args: { postId: v.id("posts") },
+	handler: async (ctx, { siteId, postId }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const post = await loadPostInSite(ctx, siteId, postId);
+		if (post.state === "drafting" && !post.blocks.length) return fail("The draft isn't ready yet");
+		const slots = await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50);
+		const unfilled = slots.filter((s) => s.status !== "selected").length;
+		const r = await transitionPost(ctx, post, "in-review");
+		if (!r.ok) return fail(r.reason);
+		await notify(ctx, { workspaceId: site.workspaceId, siteId, userIds: await siteAudienceWith(ctx, site, "post.approve"), except: user._id, tone: "human", title: "Approval requested", body: `${post.title} is ready for review.`, href: `/approvals?post=${postId}`, dedupeKey: `review:${postId}:${post.currentVersion}` });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "sent to review", target: post.title, ...(unfilled ? { detail: `${unfilled} slot(s) still unfilled · blocks approval` } : {}) });
+		return { ok: true };
+	},
+});
+
+/** Human approval: the gate is re-checked here with the person's soft-override reasons; then shipPost opens the MR. */
+export const approve = siteMutation({
+	permission: "post.approve",
+	args: { postId: v.id("posts"), overrides: v.optional(v.array(v.object({ checkId: v.string(), reason: v.string() }))) },
+	handler: async (ctx, { siteId, postId, overrides }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const post = await loadPostInSite(ctx, siteId, postId);
+		if (post.state !== "in-review") return fail("Only posts in review can be approved");
+		const inputs = await gateInputs(ctx, site, post);
+		if (!inputs.repo) return fail("Connect a repo first. The MR needs somewhere to open");
+		const explicit: Record<string, string> = {};
+		for (const o of overrides ?? []) {
+			if (o.reason.trim().length < 8) return fail("Give each override a reason (8+ characters)");
+			explicit[o.checkId] = o.reason.trim();
+		}
+		const result = evaluateGate(inputs.post, inputs.slots, inputs.manifest, explicit);
+		if (!result.canApprove || !inputs.manifest) {
+			if (result.hard.length) return fail(`${result.hard.length} hard block${result.hard.length > 1 ? "s" : ""}: ${result.hard.join(" · ")}`);
+			return fail("Soft blocks need a logged reason to override");
+		}
+		await approveAndShip(ctx, site, post, result, user, { explicit, autopost: false });
+		return { ok: true };
+	},
+});
+
+/** Autopost sites: run the gate now instead of waiting (api-map `shipNow`). */
+export const shipNow = siteMutation({
+	permission: "post.approve",
+	args: { postId: v.id("posts") },
+	handler: async (ctx, { siteId, postId }): Promise<TResult> => {
+		const { site } = ctx.access;
+		if (site.status === "paused") return fail("This site is paused · resume it to run agents");
+		if (!site.publishing.autopost) return fail("Autopost is off for this site. Approve it in Approvals");
+		const post = await loadPostInSite(ctx, siteId, postId);
+		if (post.state !== "needs-assets" && post.state !== "in-review") return fail("Ship now works once the draft exists (Needs assets or In review)");
+		const slots = await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50);
+		if (slots.some((s) => s.status === "generating")) return fail("Wait for image generation to finish");
+		await workflow.start(ctx, internal.workflows.autopostGate.autopostGate, { siteId, postId }, { startAsync: true });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: ctx.access.user, action: "ran autopost gate", target: post.title });
+		return { ok: true };
 	},
 });
 
