@@ -66,7 +66,9 @@ export const profileInput = internalQuery({
 		const rank = (p: Doc<"crawledPages">) => RANK[p.type ?? "other"] ?? 5;
 		const top = [...pages].filter((p) => p.textStorageId).sort((a, b) => rank(a) - rank(b) || b.wordCount - a.wordCount).slice(0, 8);
 		const latest = (await ctx.db.query("siteProfiles").withIndex("by_site_version", (q) => q.eq("siteId", siteId)).order("desc").take(1))[0];
-		return { siteName: site.name, domain: site.domain, industry: site.industry, routing: site.modelRouting, extracts: pages.map(summaryOf), contentPages: pages.filter((p) => p.wordCount >= 150).length, top: top.map((p) => ({ url: p.url, title: p.title, outline: p.outline, textStorageId: p.textStorageId! })), nextVersion: (latest?.version ?? 0) + 1, interview: latest?.interview ?? null };
+		// The owner's interview answers (robots-blocked or tiny site) fill what the crawl couldn't.
+		const answered = (await ctx.db.query("discoveryReports").withIndex("by_site_created", (q) => q.eq("siteId", siteId)).order("desc").take(20)).find((r) => r.interview?.length);
+		return { siteName: site.name, domain: site.domain, industry: site.industry, routing: site.modelRouting, extracts: pages.map(summaryOf), contentPages: pages.filter((p) => p.wordCount >= 150).length, top: top.map((p) => ({ url: p.url, title: p.title, outline: p.outline, textStorageId: p.textStorageId! })), nextVersion: (latest?.version ?? 0) + 1, interview: answered?.interview ?? latest?.interview ?? null };
 	},
 });
 

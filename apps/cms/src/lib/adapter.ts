@@ -60,6 +60,8 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		comments: [],
 		...(p.kasContribution !== undefined ? { kasContribution: p.kasContribution } : {}),
 		...(p.regulated ? { regulated: p.regulated } : {}),
+		...(p.discoveryEvidence || p.angle ? { discovery: { evidence: p.discoveryEvidence ?? [], ...(p.angle ? { angle: p.angle } : {}), secondaryKeywords: p.secondaryKeywords ?? [], internalLinkTargets: p.internalLinkTargets ?? [] } } : {}),
+		...(p.hold?.missing.length ? { waitingFor: p.hold.missing } : {}),
 		...(p.mrId ? { mrId: p.mrId } : {}),
 		...(p.requires ? { requires: p.requires } : {}),
 		...(p.sendBackNote ? { sendBackNote: p.sendBackNote } : {}),
@@ -77,6 +79,7 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		id: r._id, kind: r.kind, trigger: r.trigger === "manual" ? "manual" : "scheduled", status: r.status === "cancelled" ? "failed" : r.status, agent: r.agent, model: r.model,
 		tokens: r.inputTokens + r.outputTokens, costUsd: r.costUsd, estimateUsd: r.estimateUsd, startedAt: iso(r.startedAt)!, ...(r.finishedAt ? { durationSec: Math.max(1, Math.round((r.finishedAt - r.startedAt) / 1000)) } : {}),
 		...(r.postId ? { postId: r.postId } : {}), output: r.output, ...(r.tier ? { tier: r.tier } : {}), ...(r.budget ? { budget: r.budget } : {}),
+		...(r.stage ? { stage: r.stage } : {}), ...(r.progress ? { pages: { total: r.progress.pagesTotal, crawled: r.progress.pagesCrawled, skipped: r.progress.pagesSkipped } } : {}),
 	}));
 	const manifests: ITemplateManifest[] = b.manifest ? [{ id: b.manifest._id, version: b.manifest.version, source: b.manifest.source, kind: b.manifest.kind, output: b.manifest.output, status: b.manifest.status, mappings: b.manifest.mappings }] : [];
 	const { pillarPages, ...restRouting } = s.modelRouting;

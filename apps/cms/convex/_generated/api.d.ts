@@ -39,6 +39,7 @@ import type * as discovery_crawl from "../discovery/crawl.js";
 import type * as discovery_crawlCore from "../discovery/crawlCore.js";
 import type * as discovery_data from "../discovery/data.js";
 import type * as discovery_firecrawl from "../discovery/firecrawl.js";
+import type * as discovery_queries from "../discovery/queries.js";
 import type * as discovery_run from "../discovery/run.js";
 import type * as editor from "../editor.js";
 import type * as git from "../git.js";
@@ -138,6 +139,7 @@ declare const fullApi: ApiFromModules<{
   "discovery/crawlCore": typeof discovery_crawlCore;
   "discovery/data": typeof discovery_data;
   "discovery/firecrawl": typeof discovery_firecrawl;
+  "discovery/queries": typeof discovery_queries;
   "discovery/run": typeof discovery_run;
   editor: typeof editor;
   git: typeof git;

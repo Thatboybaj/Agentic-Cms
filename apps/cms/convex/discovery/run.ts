@@ -18,16 +18,16 @@ export function discoveryBlocked(): string | null {
 	return null;
 }
 
-export async function startDiscovery(ctx: MutationCtx, site: Doc<"sites">, o: { mode: "full" | "more-ideas"; trigger: "manual" | "workflow"; user?: Doc<"users"> }): Promise<TResult> {
+export async function startDiscovery(ctx: MutationCtx, site: Doc<"sites">, o: { mode: "full" | "more-ideas" | "interview"; trigger: "manual" | "workflow"; user?: Doc<"users">; interview?: { question: string; answer: string }[] }): Promise<TResult> {
 	const blocked = discoveryBlocked();
 	if (blocked) return { ok: false, reason: blocked };
 	if (site.status === "paused") return { ok: false, reason: "This site is paused · resume it to run discovery" };
-	const opened = await openDiscoveryRun(ctx, site, { mode: o.mode, trigger: o.trigger, ...(o.user ? { userId: o.user._id } : {}) });
+	const opened = await openDiscoveryRun(ctx, site, { mode: o.mode, trigger: o.trigger, ...(o.user ? { userId: o.user._id } : {}), ...(o.interview ? { interview: o.interview } : {}) });
 	if (!opened.ok) return opened;
 	const context = { siteId: site._id, runId: opened.runId, reportId: opened.reportId };
 	const workflowId = await workflow.start(ctx, internal.workflows.discovery.discovery, { ...context, mode: o.mode }, { startAsync: true, onComplete: internal.workflows.discovery.discoveryDone, context });
 	await ctx.db.patch(opened.runId, { workflowId });
-	await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, actor: o.user ?? { system: "Site discovery agent" }, action: "started site discovery", target: site.domain, detail: o.mode === "full" ? `Up to ${settingsOf(site).maxPages} pages` : "Another batch of ideas from the current plan" });
+	await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, actor: o.user ?? { system: "Site discovery agent" }, action: "started site discovery", target: site.domain, detail: o.mode === "full" ? `Up to ${settingsOf(site).maxPages} pages` : o.mode === "interview" ? "From the discovery interview" : "Another batch of ideas from the current plan" });
 	return { ok: true, runId: opened.runId };
 }
 

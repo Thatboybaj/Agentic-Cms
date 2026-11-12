@@ -261,6 +261,10 @@ export interface IPost {
 	assigneeId?: string;
 	/** Soft edit lock. Fresh while `since` is under EDIT_LOCK_MS old; the holder refreshes it by calling startEditing again. */
 	editingBy?: { userId: string; since: string };
+	/** Site discovery idea (prd-site-discovery F19): the pages/queries it came from, the angle, links to add. */
+	discovery?: { evidence: string[]; angle?: string; secondaryKeywords: string[]; internalLinkTargets: string[] };
+	/** Approved but waiting until the site can publish (F25): the readiness items still missing. */
+	waitingFor?: string[];
 }
 
 export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation" | "site-discovery";
@@ -291,6 +295,9 @@ export interface IRun {
 	tier?: TModelTier;
 	slotId?: string;
 	budget?: TBudgetKind;
+	/** Site discovery: the step it's on and the crawl count (prd-site-discovery §9). */
+	stage?: string;
+	pages?: { total: number; crawled: number; skipped: number };
 }
 
 export interface ILedgerItem {

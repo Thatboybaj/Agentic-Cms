@@ -28,6 +28,7 @@ import { LiveSearchConsoleCard } from "@/features/settings/gsc-live";
 import { useLiveRepoConnect, type IRepoChoice } from "./live-repo";
 import type { IRepoConnection, ISite } from "@/lib/types";
 import { sitePath } from "@/lib/routes";
+import { DiscoveryProgressCard } from "@/features/discovery/parts";
 
 const STEPS = [
 	{ id: "site", label: "Site" },
@@ -451,7 +452,8 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 	}
 
 	return (
-		<Card className="mx-auto flex w-full max-w-[720px] flex-col gap-5">
+		<div className="mx-auto flex w-full max-w-[720px] flex-col gap-4">
+		<Card className="flex w-full flex-col gap-5">
 			<div className="max-md:hidden">
 				<Stepper steps={STEPS} current={step} />
 			</div>
@@ -483,6 +485,9 @@ function Steps({ initial, adding }: { initial: number; adding: boolean }) {
 				{cta}
 			</div>
 		</Card>
+		{/* Discovery starts when the site is added and reads it while the rest of setup happens (prd-site-discovery §9). */}
+		{step > 0 && SITE_ON_CONVEX && <DiscoveryProgressCard />}
+		</div>
 	);
 }
 
@@ -532,6 +537,7 @@ function ConnectedSummary({ site, onAdd }: { site: ISite; onAdd?: () => void }) 
 				}
 			/>
 			<SiteStatus site={site} />
+			{SITE_ON_CONVEX && <DiscoveryProgressCard compact />}
 			{site.repo && <ScopeNote repo={site.repo} />}
 			<SourceNote icon="LockSimple">Secrets are stored once and never shown again. Reconnect from Settings to rotate them.</SourceNote>
 			<div className="flex flex-wrap items-center gap-2">

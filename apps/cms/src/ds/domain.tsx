@@ -390,6 +390,11 @@ export function PostCard({ post, keyword, pillar, href, blocks, slots, mr, selec
 							KAS gap
 						</Chip>
 					)}
+					{post.source === "site-discovery" && (post.state === "idea" || post.state === "briefed") && (
+						<Chip tone="agent" size="sm" icon="TreeStructure">
+							Site discovery
+						</Chip>
+					)}
 					{post.contentType === "pillar" && (
 						<Chip tone="ink" size="sm">
 							Pillar

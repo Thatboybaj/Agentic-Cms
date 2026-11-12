@@ -32,6 +32,8 @@ import { parseView, usePlanHeadline, usePlanModel, WIDE_BY_DEFAULT, type TPlanVi
 import { NewIdeaSheet } from "./new-idea-sheet";
 import { CalendarView, MatrixView } from "./views";
 import { sitePath } from "@/lib/routes";
+import { PlanDiscoveryStrip } from "@/features/discovery/parts";
+import { SITE_ON_CONVEX } from "@/features/shared/site-source";
 
 type TDemo = "loading" | "error" | "empty" | null;
 
@@ -173,7 +175,8 @@ export function PlanFeature({ newIdea = false }: { newIdea?: boolean }) {
 					}
 				/>
 
-				{!site.repo && (
+				<PlanDiscoveryStrip />
+				{!site.repo && !SITE_ON_CONVEX && (
 					<Callout
 						tone="human"
 						icon="Plugs"

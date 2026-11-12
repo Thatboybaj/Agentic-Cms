@@ -39,6 +39,7 @@ import { DiffReadyBar, DraftBlocks, DraftToolbar, FormatProvider, SeoTitleField 
 import { CommentsCard, FactsCard, GateCard, PreviewCard, VersionsCard } from "./rail";
 import { ago, findPost, latestVersion, sectionOf } from "./util";
 import { VersionsSheet } from "./versions-sheet";
+import { DiscoveryEvidenceCard } from "@/features/discovery/parts";
 import { sitePath } from "@/lib/routes";
 
 const EDITABLE_STATES: IPost["state"][] = ["needs-assets", "in-review"];
@@ -148,6 +149,9 @@ function IdeaEmpty({ post }: { post: IPost }) {
 				}
 			/>
 			<IdeaCostNote post={post} />
+			<div className="mx-auto w-full max-w-md">
+				<DiscoveryEvidenceCard post={post} />
+			</div>
 			<RejectIdeaDialog post={post} open={rejecting} onClose={() => setRejecting(false)} />
 		</>
 	);
@@ -438,13 +442,14 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 	};
 
 	const railCards: ReactNode[] = [
+		<DiscoveryEvidenceCard key="discovery" post={post} />,
 		<GateCard key="gate" post={post} loading={drafting} />,
 		<FactsCard key="facts" post={post} />,
 		<VersionsCard key="versions" post={post} />,
 		<CommentsCard key="comments" post={post} id="post-comments" />,
 	];
 	// Stakeholders come for the comments (F10): thread at the top of the rail.
-	const rail = role === "stakeholder" ? [railCards[3], ...railCards.slice(0, 3)] : railCards;
+	const rail = role === "stakeholder" ? [railCards[4], ...railCards.slice(0, 4)] : railCards;
 
 	const composer = <ComposerArea post={post} canEdit={canEdit} scopeId={scopeId} onClearScope={() => setScopeId(null)} />;
 

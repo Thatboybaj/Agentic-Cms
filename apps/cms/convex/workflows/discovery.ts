@@ -14,7 +14,7 @@ const RESUME_MS = 20_000;
 const MAX_SLICES = 12; // 12 × 7 minutes: far beyond a 1,000-page crawl at one request at a time
 
 export const discovery = workflow
-	.define({ args: { siteId: v.id("sites"), runId: v.id("runs"), reportId: v.id("discoveryReports"), mode: v.union(v.literal("full"), v.literal("more-ideas")) } })
+	.define({ args: { siteId: v.id("sites"), runId: v.id("runs"), reportId: v.id("discoveryReports"), mode: v.union(v.literal("full"), v.literal("more-ideas"), v.literal("interview")) } })
 	.handler(async (step, a): Promise<void> => {
 		const ids = { siteId: a.siteId, runId: a.runId, reportId: a.reportId };
 		const stop = (status: "failed" | "needs-interview", error: string) => step.runMutation(internal.discovery.agentData.finish, { ...ids, status, output: error, error });
@@ -32,6 +32,18 @@ export const discovery = workflow
 			for (const [stage, label, fn] of [
 				["extract", "Reading what each page is about", internal.discovery.agent.extract],
 				["profile", "Understanding the business", internal.discovery.agent.profile],
+			] as const) {
+				await step.runMutation(internal.discovery.agentData.setStage, { runId: a.runId, reportId: a.reportId, stage, output: label });
+				const s = await step.runAction(fn, { siteId: a.siteId, runId: a.runId }, { retry: false });
+				if (!s.ok) return void (await stop("failed", s.error ?? `${stage} failed`));
+			}
+			await step.runMutation(internal.discovery.agentData.setStage, { runId: a.runId, reportId: a.reportId, stage: "keywords", output: "Choosing pillars and keywords" });
+			const k = await step.runAction(internal.discovery.agent.keywords, ids, { retry: false });
+			if (!k.ok) return void (await stop("failed", k.error ?? "keywords failed"));
+		} else if (a.mode === "interview") {
+			// The crawl couldn't read the site: the profile comes from the owner's answers (and any pages that were read).
+			for (const [stage, label, fn] of [
+				["profile", "Understanding the business from your answers", internal.discovery.agent.profile],
 			] as const) {
 				await step.runMutation(internal.discovery.agentData.setStage, { runId: a.runId, reportId: a.reportId, stage, output: label });
 				const s = await step.runAction(fn, { siteId: a.siteId, runId: a.runId }, { retry: false });

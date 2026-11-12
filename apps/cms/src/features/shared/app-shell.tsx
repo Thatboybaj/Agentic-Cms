@@ -56,6 +56,7 @@ import { siteSlugFromPath, sitePath, stripSite, WORKSPACE_ROUTES } from "@/lib/r
 function siteRail(slug: string, row: ISiteRow | undefined, editorHref: string): IRailItem[] {
 	return [
 		{ href: sitePath(slug, "/plan"), icon: "Kanban", label: "Content plan" },
+		{ href: sitePath(slug, "/discovery"), icon: "TreeStructure", label: "Site discovery" },
 		{ href: editorHref, icon: "NotePencil", label: "Editor" },
 		{
 			href: sitePath(slug, "/assets"),

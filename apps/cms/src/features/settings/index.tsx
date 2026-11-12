@@ -1,5 +1,5 @@
 "use client";
-// S16 /settings — Site & repo · Publishing · Connections · Providers & budgets · Model routing · Members & roles · Brand pack · Audit log.
+// S16 /settings — Site & repo · Publishing · Connections · Site discovery · Providers & budgets · Model routing · Members & roles · Brand pack · Audit log.
 // Guardrails and configuration. Admin-only controls stay visible, disabled with the reason (RoleGate + why()).
 import { useSearchParams } from "next/navigation";
 import { Callout, PageHeader, Select, Tabs } from "@/ds";
@@ -8,6 +8,7 @@ import { useSiteCms } from "@/features/shared/site-source";
 import { AuditTab } from "./audit";
 import { BrandTab } from "./brand";
 import { ConnectionsSettings } from "./connections";
+import { DiscoverySettings } from "./discovery";
 import { MembersTab } from "./members";
 import { ModelRoutingTab } from "./model-routing";
 import { ProvidersTab } from "./providers";
@@ -18,6 +19,7 @@ const TABS = [
 	{ id: "site", label: "Site & repo" },
 	{ id: "publishing", label: "Publishing" },
 	{ id: "connections", label: "Connections" },
+	{ id: "discovery", label: "Site discovery" },
 	{ id: "providers", label: "Providers & budgets" },
 	{ id: "routing", label: "Model routing" },
 	{ id: "members", label: "Members & roles" },
@@ -59,6 +61,8 @@ export function SettingsScreen() {
 					<PublishingSettings key={key} />
 				) : tab === "connections" ? (
 					<ConnectionsSettings key={key} />
+				) : tab === "discovery" ? (
+					<DiscoverySettings key={key} />
 				) : tab === "providers" ? (
 					<ProvidersTab key={key} />
 				) : tab === "routing" ? (

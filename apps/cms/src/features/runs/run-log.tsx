@@ -1,6 +1,7 @@
 "use client";
 // Run log (S15 region 5) + run detail Sheet (inputs / outputs / model / tokens / cost).
 import Link from "next/link";
+import { STAGE_LABEL } from "@/features/discovery/data";
 import { useMemo, useState } from "react";
 import {
 	AgentBadge,
@@ -170,6 +171,11 @@ function RunSheet({ run, onClose }: { run: IRun | null; onClose: () => void }) {
 					</Chip>
 					<AgentBadge label={run.agent} running={run.status === "running"} model={run.tier} />
 				</div>
+				{run.kind === "site-discovery" && (run.stage || run.pages) && (
+					<Callout tone={run.status === "running" ? "agent" : "neutral"} icon="TreeStructure" title={run.status === "running" ? (STAGE_LABEL[run.stage ?? ""] ?? "Working") : "Site discovery"} action={<Button variant="secondary" size="sm" href={sitePath(slug, "/discovery")}>Open the report</Button>}>
+						{run.pages ? `${run.pages.crawled} of ${run.pages.total} pages read${run.pages.skipped ? ` · ${run.pages.skipped} skipped` : ""}` : null}
+					</Callout>
+				)}
 				{run.status === "failed" && (
 					<Callout tone="block" title="Run failed">
 						{run.output}

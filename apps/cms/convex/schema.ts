@@ -1043,7 +1043,9 @@ export default defineSchema({
 		status: v.union(v.literal("running"), v.literal("succeeded"), v.literal("failed"), v.literal("needs-interview")),
 		stage: v.string(),
 		error: v.optional(v.string()),
-		mode: v.union(v.literal("full"), v.literal("more-ideas")),
+		mode: v.union(v.literal("full"), v.literal("more-ideas"), v.literal("interview")),
+		/** Answers to the discovery interview (robots-blocked or tiny site, §11); the profile step reads them. */
+		interview: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
 		coverage: v.object({ crawled: v.number(), skipped: v.array(v.object({ url: v.string(), reason: v.string() })), limitHit: v.boolean() }),
 		pillars: v.array(
 			v.object({
