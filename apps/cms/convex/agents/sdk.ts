@@ -10,6 +10,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
 import { gatewayChat } from "../../src/lib/gateway";
+import { searchWeb } from "../discovery/firecrawl";
 import { qwenChat } from "../../src/lib/qwen";
 import type { TTransport } from "./gateway";
 import type { ILedger } from "./capped";
@@ -37,7 +38,9 @@ export function modelTransport(): TTransport {
 function gatewayTransport(): TTransport {
 	const apiKey = process.env.AI_GATEWAY_API_KEY?.trim();
 	if (!apiKey) throw new Error("AI_GATEWAY_API_KEY is not set on this Convex deployment");
-	return async (req) => gatewayChat(apiKey, req, { signal: AbortSignal.timeout(TIMEOUT_MS) });
+	// Research that must cite its sources searches through Firecrawl (the gateway's search tool returns no result URLs).
+	const search = process.env.FIRECRAWL_API_KEY ? searchWeb : undefined;
+	return async (req) => gatewayChat(apiKey, req, { signal: AbortSignal.timeout(TIMEOUT_MS), ...(search ? { search } : {}) });
 }
 
 function qwenTransport(): TTransport {

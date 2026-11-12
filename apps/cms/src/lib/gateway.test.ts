@@ -28,7 +28,7 @@ describe("Vercel AI Gateway client", () => {
 			return new Response(sseBody([{ id: "g1", choices: [{ delta: { content: '{"capital":"Doha"}' }, finish_reason: "stop" }] }, { choices: [], usage: { prompt_tokens: 50, completion_tokens: 8, prompt_tokens_details: { cached_tokens: 10 } } }]), { status: 200 });
 		});
 		const r = await gatewayChat("k", { model: "qwen3.8-flash", system: ["s"], user: "u", jsonSchema: { type: "object" }, maxTokens: 200, effort: "low" });
-		expect(sent).toMatchObject({ model: "alibaba/qwen3.8-flash", stream: true, response_format: { type: "json_schema" }, providerOptions: { alibaba: { enable_thinking: false } } });
+		expect(sent).toMatchObject({ model: "alibaba/qwen3.8-flash", stream: true, response_format: { type: "json_schema" }, providerOptions: { alibaba: { enableThinking: false } } });
 		expect(r).toMatchObject({ text: '{"capital":"Doha"}', stopReason: "end_turn", usage: { inputTokens: 40, cacheReadTokens: 10, outputTokens: 8 } });
 	});
 
@@ -43,6 +43,24 @@ describe("Vercel AI Gateway client", () => {
 		expect(sent.response_format).toBeUndefined();
 		expect(r.sources).toEqual(["https://a.com/x"]);
 		expect(r.usage.webSearches).toBe(1);
+	});
+
+	it("researches through an injected search: model plans queries, sources are only the result URLs", async () => {
+		const bodies: Record<string, unknown>[] = [];
+		vi.stubGlobal("fetch", async (_u: string, init: RequestInit) => {
+			const b = JSON.parse(String(init.body));
+			bodies.push(b);
+			const content = b.response_format ? '{"queries":["whatsapp automation clinics qatar","clinic booking bot doha"]}' : "Notes citing https://a.com/x and https://made-up.example";
+			return new Response(sseBody([{ choices: [{ delta: { content }, finish_reason: "stop" }] }, { choices: [], usage: { prompt_tokens: 100, completion_tokens: 20 } }]), { status: 200 });
+		});
+		const search = vi.fn(async (q: string) => (q.includes("booking") ? [{ url: "https://b.org/y", title: "B", description: "b" }] : [{ url: "https://a.com/x", title: "A", description: "a" }]));
+		const r = await gatewayChat("k", { model: "qwen3.7-plus", system: ["skill"], user: "<brief>research</brief>", maxTokens: 4000, effort: "medium", webSearch: { maxUses: 3 } }, { search });
+		expect(search).toHaveBeenCalledTimes(2);
+		expect(bodies).toHaveLength(2);
+		expect(bodies[1]!.tools).toBeUndefined();
+		expect(JSON.stringify(bodies[1]!.messages)).toContain("https://b.org/y");
+		expect(r.sources).toEqual(["https://a.com/x", "https://b.org/y"]);
+		expect(r.usage).toMatchObject({ inputTokens: 200, outputTokens: 40, webSearches: 2 });
 	});
 
 	it("explains the card requirement, and generates OpenAI images", async () => {
