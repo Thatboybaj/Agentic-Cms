@@ -7,6 +7,7 @@ import { audit } from "./lib/audit";
 import { DEFAULT_SCHEDULES, DOMAIN_RE, newSiteFields, nextAtFor, slugify } from "./lib/defaults";
 import { siteMutation, siteQuery, workspaceMutation, workspaceQuery } from "./lib/functions";
 import { notify, siteAudience } from "./lib/notify";
+import { discoverOnAdd } from "./discovery/run";
 
 type TResult = { ok: true; id?: string; slug?: string } | { ok: false; reason: string };
 
@@ -91,6 +92,8 @@ export const add = workspaceMutation({
 		}
 		await audit(ctx, { workspaceId: workspace._id, siteId, actor: user, action: "added site", target: name, detail: domain });
 		await audit(ctx, { workspaceId: workspace._id, actor: user, action: "added site", target: name, detail: domain });
+		// F1: discovery starts as soon as the domain is added, so ideas are ready when onboarding ends.
+		await discoverOnAdd(ctx, (await ctx.db.get(siteId))!);
 		return { ok: true, id: siteId, slug };
 	},
 });

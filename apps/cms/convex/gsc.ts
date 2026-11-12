@@ -414,3 +414,23 @@ export const importAll = internalAction({
 		}
 	},
 });
+
+/**
+ * Site discovery's keyword step (prd-site-discovery F15): the property's top queries over the last 90 days, every
+ * query (tracked or not), by impressions. Empty when Search Console isn't connected or access lapsed.
+ */
+export const topQueries = internalAction({
+	args: { siteId: v.id("sites"), limit: v.optional(v.number()) },
+	handler: async (ctx, { siteId, limit }): Promise<{ query: string; impressions: number; clicks: number; position: number }[]> => {
+		const t = await accessToken(ctx, siteId);
+		if (!t || !t.propertyUri) return [];
+		const end = iso(Date.now() - LAG_DAYS * DAY);
+		const rows = await searchAnalytics(ctx, siteId, { token: t.token, propertyUri: t.propertyUri }, { startDate: iso(Date.parse(end) - (BACKFILL_DAYS - 1) * DAY), endDate: end, dimensions: ["query"] });
+		if (!rows) return [];
+		return rows
+			.map((r) => ({ query: normQuery(r.keys[0] ?? ""), impressions: r.impressions, clicks: r.clicks, position: r.position }))
+			.filter((r) => r.query)
+			.sort((a, b) => b.impressions - a.impressions)
+			.slice(0, limit ?? 150);
+	},
+});
