@@ -32,6 +32,8 @@ export const evalInput = internalQuery({
 			pillars: report.pillars.map((p) => p.name),
 			ideas,
 			crawled: (await pagesOf(ctx, siteId)).map((p) => p.url),
+			pages: (await pagesOf(ctx, siteId)).map((p) => `${p.url} · ${p.title}${p.extract ? ` · ${p.extract.topic}` : ""}`),
+			offerings: profile?.offerings.map((o) => o.value) ?? [],
 			profileCategory: profile?.regulated.category ?? null,
 			disclaimers: profile?.brandPackDraft.disclaimers ?? [],
 			sells: profile?.sells.value ?? "",

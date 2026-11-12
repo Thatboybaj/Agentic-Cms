@@ -11,7 +11,7 @@ import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { runAgentCall } from "../agents/run";
 import { agentsLive, anthropicTransport, formatFor, ledgerFor } from "../agents/sdk";
-import { DISCOVERY_SKILL, EXTRACT_CONTRACT, IDEAS_CONTRACT, KEYWORD_CONTRACT, PROFILE_CONTRACT } from "./agentCore";
+import { DISCOVERY_SKILL, EVIDENCE, EXTRACT_CONTRACT, IDEAS_CONTRACT, KEYWORD_CONTRACT, PROFILE_CONTRACT } from "./agentCore";
 import { behaviourHash, type ICheck, evalPassed, gradeDiscovery, JUDGE_PASS, JUDGE_RUBRIC } from "./evalCore";
 import { goldenFor } from "./golden";
 
@@ -20,7 +20,7 @@ const JudgeOutput = z.object({ ideas: z.array(z.object({ title: z.string(), scor
 /** Effort per step as the agent sets it (agent.ts); part of the behaviour hash. */
 const EFFORT = "extract:low profile:high keywords:medium ideas:medium";
 
-export const currentHash = () => behaviourHash([DISCOVERY_SKILL.text, EXTRACT_CONTRACT, PROFILE_CONTRACT, KEYWORD_CONTRACT, IDEAS_CONTRACT, JSON.stringify(MODELS), EFFORT]);
+export const currentHash = () => behaviourHash([DISCOVERY_SKILL.text, EXTRACT_CONTRACT, PROFILE_CONTRACT, KEYWORD_CONTRACT, IDEAS_CONTRACT, EVIDENCE, JSON.stringify(MODELS), EFFORT]);
 
 type TJudge = { model: string; mean: number; passed: boolean; ideas: { title: string; score: number; reason: string }[]; costUsd: number };
 type TEvalRun = { ok: false; reason: string } | { ok: true; passed: boolean; confirmed: boolean; hash: string; checks: ICheck[]; judge: TJudge | null };
@@ -39,8 +39,12 @@ export const run = internalAction({
 				`Business: ${input.siteName} (${input.domain})`,
 				`What it sells: ${input.sells || "unknown"}`,
 				`Audience: ${input.audience || "unknown"}`,
+				input.offerings.length ? `Offerings: ${input.offerings.join("; ")}` : "",
+				`<pages>\n${input.pages.join("\n")}\n</pages>`,
 				`<ideas>\n${input.ideas.map((i) => `- ${i.title} · keyword: ${i.keyword} · angle: ${i.angle}`).join("\n")}\n</ideas>`,
-			].join("\n\n");
+			]
+				.filter(Boolean)
+				.join("\n\n");
 			const r = await runAgentCall(ledgerFor(ctx, siteId, "text"), anthropicTransport(), `discovery-eval:${input.reportId}:judge:${Date.now()}`, { tier: input.routing.strategy, escalated: false }, { system: [JUDGE_RUBRIC], user, schema: JudgeOutput, maxTokens: 4_000, effort: "medium" }, formatFor);
 			const ideas = r.output.ideas.map((x) => ({ title: x.title, score: Math.max(1, Math.min(5, Math.round(x.score))), reason: x.reason.slice(0, 300) }));
 			const mean = ideas.length ? ideas.reduce((n, x) => n + x.score, 0) / ideas.length : 0;

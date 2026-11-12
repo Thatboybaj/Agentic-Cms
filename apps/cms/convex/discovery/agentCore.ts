@@ -32,7 +32,9 @@ export const ExtractOutput = z.object({
 });
 export type TExtractOutput = z.infer<typeof ExtractOutput>;
 
-const Cited = z.object({ value: z.string(), evidence: z.array(z.string()) });
+export const EVIDENCE = "Each item exactly one crawled page URL as given, or gsc:<query>, or a competitor URL given to you. No notes or quotes.";
+const Evidence = z.array(z.string()).describe(EVIDENCE);
+const Cited = z.object({ value: z.string(), evidence: Evidence });
 export const ProfileOutput = z.object({
 	sells: Cited,
 	offerings: z.array(Cited).describe("Ranked by how prominently the site presents them"),
@@ -41,7 +43,7 @@ export const ProfileOutput = z.object({
 	pricePositioning: Cited.describe("Value '' with empty evidence if the site doesn't say"),
 	differentiators: z.array(Cited),
 	competitorsNamed: z.array(Cited),
-	regulated: z.object({ category: z.enum(["health", "finance", "legal", "none"]), evidence: z.array(z.string()) }),
+	regulated: z.object({ category: z.enum(["health", "finance", "legal", "none"]), evidence: Evidence }),
 	blogCoverage: z.array(Cited),
 	brandPack: z.object({ voice: z.string(), voiceExamples: z.array(Cited).describe("Two sentences quoted verbatim from the site"), styleKeywords: z.array(z.string()), disclaimers: z.array(z.string()) }),
 	gaps: z.array(z.string()),
@@ -53,14 +55,14 @@ export const KeywordOutput = z.object({
 		z.object({
 			name: z.string(),
 			why: z.string(),
-			evidence: z.array(z.string()),
+			evidence: Evidence,
 			keywords: z.array(
 				z.object({
 					term: z.string(),
 					intent: z.enum(INTENT),
 					funnel: z.enum(FUNNEL),
 					volumeTier: z.enum(TIER),
-					evidence: z.array(z.string()),
+					evidence: Evidence,
 					targetedByUrl: z.string().describe("A crawled page that already targets this keyword; empty if none"),
 				}),
 			),
@@ -81,7 +83,7 @@ export const IdeasOutput = z.object({
 			week: z.number().describe("1 = the first week of the batch"),
 			internalLinks: z.array(z.string()),
 			angle: z.string(),
-			evidence: z.array(z.string()),
+			evidence: Evidence,
 		}),
 	),
 });
@@ -161,16 +163,31 @@ export function ideasPrompt(c: { siteName: string; profileJson: string; extracts
 // ─── Deterministic checks ────────────────────────────────────────────────────
 
 /** Keeps only evidence the run can stand behind (§7.4): crawled pages, Search Console queries we gave, URLs we saw. */
+const URL_IN_TEXT = /https?:\/\/[^\s"'<>()[\]{}]+/g;
+/** The URLs or gsc queries an evidence string cites: models sometimes add a note ("https://x/ (home page)") or quotes. */
+export function citedIn(raw: string, base?: string): { urls: string[]; gsc: string | null } {
+	const e = raw.trim().replace(/^["'`<]+|["'`>]+$/g, "");
+	const g = /^gsc:\s*(.+)$/i.exec(e);
+	if (g) return { urls: [], gsc: normTerm(g[1]!.split(/\s+[·|—-]\s+|\s+\(/)[0]!) };
+	const urls = (e.match(URL_IN_TEXT) ?? []).map((u) => u.replace(/[.,;:!?'"]+$/, ""));
+	if (!urls.length && base && /^\/\S*/.test(e)) urls.push(new URL(e.split(/\s/)[0]!, base).toString());
+	return { urls, gsc: null };
+}
+
 export function validEvidence(list: string[], allowed: { crawled: Set<string>; gsc: Set<string>; seen: Set<string> }): string[] {
 	const out = new Set<string>();
+	const first = [...allowed.crawled][0];
+	const base = first ? new URL(first).origin : undefined;
 	for (const raw of list) {
-		const e = raw.trim();
-		if (e.startsWith("gsc:")) {
-			if (allowed.gsc.has(e.slice(4).trim().toLowerCase())) out.add(`gsc:${e.slice(4).trim().toLowerCase()}`);
+		const c = citedIn(raw, base);
+		if (c.gsc !== null) {
+			if (allowed.gsc.has(c.gsc)) out.add(`gsc:${c.gsc}`);
 			continue;
 		}
-		const n = normalizeUrl(e);
-		if (n && (allowed.crawled.has(n) || allowed.seen.has(n))) out.add(n);
+		for (const u of c.urls) {
+			const n = normalizeUrl(u);
+			if (n && (allowed.crawled.has(n) || allowed.seen.has(n))) out.add(n);
+		}
 	}
 	return [...out];
 }
@@ -239,7 +256,7 @@ export function planKeywords(out: TKeywordOutput, c: { crawled: Set<string>; pag
 			const g = gscBy.get(term);
 			if (g) evidence.unshift(`gsc:${term}`);
 			if (!evidence.length) {
-				dropped.push(`${k.term}: no evidence from the crawl or Search Console`);
+				dropped.push(`${k.term}: no evidence from the crawl or Search Console${k.evidence.length ? ` (cited: ${k.evidence.slice(0, 2).map((x) => `"${x.slice(0, 80)}"`).join(", ")})` : " (none cited)"}`);
 				continue;
 			}
 			const claimed = normalizeUrl(k.targetedByUrl ?? "");

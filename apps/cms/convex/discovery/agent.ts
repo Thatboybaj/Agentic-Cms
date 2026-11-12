@@ -10,8 +10,8 @@ import type { Id } from "../_generated/dataModel";
 import { type ActionCtx, internalAction } from "../_generated/server";
 import { AgentError, type IAgentResult, runAgentCall } from "../agents/run";
 import { agentsLive, anthropicTransport, formatFor, ledgerFor } from "../agents/sdk";
-import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, IDEAS_CONTRACT, IdeasOutput, ideasPrompt, KEYWORD_CONTRACT, KeywordOutput, keywordPrompt, pageBlock, planKeywords, PROFILE_CONTRACT, ProfileOutput, selectIdeas, extractLine, type IGscQuery } from "./agentCore";
-import { bareHost, USD_PER_CREDIT } from "./crawlCore";
+import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, IDEAS_CONTRACT, IdeasOutput, ideasPrompt, KEYWORD_CONTRACT, KeywordOutput, keywordPrompt, pageBlock, planKeywords, PROFILE_CONTRACT, ProfileOutput, selectIdeas, extractLine, validEvidence, type IGscQuery } from "./agentCore";
+import { bareHost, normalizeUrl, USD_PER_CREDIT } from "./crawlCore";
 import { FirecrawlError, searchCredits, searchWeb } from "./firecrawl";
 
 const vStep = v.object({ ok: v.boolean(), error: v.optional(v.string()), note: v.optional(v.string()) });
@@ -81,12 +81,13 @@ export const profile = internalAction({
 			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `discovery:${runId}:profile`, { tier: input.routing.strategy, escalated: false }, { system: [DISCOVERY_SKILL.text, PROFILE_CONTRACT], user, schema: ProfileOutput, maxTokens: 8_000, effort: "high" }, formatFor);
 			await record(ctx, runId, r);
 			// Evidence that isn't a crawled page is dropped (§7.4); the voice examples must be real quotes from the site.
-			const crawled = new Set(input.extracts.map((e) => e.url));
-			const keep = (c: { value: string; evidence: string[] }) => ({ value: c.value.trim(), evidence: c.evidence.filter((u) => crawled.has(u)) });
+			const crawled = new Set(input.extracts.map((e) => normalizeUrl(e.url) ?? e.url));
+			const allowed = { crawled, gsc: new Set<string>(), seen: new Set<string>() };
+			const keep = (c: { value: string; evidence: string[] }) => ({ value: c.value.trim(), evidence: validEvidence(c.evidence, allowed) });
 			const o = r.output;
 			const profileOut = {
 				sells: keep(o.sells), offerings: o.offerings.map(keep), audience: keep(o.audience), regions: o.regions.map(keep), pricePositioning: keep(o.pricePositioning), differentiators: o.differentiators.map(keep), competitorsNamed: o.competitorsNamed.map(keep),
-				regulated: { category: o.regulated.category, evidence: o.regulated.evidence.filter((u) => crawled.has(u)) }, blogCoverage: o.blogCoverage.map(keep),
+				regulated: { category: o.regulated.category, evidence: validEvidence(o.regulated.evidence, allowed) }, blogCoverage: o.blogCoverage.map(keep),
 				brandPack: { voice: o.brandPack.voice, voiceExamples: o.brandPack.voiceExamples.map(keep).filter((x) => x.evidence.length), styleKeywords: o.brandPack.styleKeywords.slice(0, 12), disclaimers: o.brandPack.disclaimers.slice(0, 6) },
 				gaps: o.gaps.slice(0, 20),
 			};
@@ -122,7 +123,7 @@ export const keywords = internalAction({
 			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `discovery:${runId}:keywords`, { tier: input.routing.writing, escalated: false }, { system: [DISCOVERY_SKILL.text, KEYWORD_CONTRACT], user: keywordPrompt({ siteName: input.siteName, domain: input.domain, profileJson: input.profileJson, extracts: input.extracts, gsc, competitors: [], existingKeywords: input.existingKeywords, rejected: input.rejected }), schema: KeywordOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
 			await record(ctx, runId, r);
 			const seen = new Set<string>();
-			const crawled = new Set(input.extracts.map((e) => e.url));
+			const crawled = new Set(input.extracts.map((e) => normalizeUrl(e.url) ?? e.url));
 			let plan = planKeywords(r.output, { crawled, pageTargets: input.pageTargets, gsc, seen, existing: input.existingKeywords, rejected: input.rejected });
 			// Competitor check (F17): top 2 uncovered keywords per pillar, capped like model spend.
 			const notes: { keyword: string; ranking: string[]; difficulty: string }[] = [];
