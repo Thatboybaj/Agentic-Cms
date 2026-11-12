@@ -139,3 +139,14 @@ export const beginRun = internalMutation({
 		return openDiscoveryRun(ctx, site, { mode, trigger: "workflow" });
 	},
 });
+
+/** Closes a run and its report (the workflow's finish step uses this; so does a crawl-only check). */
+export const closeRun = internalMutation({
+	args: { runId: v.id("runs"), reportId: v.id("discoveryReports"), status: v.union(v.literal("succeeded"), v.literal("failed"), v.literal("needs-interview")), output: v.string(), error: v.optional(v.string()) },
+	handler: async (ctx, a) => {
+		const now = Date.now();
+		const run = await ctx.db.get(a.runId);
+		await ctx.db.patch(a.runId, { status: a.status === "succeeded" ? "succeeded" : "failed", finishedAt: now, output: a.output, stage: "finish", ...(a.error ? { error: a.error } : {}) });
+		await ctx.db.patch(a.reportId, { status: a.status, stage: "finish", finishedAt: now, costUsd: run?.costUsd ?? 0, ...(a.error ? { error: a.error } : {}) });
+	},
+});

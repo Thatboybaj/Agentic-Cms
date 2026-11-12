@@ -251,7 +251,10 @@ export function toPageRow(p: IScrapedPage, domain: string): IPageRow | null {
 	const sd = structuredData(p.rawHtml);
 	const host = bareHost(domain);
 	const internal = new Set<string>();
-	for (const l of p.links ?? []) {
+	// Firecrawl's `links` only covers the main content when onlyMainContent is on, so the site's own navigation
+	// (the links between its pages) comes from the raw HTML's anchors.
+	const anchors = [...(p.rawHtml ?? "").matchAll(/<a\b[^>]*\bhref=["']([^"'#][^"']*)["']/gi)].map((m) => m[1]!);
+	for (const l of [...(p.links ?? []), ...anchors]) {
 		const n = normalizeUrl(l, url);
 		if (n && bareHost(new URL(n).hostname) === host && n !== url && !NON_HTML.test(new URL(n).pathname)) internal.add(n);
 	}

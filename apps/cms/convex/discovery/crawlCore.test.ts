@@ -80,3 +80,11 @@ describe("PII and page rows", () => {
 		expect(await contentHash(row!)).toBe(await contentHash({ title: row!.title, text: row!.text }));
 	});
 });
+
+describe("internal links come from the page's anchors, not just the main content", () => {
+	it("reads navigation links from the raw HTML and drops self, off-site and file links", () => {
+		const rawHtml = `<nav><a href="/">Home</a><a class="x" href="https://baynor.qa/about">About</a><a href="/ar/services">AR</a><a href="#main">Skip</a></nav><a href="https://calendly.com/x">Book</a><a href="/brochure.pdf">PDF</a><a href="/services">Self</a>`;
+		const row = toPageRow({ markdown: "# Services\nText", links: ["https://baynor.qa/services#main"], rawHtml, metadata: { title: "Services", url: "https://baynor.qa/services", statusCode: 200 } }, "baynor.qa");
+		expect(row!.internalLinks.sort()).toEqual(["https://baynor.qa/", "https://baynor.qa/about", "https://baynor.qa/ar/services"]);
+	});
+});
