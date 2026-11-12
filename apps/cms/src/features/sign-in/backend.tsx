@@ -4,7 +4,7 @@
 // knows about this person and workspace, and "Continue to sites" (the shell bridges into the demo data for the
 // site pages that aren't on Convex yet). The demo picker below stays for demo-only use.
 
-import { OrganizationList, OrganizationSwitcher, SignIn as ClerkSignIn, useAuth, UserButton } from "@clerk/nextjs";
+import { OrganizationSwitcher, SignIn as ClerkSignIn, SignUp as ClerkSignUp, useAuth, useOrganizationList, UserButton } from "@clerk/nextjs";
 import { useConvexAuth, useMutation, useQuery } from "convex/react";
 import { ConvexError } from "convex/values";
 import { useState } from "react";
@@ -95,16 +95,103 @@ function SeedDemo({ what }: { what: "sites" | "posts" }) {
 	);
 }
 
+/** Who to ask for access, shown to people without an invitation. Optional: NEXT_PUBLIC_CMS_ADMIN_CONTACT (an email). */
+const ADMIN_CONTACT = process.env.NEXT_PUBLIC_CMS_ADMIN_CONTACT?.trim() || null;
+
+function AskAdministrator({ title, children }: { title: string; children?: React.ReactNode }) {
+	return (
+		<Callout tone="info" icon="LockSimple" title={title}>
+			{children}
+			{ADMIN_CONTACT ? (
+				<>
+					{" "}
+					Contact your administrator at{" "}
+					<a className="underline" href={`mailto:${ADMIN_CONTACT}`}>
+						{ADMIN_CONTACT}
+					</a>
+					.
+				</>
+			) : (
+				" Ask your administrator to send you an invitation."
+			)}
+		</Callout>
+	);
+}
+
+/** An invitation link from Clerk (invites.create → email) lands here with a one-time ticket for a new account. */
+function invitedToSignUp(): boolean {
+	if (typeof window === "undefined") return false;
+	const q = new URLSearchParams(window.location.search);
+	return !!q.get("__clerk_ticket") && q.get("__clerk_status") === "sign_up";
+}
+
+// Hides Clerk's "Don't have an account? Sign up" footer: accounts come from invitations only.
+const NO_SIGN_UP_LINK = { elements: { footerAction: { display: "none" } } } as const;
+
+/**
+ * Signed in, but not part of any workspace yet. Memberships and pending invitations are offered; there's no way to
+ * create a workspace here (a workspace comes from the agency's own Clerk organization, set up by an administrator).
+ */
+function NoWorkspace() {
+	const { isLoaded, setActive, userMemberships, userInvitations } = useOrganizationList({ userMemberships: true, userInvitations: true });
+	const [busy, setBusy] = useState<string | null>(null);
+	if (!isLoaded || userMemberships.isLoading || userInvitations.isLoading) return <Skeleton className="h-24 w-full" />;
+	const memberships = userMemberships.data ?? [];
+	const invitations = (userInvitations.data ?? []).filter((i) => i.status === "pending");
+	if (!memberships.length && !invitations.length)
+		return (
+			<AskAdministrator title="Your account isn't part of a workspace.">
+				Access to this CMS is by invitation only, and new workspaces can't be created here.
+			</AskAdministrator>
+		);
+	return (
+		<div className="flex flex-col gap-2">
+			<p className="text-md text-ink-3">Choose your workspace.</p>
+			{memberships.map((m) => (
+				<Button key={m.id} variant="secondary" fullWidth loading={busy === m.id} onClick={async () => (setBusy(m.id), await setActive({ organization: m.organization.id }), setBusy(null))}>
+					{m.organization.name}
+				</Button>
+			))}
+			{invitations.map((i) => (
+				<Button
+					key={i.id}
+					variant="primary"
+					fullWidth
+					loading={busy === i.id}
+					onClick={async () => {
+						setBusy(i.id);
+						const accepted = await i.accept();
+						await setActive({ organization: accepted.publicOrganizationData.id });
+						setBusy(null);
+					}}
+				>
+					Accept invitation · {i.publicOrganizationData.name}
+				</Button>
+			))}
+		</div>
+	);
+}
+
 export function BackendPanel() {
 	const { isLoaded, isSignedIn, orgId } = useAuth();
 
 	if (!isLoaded) return <Skeleton className="h-[420px] w-full max-w-[440px]" />;
 
 	if (!isSignedIn) {
+		// Accounts come from invitations only. An invitation link carries a ticket and gets the sign-up form; anyone
+		// else gets sign-in. (Clerk's own "Restricted" sign-up mode enforces the same on the server.)
+		if (invitedToSignUp())
+			return (
+				<div className="flex w-full max-w-[440px] justify-center">
+					<ClerkSignUp routing="hash" />
+				</div>
+			);
 		return (
-			<div className="flex w-full max-w-[440px] justify-center">
-				{/* withSignUp: one combined flow, so a new person can create an account without a separate /sign-up route. */}
-				<ClerkSignIn routing="hash" withSignUp />
+			<div className="flex w-full max-w-[440px] flex-col items-center gap-3">
+				<ClerkSignIn routing="hash" appearance={NO_SIGN_UP_LINK} />
+				<div className="w-full">
+					<AskAdministrator title="No account yet?">Accounts are created by invitation only.</AskAdministrator>
+				</div>
 			</div>
 		);
 	}
@@ -124,10 +211,7 @@ export function BackendPanel() {
 					</Button>
 				</>
 			) : (
-				<>
-					<p className="text-md text-ink-3">Choose or create your agency workspace.</p>
-					<OrganizationList hidePersonal afterSelectOrganizationUrl="/sign-in" afterCreateOrganizationUrl="/sign-in" />
-				</>
+				<NoWorkspace />
 			)}
 		</Card>
 	);
