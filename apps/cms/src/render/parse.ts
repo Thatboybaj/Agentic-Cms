@@ -15,9 +15,10 @@ export interface IParsedTemplate {
 
 export class TemplateParseError extends Error {}
 
-const OPTIONS_AUTHOR = ["Author bio", "Callout", "Ignore"];
-const OPTIONS_CTA = ["CTA block", "Callout", "Ignore"];
-const OPTIONS_ANY = ["CTA block", "Author bio", "Callout", "Ignore"];
+// "Keep as is": template chrome (share bars, article footers) stays exactly as in the sample on every post.
+const OPTIONS_AUTHOR = ["Author bio", "Callout", "Keep as is", "Ignore"];
+const OPTIONS_CTA = ["CTA block", "Callout", "Keep as is", "Ignore"];
+const OPTIONS_ANY = ["CTA block", "Author bio", "Callout", "Keep as is", "Ignore"];
 
 function optionsFor(el: Element): { options: string[]; group: ITemplateMapping["group"]; detail: string } {
 	const hint = `${classesOf(el).join(" ")} ${el.getAttribute("aria-label") ?? ""} ${el.getAttribute("id") ?? ""}`.toLowerCase();

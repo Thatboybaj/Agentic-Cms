@@ -312,3 +312,32 @@ describe("applyPreviewBase", async () => {
 		expect(doc.querySelector("base")!.getAttribute("href")).toBe("https://x.site/tpl/m1/blog/");
 	});
 });
+
+describe("FAQ detection", () => {
+	it("doesn't take the meta row's <dl> for an FAQ; a <dl> in the body still counts", async () => {
+		const { analyze } = await import("./structure");
+		const parse = (h: string) => new DOMParser().parseFromString(h, "text/html") as unknown as Document;
+		const meta = `<html><body><article><header><h1>T</h1><dl class="article-meta"><div><dt>Date</dt><dd>1 Jan</dd></div></dl></header><div class="prose"><p>One</p><p>Two</p><h2>H</h2></div></article></body></html>`;
+		expect(analyze(parse(meta)).faq).toBeNull();
+		const body = meta.replace("<h2>H</h2>", "<h2>H</h2><dl><dt>Q?</dt><dd>A.</dd></dl>");
+		expect(analyze(parse(body)).faq?.tagName.toLowerCase()).toBe("dl");
+	});
+});
+
+describe("Keep as is: template chrome outside the body stays on every post", () => {
+	const TPL = `<!doctype html><html><head><title>T</title></head><body><article><header><h1>Title</h1><time datetime="2026-01-01">1 Jan</time></header><div class="prose"><p>One.</p><p>Two.</p><h2>H</h2><p>Three.</p><ul><li>a</li></ul></div><footer class="article-end"><div class="tags"><a class="tag" rel="tag" href="/">Tag</a></div><button type="button" data-copy-link>Copy</button></footer></article></body></html>`;
+	const parsed = parseTemplate(TPL, parseHtml);
+	const footer = parsed.mappings.find((m) => m.selector === "footer.article-end")!;
+	const p = post(data.posts.find((x) => x.blocks.length > 3)!.id);
+	const run = (label: string) => renderPost({ manifestHtml: TPL, post: p, slots: slotsOf(p), site, mode: "publish", parseHtml, mappings: parsed.mappings.map((m) => (m.id === footer.id ? { ...m, status: "mapped" as const, label } : m)) });
+	it("offers Keep as is for unclassified chrome", () => {
+		expect(footer.status).toBe("needs-you");
+		expect(footer.options).toContain("Keep as is");
+	});
+	it("keeps the footer with Keep as is, and removes it with Ignore", () => {
+		const kept = run("Keep as is");
+		expect(parseHtml(kept.html).querySelector("footer.article-end [data-copy-link]")).not.toBeNull();
+		expect(kept.warnings.join(" ")).not.toMatch(/Unmapped footer/);
+		expect(parseHtml(run("Ignore").html).querySelector("footer.article-end")).toBeNull();
+	});
+});

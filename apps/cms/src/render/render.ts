@@ -22,7 +22,7 @@ export interface IRenderInput {
 	mode: "preview" | "publish";
 	/** Injected DOM parser (DOMParser in the browser, linkedom in tests). */
 	parseHtml: TParseHtml;
-	/** Hand mappings from the manifest ("CTA block", "Author bio", "Callout", "Ignore"). */
+	/** Hand mappings from the manifest ("CTA block", "Author bio", "Callout", "Keep as is", "Ignore"). */
 	mappings?: ITemplateMapping[];
 	/** Preview only: base URL the template's relative CSS/images resolve against. */
 	baseHref?: string;
@@ -289,7 +289,7 @@ export function renderPost(input: IRenderInput): IRenderResult {
 				calloutProto ??= c;
 				return;
 			}
-			if (!label) warnings.push(`Unmapped ${c.tagName.toLowerCase()} kept as in the sample`);
+			if (!label) warnings.push(`Unmapped ${c.tagName.toLowerCase()} kept as in the sample`); // "Keep as is" lands here too, without the warning
 			kept.push({ el: c, at: i / Math.max(1, bodyChildren.length - 1) });
 		}
 	});

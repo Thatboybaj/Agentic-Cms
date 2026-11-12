@@ -116,7 +116,9 @@ export function analyze(doc: Document): IStructure {
 	const bodyFigure = figures.find((f) => inside(f, body)) ?? null;
 	const leadFigure = figures.find((f) => !inside(f, body)) ?? null;
 	const bareImg = !bodyFigure && region ? (all(region, "img").find((i) => !i.closest("figure") && inside(i, body)) ?? null) : null;
-	const faq = region ? (region.querySelector("details") ?? region.querySelector("dl") ?? null) : null;
+	// An FAQ pattern is <details>, or a <dl> in the article body. A <dl> outside the body is usually the meta row
+	// (author, date, read time), which must never receive FAQ content.
+	const faq = region ? (region.querySelector("details") ?? (body ?? region).querySelector("dl:not(header dl)") ?? null) : null;
 	const metaScope: ParentNode = metaHeader ?? region ?? doc;
 
 	const authorEl =
