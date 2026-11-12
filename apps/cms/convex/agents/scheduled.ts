@@ -8,11 +8,10 @@ import { type ActionCtx, internalAction } from "../_generated/server";
 import { vRunArtifact, type TRunArtifact } from "../pipeline/steps";
 import { modelFor } from "./models";
 import { AgentError, type IAgentResult, runAgentCall } from "./run";
-import { QA_CONTRACT, QA_SKILL, QaOutput, qaScorecard, pipelineCsv, refreshCandidates, safeIdeas, SWARM_RESEARCH_CONTRACT, SWARM_SKILL, SWARM_STRUCTURE_CONTRACT, SwarmOutput, swarmResearchPrompt, swarmStructurePrompt } from "./scheduledCore";
+import { QA_CONTRACT, QA_SKILL, QaOutput, qaScorecard, refreshCandidates } from "./scheduledCore";
 import { modelTransport, formatFor, ledgerFor } from "./sdk";
 import { modelOf } from "./provider";
 
-const MAX_SEARCHES = 6;
 const REFRESH_CAPACITY = 2;
 
 async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) {
@@ -23,30 +22,6 @@ async function recordFailure(ctx: ActionCtx, runId: Id<"runs">, e: unknown) {
 }
 
 const none: TRunArtifact["ideas"] = [];
-
-async function swarm(ctx: ActionCtx, siteId: Id<"sites">, runId: Id<"runs">): Promise<TRunArtifact> {
-	const c = await ctx.runQuery(internal.scheduledAgents.swarmContext, { siteId });
-	if (!c) return { status: "failed", output: "Site not found", ideas: none };
-	if (!c.context.pillars.length) return { status: "succeeded", output: "No pillars in the plan yet · nothing to research", ideas: none };
-	const ledger = ledgerFor(ctx, siteId, "text", runId);
-	const transport = modelTransport();
-	// Research on the site's strategy tier with web search; structuring on the mechanical tier (cheap, no tools).
-	const research = await runAgentCall<string>(ledger, transport, `agent:${runId}:swarm-research`, modelFor("keyword-research-swarm", c.modelRouting), { system: [SWARM_SKILL.text, SWARM_RESEARCH_CONTRACT], user: swarmResearchPrompt(c.context), maxTokens: 16_000, effort: "medium", webSearch: { maxUses: MAX_SEARCHES } }, formatFor as never);
-	await record(ctx, runId, research);
-	const structured = await runAgentCall(ledger, transport, `agent:${runId}:swarm-structure`, { tier: c.modelRouting.mechanical, escalated: false }, { system: [SWARM_SKILL.text, SWARM_STRUCTURE_CONTRACT], user: swarmStructurePrompt(c.context.pillars, research.output), schema: SwarmOutput, maxTokens: 8_000 }, formatFor);
-	await record(ctx, runId, structured);
-	const { ideas, dropped } = safeIdeas(structured.output, { sources: research.sources ?? [], existing: c.context.existing, rejected: c.context.rejected, pillars: c.context.pillars, max: c.context.target });
-	const notes = [structured.output.delta.trim(), dropped.length ? `Dropped ${dropped.length}: ${dropped.slice(0, 5).join("; ")}` : ""].filter(Boolean).join("\n");
-	return {
-		status: "succeeded",
-		output: "",
-		ideas,
-		artifacts: [
-			{ kind: "pipeline_csv", content: pipelineCsv(ideas) },
-			{ kind: "top10_md", content: [`# Keyword swarm · ${c.context.siteName}`, notes, "", ...ideas.slice(0, 10).map((i, n) => `${n + 1}. **${i.term}** (${i.intent}, difficulty ${i.difficulty}) · ${i.evidence}`), "", structured.output.communityPhrases.length ? `## Community language\n${structured.output.communityPhrases.map((p) => `> ${p}`).join("\n")}` : "", structured.output.clusterGaps.length ? `## Cluster gaps\n${structured.output.clusterGaps.map((g) => `- ${g}`).join("\n")}` : ""].filter((l) => l !== undefined).join("\n") },
-		],
-	};
-}
 
 async function qa(ctx: ActionCtx, siteId: Id<"sites">, runId: Id<"runs">, mode: "light" | "full"): Promise<TRunArtifact> {
 	const d = await ctx.runQuery(internal.scheduledAgents.qaDigest, { siteId, mode });
@@ -82,7 +57,7 @@ export const run = internalAction({
 	returns: vRunArtifact,
 	handler: async (ctx, { siteId, runId, kind }): Promise<TRunArtifact> => {
 		try {
-			if (kind === "keyword-swarm") return await swarm(ctx, siteId, runId);
+			// keyword-swarm v0.3 runs as its own workflow steps (agents/swarm.ts, workflows/scheduledRun.ts).
 			if (kind === "qa-sweep") return await qa(ctx, siteId, runId, new Date().getUTCDate() <= 14 ? "full" : "light");
 			if (kind === "content-refresh") return await refresh(ctx, siteId);
 			return { status: "failed", output: `No live agent for ${kind}`, ideas: none };

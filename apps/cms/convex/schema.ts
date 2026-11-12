@@ -43,7 +43,8 @@ export const vContentType = v.union(
 );
 /** Site discovery settings (prd-site-discovery F1, F6, F17, SD5). Absent = DISCOVERY_DEFAULTS. */
 export const vDiscoverySettings = v.object({ onAdd: v.boolean(), maxPages: v.number(), depth: v.number(), exclude: v.array(v.string()), subdomains: v.boolean(), competitorCheck: v.boolean(), batchSize: v.number() });
-export const vVolumeTier = v.union(v.literal("low"), v.literal("medium"), v.literal("high"));
+/** Volume tier: discovery uses low · medium · high; the keyword swarm v0.3 adds the in-between tiers. */
+export const vVolumeTier = v.union(v.literal("low"), v.literal("low-med"), v.literal("medium"), v.literal("med-high"), v.literal("high"), v.literal("very-high"));
 export const vFunnel = v.union(v.literal("awareness"), v.literal("consideration"), v.literal("decision"));
 export const vPageType = v.union(v.literal("home"), v.literal("service"), v.literal("product"), v.literal("blog-post"), v.literal("category"), v.literal("location"), v.literal("about"), v.literal("contact"), v.literal("legal"), v.literal("other"));
 export const vRegulatedCategory = v.union(v.literal("health"), v.literal("finance"), v.literal("legal"), v.literal("none"));
@@ -358,6 +359,25 @@ export default defineSchema({
 		quickWin: v.optional(v.boolean()),
 		/** Already targeted by this crawled page (cannibalisation check, F16): no new idea for it. */
 		existingPageId: v.optional(v.id("crawledPages")),
+		// ── Keyword LTM (harness v0.3 keyword_ltm): the durable keyword store. Append and update only. ──
+		/** candidate → qualified → in-plan → live → retired. Unset on rows from before v0.3 (read as in-plan). */
+		status: v.optional(v.union(v.literal("candidate"), v.literal("qualified"), v.literal("in-plan"), v.literal("live"), v.literal("retired"))),
+		cluster: v.optional(v.string()),
+		lengthClass: v.optional(v.union(v.literal("seed"), v.literal("short-tail"), v.literal("long-tail"))),
+		/** One primary per page, ever (cannibalisation rule); secondaries support that page. */
+		role: v.optional(v.union(v.literal("primary"), v.literal("secondary"))),
+		/** Precise volume only when volumeSource is gsc or import. */
+		volume: v.optional(v.number()),
+		difficultyTier: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+		serpFeatures: v.optional(v.array(v.string())),
+		aeoPotential: v.optional(v.union(v.literal("low"), v.literal("medium"), v.literal("high"))),
+		priorityScore: v.optional(v.number()),
+		whyWeWin: v.optional(v.string()),
+		sourceAgent: v.optional(v.string()),
+		/** The post built for this keyword (primary) or that it supports (secondary). */
+		targetPostId: v.optional(v.id("posts")),
+		lastVerifiedAt: v.optional(v.number()),
+		retiredReason: v.optional(v.string()),
 	})
 		.index("by_site", ["siteId"])
 		.index("by_site_term", ["siteId", "termNormalized"])

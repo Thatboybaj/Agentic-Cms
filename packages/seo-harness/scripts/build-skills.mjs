@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Skills codegen (handoff 03 step 3): inlines every skills/*/SKILL.md with its sha256 into src/skills.generated.ts so
+// Skills codegen (handoff 03 step 3): inlines every skills/*/SKILL.md (and skills/*/subagents/*.md) with its sha256 into src/skills.generated.ts so
 // Convex actions (which can't read package files at runtime) get the exact skill text. The text is never edited here.
 // `--check` exits 1 when the generated file is out of date (CI and the package test).
 import { createHash } from "node:crypto";
@@ -15,8 +15,14 @@ export function render() {
 		.filter((d) => d.isDirectory() && existsSync(join(root, "skills", d.name, "SKILL.md")))
 		.map((d) => d.name)
 		.sort();
-	const rows = ids.map((id) => {
-		const text = readFileSync(join(root, "skills", id, "SKILL.md"), "utf8").replace(/\r\n/g, "\n");
+	// A skill's specialists (skills/<id>/subagents/<name>.md) are keyed "<id>/<name>", e.g. "keyword-research-swarm/term-expander".
+	const entries = ids.flatMap((id) => {
+		const sub = join(root, "skills", id, "subagents");
+		const subs = existsSync(sub) ? readdirSync(sub).filter((n) => n.endsWith(".md")).sort().map((n) => [`${id}/${n.replace(/\.md$/, "")}`, join(sub, n)]) : [];
+		return [[id, join(root, "skills", id, "SKILL.md")], ...subs];
+	});
+	const rows = entries.map(([id, file]) => {
+		const text = readFileSync(file, "utf8").replace(/\r\n/g, "\n");
 		const sha256 = createHash("sha256").update(text).digest("hex");
 		return `  ${JSON.stringify(id)}: { sha256: ${JSON.stringify(sha256)}, text: ${JSON.stringify(text)} },`;
 	});

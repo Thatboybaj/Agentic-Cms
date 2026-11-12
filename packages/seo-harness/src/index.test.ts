@@ -75,3 +75,17 @@ describe("harness-config.yaml and src/index.ts stay in sync", () => {
     for (const entry of SCHEDULE) for (const id of entry.agents) expect(ids.has(id)).toBe(true);
   });
 });
+
+describe("keyword research swarm v0.3", () => {
+  it("has the nine specialists in the YAML, with matching steps and a skill each", async () => {
+    const { SWARM_SPECIALISTS, KEYWORD_LTM } = await import("./index");
+    const { SKILLS } = await import("./skills.generated");
+    const swarm = (config.agents["keyword-research-swarm"] as unknown as { swarm: Record<string, { step: number }> }).swarm;
+    expect(Object.keys(swarm).sort()).toEqual(SWARM_SPECIALISTS.map((s) => s.id).sort());
+    for (const s of SWARM_SPECIALISTS) {
+      expect(swarm[s.id]!.step).toBe(s.step);
+      expect(SKILLS[`keyword-research-swarm/${s.id}`]?.text.length).toBeGreaterThan(200);
+    }
+    expect((config as unknown as { keyword_ltm: { columns: string[] } }).keyword_ltm.columns).toEqual([...KEYWORD_LTM.columns]);
+  });
+});

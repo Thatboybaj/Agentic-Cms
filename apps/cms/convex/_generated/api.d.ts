@@ -21,6 +21,8 @@ import type * as agents_run from "../agents/run.js";
 import type * as agents_scheduled from "../agents/scheduled.js";
 import type * as agents_scheduledCore from "../agents/scheduledCore.js";
 import type * as agents_sdk from "../agents/sdk.js";
+import type * as agents_swarm from "../agents/swarm.js";
+import type * as agents_swarmCore from "../agents/swarmCore.js";
 import type * as agents_visual from "../agents/visual.js";
 import type * as agents_writer from "../agents/writer.js";
 import type * as agents_writerCore from "../agents/writerCore.js";
@@ -127,6 +129,8 @@ declare const fullApi: ApiFromModules<{
   "agents/scheduled": typeof agents_scheduled;
   "agents/scheduledCore": typeof agents_scheduledCore;
   "agents/sdk": typeof agents_sdk;
+  "agents/swarm": typeof agents_swarm;
+  "agents/swarmCore": typeof agents_swarmCore;
   "agents/visual": typeof agents_visual;
   "agents/writer": typeof agents_writer;
   "agents/writerCore": typeof agents_writerCore;

@@ -1,5 +1,5 @@
 /**
- * @studio/seo-harness — typed, pure-data view of the Grandeur SEO Agent Harness v0.2.0.
+ * @studio/seo-harness — typed, pure-data view of the Grandeur SEO Agent Harness v0.3.0.
  *
  * Source of truth for humans: ../HARNESS.md. Source of truth for schedulers: ../harness-config.yaml.
  * This module mirrors both for UI use (no fs reads, safe in the browser). src/index.test.ts
@@ -104,7 +104,7 @@ export const PROVIDER_MODELS = {
 
 export const HARNESS: IHarness = {
   name: "grandeur-seo-harness",
-  version: "0.2.0",
+  version: "0.3.0",
   sharedStateDir: "./reports",
   humanGates: ["approve_idea", "send_outreach", "delete_pages", "spend_over_cap", "approve_plan"],
   publishing: {
@@ -154,8 +154,8 @@ export const AGENTS: readonly IHarnessAgent[] = [
     modelTier: "workhorse",
     modelId: MODELS.workhorse,
     schedule: "weekly_monday",
-    inputs: ["pillar_keywords_csv", "tracker_csv"],
-    outputs: ["pipeline_csv", "top10_md"],
+    inputs: ["pillar_keywords_csv", "keyword_ltm", "gsc_export_optional"],
+    outputs: ["keyword_ltm_upsert", "pipeline_csv", "top10_md", "community_language_md"],
     skillPath: skill("keyword-research-swarm"),
   },
   {
@@ -380,3 +380,42 @@ export const IMAGE_ROUTING: readonly IImageRouting[] = [
 export const getAgent = (id: TAgentId): IHarnessAgent | undefined => AGENTS.find((a) => a.id === id);
 
 export { SKILLS, type ISkillText } from "./skills.generated";
+
+// ─── Keyword research swarm v0.3: nine specialists and the keyword LTM ─────────
+
+export type TSwarmSpecialist =
+  | "seed-brainstormer"
+  | "term-expander"
+  | "long-tail-hunter"
+  | "competitor-gap-analyst"
+  | "metrics-analyst"
+  | "intent-classifier"
+  | "cluster-architect"
+  | "funnel-prioritizer"
+  | "audience-researcher";
+
+/** One per step of the method (harness-config.yaml keyword-research-swarm.swarm). Tiers resolve per provider. */
+export const SWARM_SPECIALISTS: readonly { id: TSwarmSpecialist; step: number; tier: TModelTier; focus: string }[] = [
+  { id: "seed-brainstormer", step: 1, tier: "workhorse", focus: "seed_keywords_from_offerings_problems_audience" },
+  { id: "term-expander", step: 2, tier: "fast", focus: "related_terms_autocomplete_paa_modifiers" },
+  { id: "long-tail-hunter", step: 3, tier: "fast", focus: "long_tail_question_low_competition" },
+  { id: "competitor-gap-analyst", step: 4, tier: "workhorse", focus: "competitor_keyword_gaps_with_evidence" },
+  { id: "metrics-analyst", step: 5, tier: "workhorse", focus: "volume_difficulty_cpc_serp_features_honest_tiers" },
+  { id: "intent-classifier", step: 6, tier: "fast", focus: "four_intents_plus_funnel_stage" },
+  { id: "cluster-architect", step: 7, tier: "workhorse", focus: "pillar_cluster_tree_primary_secondary_roles" },
+  { id: "funnel-prioritizer", step: 8, tier: "workhorse", focus: "tofu_mofu_bofu_balance_priority_ltm_upsert" },
+  { id: "audience-researcher", step: 9, tier: "workhorse", focus: "community_pain_language_verbatim_phrases" },
+];
+
+export type TLtmStatus = "candidate" | "qualified" | "in-plan" | "live" | "retired";
+
+/** The keyword long-term memory contract (harness-config.yaml keyword_ltm). */
+export const KEYWORD_LTM = {
+  store: "keywords",
+  portableFile: "reports/keywords-ltm.csv",
+  statuses: ["candidate", "qualified", "in-plan", "live", "retired"] as readonly TLtmStatus[],
+  writtenBy: ["keyword-research-swarm", "site-discovery-agent"] as readonly TAgentId[],
+  readBy: ["blog-writing-agent", "on-page-seo-optimizer", "content-refresh-agent"] as readonly TAgentId[],
+  monitoredBy: ["seo-action-plan", "seo-qa-agent", "visualization-report-agent", "technical-seo-monitor"] as readonly TAgentId[],
+  columns: ["keyword", "normalized", "pillar", "cluster", "length_class", "role", "intent", "funnel_stage", "volume_tier", "volume", "volume_source", "difficulty_tier", "difficulty_evidence", "serp_features", "aeo_potential", "priority_score", "status", "why_we_win", "source_agent", "evidence_urls", "target_page", "added_at", "last_verified_at", "retired_reason"] as const,
+} as const;

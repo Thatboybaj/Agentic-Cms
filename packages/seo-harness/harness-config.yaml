@@ -6,7 +6,7 @@
 
 harness:
   name: grandeur-seo-harness
-  version: 0.2.0
+  version: 0.3.0
   shared_state_dir: ./reports          # every agent reads/writes dated artifacts here
   human_gates: [approve_idea, send_outreach, delete_pages, spend_over_cap, approve_plan]
   publishing:
@@ -29,11 +29,23 @@ agents:
     outputs: [plan_html, pillar_keywords_csv]
 
   keyword-research-swarm:
-    model: qwen3.7-plus
+    model: qwen3.7-plus                    # the swarm LEAD; each specialist below has its own model
     skill: keyword-research-swarm.skill
     schedule: weekly_monday
-    inputs: [pillar_keywords_csv, tracker_csv]
-    outputs: [pipeline_csv, top10_md]
+    inputs: [pillar_keywords_csv, keyword_ltm, gsc_export_optional]
+    outputs: [keyword_ltm_upsert, pipeline_csv, top10_md, community_language_md]
+    # Nine specialists, one per step of the keyword research method (v0.3).
+    # Execution: 1 -> (2 || 3, with 4 || 9 from the start) -> (5 || 6) -> 7 -> 8.
+    swarm:
+      seed-brainstormer: { step: 1, model: qwen3.7-plus, focus: seed_keywords_from_offerings_problems_audience }
+      term-expander: { step: 2, model: qwen3.8-flash, focus: related_terms_autocomplete_paa_modifiers }
+      long-tail-hunter: { step: 3, model: qwen3.8-flash, focus: long_tail_question_low_competition }
+      competitor-gap-analyst: { step: 4, model: qwen3.7-plus, focus: competitor_keyword_gaps_with_evidence }
+      metrics-analyst: { step: 5, model: qwen3.7-plus, focus: volume_difficulty_cpc_serp_features_honest_tiers }
+      intent-classifier: { step: 6, model: qwen3.8-flash, focus: four_intents_plus_funnel_stage }
+      cluster-architect: { step: 7, model: qwen3.7-plus, focus: pillar_cluster_tree_primary_secondary_roles }
+      funnel-prioritizer: { step: 8, model: qwen3.7-plus, focus: tofu_mofu_bofu_balance_priority_ltm_upsert }
+      audience-researcher: { step: 9, model: qwen3.7-plus, focus: community_pain_language_verbatim_phrases }
 
   blog-writing-agent:
     model: qwen3.7-plus
@@ -123,6 +135,21 @@ agents:
     inputs: [site_domain, gsc_export, keyword_csv_import]
     outputs: [site_profile, pillar_keywords_csv, brand_pack_draft, content_map]
     hands_off: { pillar_keywords_csv: keyword-research-swarm, content_map: content-refresh-agent }
+
+# The keyword long-term memory: the durable store of record for keywords.
+# Portable harness: a CSV in shared_state_dir. Agentic CMS: the `keywords` table.
+# Append and update only; retired rows keep their reason. Keep in sync with KEYWORD_LTM in src/index.ts.
+keyword_ltm:
+  store: keywords
+  portable_file: reports/keywords-ltm.csv
+  statuses: [candidate, qualified, in-plan, live, retired]
+  written_by: [keyword-research-swarm, site-discovery-agent]
+  read_by: [blog-writing-agent, on-page-seo-optimizer, content-refresh-agent]
+  monitored_by: [seo-action-plan, seo-qa-agent, visualization-report-agent, technical-seo-monitor]
+  columns: [keyword, normalized, pillar, cluster, length_class, role, intent, funnel_stage,
+    volume_tier, volume, volume_source, difficulty_tier, difficulty_evidence, serp_features,
+    aeo_potential, priority_score, status, why_we_win, source_agent, evidence_urls, target_page,
+    added_at, last_verified_at, retired_reason]
 
 escalation:
   stale_human_item_days_warn: 7

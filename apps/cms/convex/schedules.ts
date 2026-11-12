@@ -4,7 +4,7 @@
 // generates it; "on slot creation" is event-driven and never ticks. runNow starts the same workflow by hand.
 import { vResultValidator } from "@convex-dev/workpool";
 import { vWorkflowId } from "@convex-dev/workflow";
-import { v } from "convex/values";
+import { type Infer, v } from "convex/values";
 import { RUN_META, checkCap, estimateRun } from "../src/lib/logic";
 import type { TRunKind } from "../src/lib/types";
 import { internal } from "./_generated/api";
@@ -149,15 +149,75 @@ export const beginScheduled = internalMutation({
 
 const vIdea = vRunArtifact.fields.ideas.element;
 
+type TLtmIn = NonNullable<Infer<typeof vRunArtifact.fields.ltm>>;
+const termKey = (t: string) => t.trim().toLowerCase().replace(/s+/g, " ").replace(/[?:]/g, "");
+
+/**
+ * Keyword swarm v0.3: write the upsert batch into the keyword LTM (the keywords table). Append and update only;
+ * nothing is deleted. Qualified primaries with an idea become posts in Idea (status in-plan); secondaries point at
+ * their primary's post; retired rows keep their reason so monitors see what was tried.
+ */
+async function upsertLtm(ctx: MutationCtx, site: Doc<"sites">, runId: Id<"runs">, rows: TLtmIn, ideas: Infer<typeof vIdea>[], output: string): Promise<string> {
+	const pillars = await ctx.db.query("pillars").withIndex("by_site", (q) => q.eq("siteId", site._id)).take(100);
+	const pillarBy = new Map(pillars.map((p) => [p.name.toLowerCase(), p]));
+	const ideaBy = new Map(ideas.map((i) => [termKey(i.term), i]));
+	const now = Date.now();
+	const ids = new Map<string, Id<"keywords">>();
+	let added = 0;
+	let retired = 0;
+	let planned = 0;
+	for (const r of rows) {
+		const pillar = pillarBy.get(r.pillar.toLowerCase());
+		if (!pillar) continue;
+		const term = termKey(r.term);
+		const fields = { cluster: r.cluster, lengthClass: r.lengthClass, role: r.role, intent: r.intent, funnel: r.funnel, volumeTier: r.volumeTier, volumeSource: r.volumeSource, ...(r.volume !== undefined ? { volume: r.volume } : {}), difficultyTier: r.difficultyTier, difficulty: r.difficulty, difficultyEvidence: r.difficultyEvidence, serpFeatures: r.serpFeatures, aeoPotential: r.aeoPotential, priorityScore: r.priorityScore, whyWeWin: r.whyWeWin, evidence: r.evidenceUrls, quickWin: r.quickWin, sourceAgent: "keyword-research-swarm", lastVerifiedAt: now };
+		const existing = await ctx.db.query("keywords").withIndex("by_site_term", (q) => q.eq("siteId", site._id).eq("termNormalized", term)).unique();
+		if (existing) {
+			// Never downgrade a keyword that's planned or live; refresh its evidence and verification date.
+			const keep = existing.status === "live" || existing.status === "in-plan" || existing.status === undefined;
+			await ctx.db.patch(existing._id, { ...fields, ...(keep ? {} : { status: r.status, ...(r.retiredReason ? { retiredReason: r.retiredReason } : {}) }) });
+			ids.set(term, existing._id);
+			continue;
+		}
+		const id = await ctx.db.insert("keywords", { workspaceId: site.workspaceId, siteId: site._id, term, termNormalized: term, pillarId: pillar._id, impressions: r.volume ?? 0, position: null, positionTrend: [], kasShare: 0, kasDelta: 0, rankingUrl: null, rankingPages: 0, decaying: false, ...fields, status: r.status, ...(r.retiredReason ? { retiredReason: r.retiredReason } : {}) });
+		ids.set(term, id);
+		if (r.status === "retired") retired++;
+		else added++;
+		const idea = ideaBy.get(term);
+		if (r.status === "qualified" && r.role === "primary" && idea) {
+			const postId = await ctx.db.insert("posts", {
+				workspaceId: site.workspaceId, siteId: site._id, slug: term.replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 80), title: idea.suggestedTitle ?? term, seoTitle: idea.suggestedTitle ?? term, keywordId: id, pillarId: pillar._id,
+				intent: r.intent, contentType: idea.contentType ?? "guide", source: "keyword-swarm", state: "idea", stateChangedAt: now, owner: "human", week: isoWeek(now) + 1, strongModel: false,
+				words: 0, wordTarget: 1500, blocks: [], currentVersion: 0, ideaApproval: { status: "pending" }, ideaStatus: "pending", secondaryKeywords: rows.filter((x) => x.role === "secondary" && x.primaryFor && termKey(x.primaryFor) === term).map((x) => x.term).slice(0, 6), createdAt: now, updatedAt: now,
+			});
+			await ctx.db.patch(id, { status: "in-plan", targetPostId: postId });
+			planned++;
+		}
+	}
+	// Secondaries point at their primary's post (cannibalisation rule: one page per primary, ever).
+	for (const r of rows) {
+		if (r.role !== "secondary" || !r.primaryFor) continue;
+		const sid = ids.get(termKey(r.term));
+		const pid = ids.get(termKey(r.primaryFor)) ?? (await ctx.db.query("keywords").withIndex("by_site_term", (q) => q.eq("siteId", site._id).eq("termNormalized", termKey(r.primaryFor!))).unique())?._id;
+		const primary = pid ? await ctx.db.get(pid) : null;
+		if (sid && primary?.targetPostId) await ctx.db.patch(sid, { targetPostId: primary.targetPostId });
+	}
+	if (added) await scheduleBackfill(ctx, site._id); // the new keywords' Search Console history
+	void runId;
+	return `${output || "Keyword swarm"} · LTM: ${added} added, ${retired} retired, ${planned} new ideas`.slice(0, 200);
+}
+
 /** Persists the run's artifact. keyword-swarm: new ideas (deduped against every term on the site) land in Idea. */
 export const finishScheduled = internalMutation({
-	args: { siteId: v.id("sites"), runId: v.id("runs"), status: v.union(v.literal("succeeded"), v.literal("failed")), output: v.string(), ideas: v.array(vIdea), ledger: vRunArtifact.fields.ledger, artifacts: vRunArtifact.fields.artifacts, refresh: vRunArtifact.fields.refresh },
-	handler: async (ctx, { siteId, runId, status, output, ideas, ledger, artifacts, refresh }) => {
+	args: { siteId: v.id("sites"), runId: v.id("runs"), status: v.union(v.literal("succeeded"), v.literal("failed")), output: v.string(), ideas: v.array(vIdea), ledger: vRunArtifact.fields.ledger, artifacts: vRunArtifact.fields.artifacts, refresh: vRunArtifact.fields.refresh, ltm: vRunArtifact.fields.ltm },
+	handler: async (ctx, { siteId, runId, status, output, ideas, ledger, artifacts, refresh, ltm }) => {
 		const site = await ctx.db.get(siteId);
 		const run = await ctx.db.get(runId);
 		if (!site || !run || run.siteId !== siteId) return;
 		let summary = output;
-		if (run.kind === "keyword-swarm") {
+		if (run.kind === "keyword-swarm" && ltm?.length) {
+			summary = await upsertLtm(ctx, site, runId, ltm, ideas, output);
+		} else if (run.kind === "keyword-swarm") {
 			const pillars = (await ctx.db.query("pillars").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(100)).sort((a, b) => a.kasShare - b.kasShare);
 			let fresh = 0;
 			if (pillars.length) {

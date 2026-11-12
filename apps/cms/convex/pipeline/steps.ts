@@ -4,7 +4,7 @@
 // Steps are actions so they can call providers later; they never write tables (README §3): persist.ts does.
 import { v, type Infer } from "convex/values";
 import { internal } from "../_generated/api";
-import { internalAction } from "../_generated/server";
+import { internalAction, internalQuery } from "../_generated/server";
 import { vSafeEdits, vTask } from "../agentEdits";
 
 const live = () => process.env.CMS_AGENTS === "live";
@@ -213,6 +213,32 @@ export const reviseStep = internalAction({
 });
 
 const vContentTypeIdea = v.union(v.literal("guide"), v.literal("comparison"), v.literal("listicle"), v.literal("how-to"), v.literal("faq"));
+export const vLtmRow = v.object({
+	term: v.string(),
+	pillar: v.string(),
+	cluster: v.string(),
+	lengthClass: v.union(v.literal("seed"), v.literal("short-tail"), v.literal("long-tail")),
+	role: v.union(v.literal("primary"), v.literal("secondary")),
+	intent: v.union(v.literal("informational"), v.literal("commercial"), v.literal("transactional"), v.literal("navigational")),
+	funnel: v.union(v.literal("awareness"), v.literal("consideration"), v.literal("decision")),
+	volumeTier: v.union(v.literal("low"), v.literal("low-med"), v.literal("medium"), v.literal("med-high"), v.literal("high"), v.literal("very-high")),
+	volumeSource: v.union(v.literal("gsc"), v.literal("estimate")),
+	volume: v.optional(v.number()),
+	difficultyTier: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+	difficulty: v.number(),
+	difficultyEvidence: v.string(),
+	serpFeatures: v.array(v.string()),
+	aeoPotential: v.union(v.literal("low"), v.literal("medium"), v.literal("high")),
+	priorityScore: v.number(),
+	status: v.union(v.literal("qualified"), v.literal("retired")),
+	whyWeWin: v.string(),
+	retiredReason: v.optional(v.string()),
+	evidenceUrls: v.array(v.string()),
+	quickWin: v.boolean(),
+	/** A secondary's page: the primary keyword it supports. */
+	primaryFor: v.optional(v.string()),
+});
+
 export const vRunArtifact = v.object({
 	status: v.union(v.literal("succeeded"), v.literal("failed")),
 	output: v.string(),
@@ -224,12 +250,17 @@ export const vRunArtifact = v.object({
 	artifacts: v.optional(v.array(v.object({ kind: v.string(), content: v.string() }))),
 	/** content-refresh: live posts to send back through the writer as refresh drafts. */
 	refresh: v.optional(v.array(v.object({ postId: v.id("posts"), reason: v.string() }))),
+	/** keyword-swarm v0.3: the keyword LTM upsert batch (qualified and retired rows, every rule already applied). */
+	ltm: v.optional(v.array(vLtmRow)),
 });
 export type TRunArtifact = Infer<typeof vRunArtifact>;
 
 /** Scheduled (cron) runs spend only with a second opt-in, CMS_SCHEDULED_AGENTS=live; "Run now" needs only CMS_AGENTS. */
 const scheduledLive = (trigger?: string) => live() && (trigger !== "scheduled" || process.env.CMS_SCHEDULED_AGENTS === "live");
 const LIVE_KINDS = new Set(["keyword-swarm", "qa-sweep", "content-refresh"]);
+
+/** The keyword swarm v0.3 runs as five workflow steps (agents/swarm.ts) when live; otherwise the stub below. */
+export const swarmLive = internalQuery({ args: { trigger: v.optional(v.string()) }, handler: async (_ctx, { trigger }) => scheduledLive(trigger) });
 
 /**
  * The harness agent(s) for a scheduled run kind. Live (keyword swarm, QA sweep, content refresh): agents/scheduled.ts.

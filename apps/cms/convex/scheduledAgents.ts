@@ -33,6 +33,48 @@ export const swarmContext = internalQuery({
 	},
 });
 
+/** Keyword swarm v0.3 brief: the site, its pillars, the keyword LTM, rejected terms and known competitors. */
+export const swarmBrief = internalQuery({
+	args: { siteId: v.id("sites") },
+	handler: async (ctx, { siteId }) => {
+		const site = await ctx.db.get(siteId);
+		if (!site) return null;
+		const pillars = await ctx.db.query("pillars").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(100);
+		const pillarName = new Map(pillars.map((p) => [p._id, p.name]));
+		const keywords = await ctx.db.query("keywords").withIndex("by_site", (q) => q.eq("siteId", siteId)).take(3000);
+		const posts = await ctx.db.query("posts").withIndex("by_site_week", (q) => q.eq("siteId", siteId)).take(3000);
+		const rejectedIds = new Set(posts.filter((p) => p.ideaStatus === "rejected").map((p) => p.keywordId));
+		const liveIds = new Set(posts.filter((p) => p.state === "live").map((p) => p.keywordId));
+		const profile = (await ctx.db.query("siteProfiles").withIndex("by_site_version", (q) => q.eq("siteId", siteId)).order("desc").take(1))[0];
+		const report = (await ctx.db.query("discoveryReports").withIndex("by_site_created", (q) => q.eq("siteId", siteId)).order("desc").take(1))[0];
+		const host = (u: string) => {
+			try {
+				return new URL(u).hostname.replace(/^www\./, "");
+			} catch {
+				return "";
+			}
+		};
+		const competitors = [...new Set([...(profile?.competitorsNamed.map((c) => c.value) ?? []), ...(report?.competitorNotes.flatMap((n) => n.ranking.map(host)) ?? [])].filter((c) => c && c !== site.domain))].slice(0, 12);
+		return {
+			brief: {
+				siteName: site.name,
+				domain: site.domain,
+				industry: site.industry,
+				voice: site.brandPack.voice,
+				pillars: pillars.map((p) => p.name),
+				...(profile ? { profile: `${profile.sells.value} · audience: ${profile.audience.value}` } : {}),
+				ltm: keywords.filter((k) => !rejectedIds.has(k._id)).map((k) => ({ term: k.term, pillar: pillarName.get(k.pillarId) ?? "", ...(k.cluster ? { cluster: k.cluster } : {}), ...(k.role ? { role: k.role } : {}), status: k.status ?? (liveIds.has(k._id) ? "live" : "in-plan"), intent: k.intent })),
+				rejected: keywords.filter((k) => rejectedIds.has(k._id)).map((k) => k.term),
+				competitors,
+				gsc: [] as { query: string; impressions: number; position: number }[],
+				target: Math.max(12, Math.min(30, site.cadenceTarget * 8)),
+			},
+			searchConsole: site.searchConsole,
+			modelRouting: site.modelRouting,
+		};
+	},
+});
+
 const PERIOD: Record<string, number> = { weekly: 7 * DAY, biweekly: 14 * DAY, monthly: 31 * DAY };
 
 export const qaDigest = internalQuery({
