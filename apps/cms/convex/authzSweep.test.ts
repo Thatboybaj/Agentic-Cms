@@ -45,6 +45,8 @@ async function world() {
 			notifications: await ctx.db.insert("notifications", { workspaceId: ws, siteId: site, userId: owner, at: 0, tone: "human", title: "t", body: "b", read: false }),
 			connections: await ctx.db.insert("connections", { workspaceId: ws, siteId: site, kind: "web-source", provider: "wikimedia", label: "W", usedFor: ["stock"], enabled: true, status: "ok", createdAt: 0 }),
 			templateManifests: await ctx.db.insert("templateManifests", { siteId: site, version: 1, source: "s", kind: "html", output: "html", status: "needs-confirmation", mappings: [], bundleFiles: 0, bundleBytes: 0, uploadedBy: owner, uploadedAt: 0 }),
+			authors: await ctx.db.insert("authors", { workspaceId: ws, name: "A", slug: "a", credentials: [], sameAs: [], status: "active", createdAt: 0, updatedAt: 0 }),
+			rubrics: await ctx.db.insert("rubrics", { siteId: site, name: "R", slug: "r", pillarIds: [pillar], clusters: [], rotation: "rotate", signoff: "none", firstPerson: false, createdAt: 0 }),
 		};
 		return { site, table };
 	});

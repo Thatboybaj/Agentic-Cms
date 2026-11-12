@@ -265,6 +265,8 @@ export interface IPost {
 	discovery?: { evidence: string[]; angle?: string; secondaryKeywords: string[]; internalLinkTargets: string[] };
 	/** Approved but waiting until the site can publish (F25): the readiness items still missing. */
 	waitingFor?: string[];
+	/** Rubrics and authors: the credited author and how they were resolved. */
+	author?: { id: string; source: "override" | "rubric" | "default"; reviewerId?: string; rubricId?: string };
 }
 
 export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation" | "site-discovery";

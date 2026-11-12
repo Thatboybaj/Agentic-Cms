@@ -40,6 +40,7 @@ import { CommentsCard, FactsCard, GateCard, PreviewCard, VersionsCard } from "./
 import { ago, findPost, latestVersion, sectionOf } from "./util";
 import { VersionsSheet } from "./versions-sheet";
 import { DiscoveryEvidenceCard } from "@/features/discovery/parts";
+import { AuthorChip } from "@/features/authors/parts";
 import { sitePath } from "@/lib/routes";
 
 const EDITABLE_STATES: IPost["state"][] = ["needs-assets", "in-review"];
@@ -149,6 +150,9 @@ function IdeaEmpty({ post }: { post: IPost }) {
 				}
 			/>
 			<IdeaCostNote post={post} />
+			<div className="mx-auto flex justify-center">
+				<AuthorChip post={post} />
+			</div>
 			<div className="mx-auto w-full max-w-md">
 				<DiscoveryEvidenceCard post={post} />
 			</div>
@@ -179,6 +183,7 @@ function BriefPanel({ post }: { post: IPost }) {
 					{ k: "Intent", v: INTENT_LABEL[post.intent] },
 					{ k: "Difficulty", v: kw?.difficultyEvidence ?? "KD pending · next keyword swarm" },
 					{ k: "Pillar", v: pillar?.name ?? "—" },
+					{ k: "Author", v: <AuthorChip post={post} editable /> },
 					{ k: "Scheduled", v: `W${post.week} · generates in its publish slot` },
 					{ k: "Template", v: gate?.manifest ? `Slots from manifest v${gate.manifest.version}` : "No confirmed manifest" },
 				]}
@@ -480,6 +485,9 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 							{post.title}
 						</h1>
 					</nav>
+					<span className="max-xl:hidden">
+						<AuthorChip post={post} editable />
+					</span>
 					{cur && (
 						<Link href={`${base}/versions`} aria-label={`Version ${cur.n}, ${ORIGIN_LABEL[cur.origin]}, ${ago(cur.at)} · open versions`} className="press flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-pill bg-surface px-4 font-display text-md hover:bg-sunken">
 							<Icon name="ClockCounterClockwise" size={16} />v{cur.n}

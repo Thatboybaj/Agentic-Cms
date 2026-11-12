@@ -62,6 +62,7 @@ export function toPlanData(b: TPlanBundle): { site: ISite; data: ISiteData; role
 		...(p.regulated ? { regulated: p.regulated } : {}),
 		...(p.discoveryEvidence || p.angle ? { discovery: { evidence: p.discoveryEvidence ?? [], ...(p.angle ? { angle: p.angle } : {}), secondaryKeywords: p.secondaryKeywords ?? [], internalLinkTargets: p.internalLinkTargets ?? [] } } : {}),
 		...(p.hold?.missing.length ? { waitingFor: p.hold.missing } : {}),
+		...(p.authorId ? { author: { id: p.authorId as string, source: p.authorSource ?? "default", ...(p.reviewerId ? { reviewerId: p.reviewerId as string } : {}), ...(p.rubricId ? { rubricId: p.rubricId as string } : {}) } } : {}),
 		...(p.mrId ? { mrId: p.mrId } : {}),
 		...(p.requires ? { requires: p.requires } : {}),
 		...(p.sendBackNote ? { sendBackNote: p.sendBackNote } : {}),

@@ -34,6 +34,13 @@ export const shipContext = internalQuery({
 		if (!site || !post || post.siteId !== siteId || !conn || conn.host !== "github" || !conn.live) return null;
 		const assets: { slotId: string; storageId: Id<"_storage"> | null; name: string }[] = [];
 		for (const sid of slotIds) {
+			// The credited author's photo (prd-rubrics-and-authors D4): "author:<storage id>" of an author on this site.
+			if (sid.startsWith("author:") && post.authorId) {
+				const a = await ctx.db.get(post.authorId);
+				const sids = a?.photo ? [a.photo.s96, a.photo.s192, a.photo.s400].filter(Boolean).map(String) : [];
+				if (sids.includes(sid.slice(7))) assets.push({ slotId: sid, storageId: sid.slice(7) as Id<"_storage">, name: `Photo of ${a!.name}` });
+				continue;
+			}
 			const slotId = ctx.db.normalizeId("imageSlots", sid);
 			const slot = slotId ? await ctx.db.get(slotId) : null;
 			if (!slot || slot.siteId !== siteId) continue;
@@ -44,6 +51,9 @@ export const shipContext = internalQuery({
 		const manifest = await activeManifest(ctx, siteId);
 		const kw = (await ctx.db.get(post.keywordId))?.term ?? post.title;
 		const checks = await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", postId)).take(100);
+		const author = post.authorId ? await ctx.db.get(post.authorId) : null;
+		const reviewer = post.reviewerId ? await ctx.db.get(post.reviewerId) : null;
+		const rubric = post.rubricId ? await ctx.db.get(post.rubricId) : null;
 		return {
 			installationId: conn.installationId,
 			repo: conn.repo,
@@ -52,7 +62,7 @@ export const shipContext = internalQuery({
 			scope: { contentDir: conn.contentDir, assetDir: conn.assetDir, ...(conn.indexFiles ? { indexFiles: conn.indexFiles } : {}) },
 			title: `content: add ${post.title}`,
 			message: `content(blog): ${post.currentVersion > 1 ? "update" : "add"} ${post.slug}`,
-			body: prDescription({ keyword: kw, intent: post.intent, checks, overrides, autopost, contentDir: conn.contentDir, assetDir: conn.assetDir, baseBranch: conn.baseBranch, manifestVersion: manifest?.version, metaDescription: post.metaDescription }),
+			body: prDescription({ keyword: kw, intent: post.intent, checks, overrides, autopost, contentDir: conn.contentDir, assetDir: conn.assetDir, baseBranch: conn.baseBranch, manifestVersion: manifest?.version, metaDescription: post.metaDescription, ...(author ? { author: { name: author.name, source: post.authorSource ?? "default", ...(rubric ? { rubric: rubric.name } : {}), ...(reviewer ? { reviewer: reviewer.name } : {}) } } : {}) }),
 			assets,
 		};
 	},

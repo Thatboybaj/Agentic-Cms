@@ -4,6 +4,7 @@
 import type { IImageSlot, IPost, IPostBlock, ISite, ITemplateMapping } from "@/lib/types";
 import { analyze, srcsetPattern, tagOf, type IStructure, type TParseHtml } from "./structure";
 import { placeholderSvg } from "./placeholder";
+import { authorCards, fillAuthorCard, fillByline, personJsonLd, type IAuthorProfile } from "./author";
 
 export interface IRenderHeld {
 	reason: string;
@@ -32,6 +33,8 @@ export interface IRenderInput {
 	publishedAt?: string;
 	/** Author display name. Defaults to the sample's author (the site's default byline). */
 	author?: string;
+	/** The credited author's full profile (rubrics and authors): byline link, author card, Person JSON-LD. */
+	authorProfile?: IAuthorProfile;
 	/** Publish: whether per-width variant files exist (default true). False → one src, no srcset (never reference files the MR doesn't carry). */
 	variants?: boolean;
 }
@@ -450,7 +453,12 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		s.date.setAttribute("datetime", input.publishedAt.slice(0, 10));
 		s.date.textContent = formatLike(s.date.textContent ?? "", input.publishedAt);
 	}
-	if (s.author && input.author) setText(s.author, input.author);
+	if (s.author && input.authorProfile) fillByline(s.author, input.authorProfile);
+	else if (s.author && input.author) setText(s.author, input.author);
+	if (input.authorProfile) {
+		const mapped = (input.mappings ?? []).filter((m) => m.label === "Author bio" && m.status !== "needs-you").map((m) => m.selector);
+		for (const card of authorCards(doc, mapped)) if (fillAuthorCard(card, input.authorProfile).missingPhoto) warnings.push("Author card shows no photo: the author has none yet");
+	}
 	if (input.pillarName && s.tags[0]) {
 		setText(s.tags[0], input.pillarName);
 		const href = s.tags[0].getAttribute("href");
@@ -490,7 +498,9 @@ export function renderPost(input: IRenderInput): IRenderResult {
 				if ("datePublished" in n) n.datePublished = input.publishedAt.slice(0, 10);
 				if ("dateModified" in n) n.dateModified = input.publishedAt.slice(0, 10);
 			}
-			if (input.author && n.author && typeof n.author === "object" && !Array.isArray(n.author)) n.author = { ...(n.author as TJson), name: input.author };
+			// D3: the author becomes a full Person, updated in place (never a second author entry).
+			if (input.authorProfile) n.author = personJsonLd(input.authorProfile);
+			else if (input.author && n.author && typeof n.author === "object" && !Array.isArray(n.author)) n.author = { ...(n.author as TJson), name: input.author };
 			if ("keywords" in n && input.pillarName) n.keywords = input.pillarName;
 		}
 		if (types.includes("FAQPage")) {

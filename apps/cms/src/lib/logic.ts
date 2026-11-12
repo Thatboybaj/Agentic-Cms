@@ -607,7 +607,10 @@ export type TPermission =
 	| "members.manage"
 	| "site.add"
 	| "discovery.run"
-	| "discovery.configure";
+	| "discovery.configure"
+	| "author.manage"
+	| "rubric.manage"
+	| "post.author.override";
 
 const S: TRole = "specialist";
 const D: TRole = "developer";
@@ -646,6 +649,9 @@ export const PERMISSIONS: Record<TPermission, TRole[]> = {
 	"site.add": [A],
 	"discovery.run": [S, A], // start or re-run site discovery, edit and accept the profile
 	"discovery.configure": [A], // crawl limits and the discovery budget
+	"author.manage": [A], // create and edit author profiles, set the site default author (prd-rubrics-and-authors §5)
+	"rubric.manage": [S, A], // rubrics and their designations
+	"post.author.override": [S, A], // set a post's author by hand
 };
 
 export const ROLE_LABEL: Record<TRole, string> = { specialist: "Content specialist", developer: "Developer", stakeholder: "Client stakeholder", admin: "Agency admin" };
@@ -664,6 +670,8 @@ export function lockReason(role: TRole, p: TPermission): string | null {
 	if (p === "publishing.set") return "Only the content specialist or an admin changes publishing";
 	if (p === "discovery.run") return "Only the content specialist or an admin runs site discovery";
 	if (p === "discovery.configure") return "Only an agency admin changes discovery limits";
+	if (p === "author.manage") return "Only an agency admin edits author profiles";
+	if (p === "rubric.manage" || p === "post.author.override") return "Only the content specialist or an admin assigns authors";
 	return `${ROLE_LABEL[role]}s can't do this`;
 }
 

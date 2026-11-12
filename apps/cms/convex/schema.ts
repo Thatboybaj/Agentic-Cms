@@ -481,6 +481,11 @@ export default defineSchema({
 		discoveryRunId: v.optional(v.id("runs")),
 		/** Approved but not drafted because the site is not ready to publish yet (F23). Cleared when drafting starts. */
 		hold: v.optional(v.object({ reason: v.literal("waiting-for-setup"), missing: v.array(v.string()), since: v.number() })),
+		/** Rubrics and authors: resolved when the idea is approved (override · rubric · default). */
+		authorId: v.optional(v.id("authors")),
+		reviewerId: v.optional(v.id("authors")),
+		authorSource: v.optional(v.union(v.literal("override"), v.literal("rubric"), v.literal("default"))),
+		rubricId: v.optional(v.id("rubrics")),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -1101,6 +1106,62 @@ export default defineSchema({
 	})
 		.index("by_site_created", ["siteId", "createdAt"])
 		.index("by_report", ["reportId"]),
+
+	// ── Rubrics and authors (prd-rubrics-and-authors §8) ──
+	/** A person credited on a site's posts. Workspace-level; enabled per site through siteAuthors. */
+	authors: defineTable({
+		workspaceId: v.id("workspaces"),
+		name: v.string(),
+		slug: v.string(),
+		/** Square photo in Convex storage: the original and the 96/192/400 px WebP sizes. */
+		photo: v.optional(v.object({ original: v.optional(v.id("_storage")), s96: v.optional(v.id("_storage")), s192: v.optional(v.id("_storage")), s400: v.optional(v.id("_storage")), alt: v.string() })),
+		jobTitle: v.optional(v.string()),
+		bioShort: v.optional(v.string()),
+		bioLong: v.optional(v.string()),
+		credentials: v.array(v.string()),
+		sameAs: v.array(v.string()),
+		userId: v.optional(v.id("users")),
+		status: v.union(v.literal("active"), v.literal("retired")),
+		createdAt: v.number(),
+		updatedAt: v.number(),
+	})
+		.index("by_workspace_slug", ["workspaceId", "slug"]),
+
+	/** An author enabled on a site, with site-specific overrides. Exactly one isDefault per site. TENANT-SCOPED. */
+	siteAuthors: defineTable({
+		siteId: v.id("sites"),
+		authorId: v.id("authors"),
+		titleOverride: v.optional(v.string()),
+		bioOverride: v.optional(v.string()),
+		authorPageUrl: v.optional(v.string()),
+		isDefault: v.boolean(),
+	})
+		.index("by_site", ["siteId"])
+		.index("by_site_author", ["siteId", "authorId"]),
+
+	/** A named topic area on one site: covers pillars and/or clusters. TENANT-SCOPED. */
+	rubrics: defineTable({
+		siteId: v.id("sites"),
+		name: v.string(),
+		slug: v.string(),
+		pillarIds: v.array(v.id("pillars")),
+		/** Cluster names ("<pillar id>|<cluster>"); a cluster belongs to at most one rubric. */
+		clusters: v.array(v.string()),
+		rotation: v.union(v.literal("rotate"), v.literal("primary-only")),
+		signoff: v.union(v.literal("none"), v.literal("author"), v.literal("reviewer")),
+		firstPerson: v.boolean(),
+		createdAt: v.number(),
+	}).index("by_site", ["siteId"]),
+
+	rubricDesignations: defineTable({
+		siteId: v.id("sites"),
+		rubricId: v.id("rubrics"),
+		authorId: v.id("authors"),
+		role: v.union(v.literal("author"), v.literal("reviewer")),
+		primary: v.boolean(),
+	})
+		.index("by_rubric", ["rubricId"])
+		.index("by_site", ["siteId"]),
 
 	appConfig: defineTable({
 		key: v.string(),

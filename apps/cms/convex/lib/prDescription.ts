@@ -15,6 +15,8 @@ export interface IPrDescription {
 	baseBranch: string;
 	manifestVersion?: number;
 	metaDescription?: string;
+	/** Rubrics and authors (P5): who's credited and how they were resolved. */
+	author?: { name: string; source: string; rubric?: string; reviewer?: string };
 }
 
 export function prDescription(d: IPrDescription): string {
@@ -27,6 +29,7 @@ export function prDescription(d: IPrDescription): string {
 		`**On-page** ${passed} / ${d.checks.length}${d.overrides.length ? ` · ${d.overrides.length} override${d.overrides.length > 1 ? "s" : ""}` : ""}  `,
 		`**Internal links** ${links}  `,
 		`**Schema** ${schema}`,
+		d.author ? `**Author** ${d.author.name} (${d.author.source === "default" ? "site default" : d.author.source === "override" ? "set by hand" : `rubric ${d.author.rubric ?? ""}`.trim()})${d.author.reviewer ? ` · reviewed by ${d.author.reviewer}` : ""}  ` : "",
 		d.metaDescription ? `**Meta description** ${d.metaDescription}` : "",
 		d.manifestVersion ? `**Template** manifest v${d.manifestVersion}` : "",
 		d.autopost ? `**Shipped by** ${AUTOPOST_ACTOR} · no human review (site autopost is on)` : "",

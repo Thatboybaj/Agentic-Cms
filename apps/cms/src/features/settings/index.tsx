@@ -8,6 +8,7 @@ import { useSiteCms } from "@/features/shared/site-source";
 import { AuditTab } from "./audit";
 import { BrandTab } from "./brand";
 import { ConnectionsSettings } from "./connections";
+import { AuthorsSettings } from "./authors";
 import { DiscoverySettings } from "./discovery";
 import { MembersTab } from "./members";
 import { ModelRoutingTab } from "./model-routing";
@@ -24,6 +25,7 @@ const TABS = [
 	{ id: "routing", label: "Model routing" },
 	{ id: "members", label: "Members & roles" },
 	{ id: "brand", label: "Brand pack" },
+	{ id: "authors", label: "Rubrics & authors" },
 	{ id: "audit", label: "Audit log" },
 ] as const;
 
@@ -69,6 +71,8 @@ export function SettingsScreen() {
 					<ModelRoutingTab key={key} />
 				) : tab === "members" ? (
 					<MembersTab key={key} />
+				) : tab === "authors" ? (
+					<AuthorsSettings key={key} />
 				) : tab === "brand" ? (
 					<BrandTab key={key} />
 				) : (

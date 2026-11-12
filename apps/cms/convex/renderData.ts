@@ -3,6 +3,7 @@
 import { v } from "convex/values";
 import { internalQuery } from "./_generated/server";
 import { gateInputs } from "./lib/gateInputs";
+import { authorProfileFor } from "./authors";
 
 export const forPost = internalQuery({
 	args: { siteId: v.id("sites"), postId: v.id("posts"), manifestId: v.optional(v.id("templateManifests")) },
@@ -16,7 +17,9 @@ export const forPost = internalQuery({
 		const sample = await ctx.db.query("templateFiles").withIndex("by_manifest_path", (q) => q.eq("manifestId", manifest._id).eq("path", manifest.samplePath!)).unique();
 		if (!sample?.storageId) return null; // seeded/demo manifests have no stored files: the step keeps its stub
 		const pillar = await ctx.db.get(post.pillarId);
-		const author = post.assigneeId ? (await ctx.db.get(post.assigneeId))?.name : undefined;
+		// The credited author (rubrics and authors); older posts without one keep the assignee's name.
+		const profile = await authorProfileFor(ctx, post);
+		const author = profile?.name ?? (post.assigneeId ? (await ctx.db.get(post.assigneeId))?.name : undefined);
 		return {
 			sampleStorageId: sample.storageId,
 			samplePath: manifest.samplePath,
@@ -29,6 +32,7 @@ export const forPost = internalQuery({
 			metaDescription: post.metaDescription,
 			...(pillar && pillar.siteId === siteId ? { pillarName: pillar.name } : {}),
 			...(author ? { author } : {}),
+			...(profile ? { authorProfile: profile } : {}),
 			publishedAt: new Date(post.liveAt ?? Date.now()).toISOString(),
 		};
 	},

@@ -19,6 +19,7 @@ import { transitionPost } from "./lib/transition";
 import { NOT_ENTITLED, siteEntitled } from "./billing";
 import { scheduleBackfill } from "./gsc";
 import { workflow } from "./workflows/manager";
+import { resolvePostAuthor } from "./authors";
 
 type TResult = { ok: true; id?: string } | { ok: false; reason: string };
 const fail = (reason: string): TResult => ({ ok: false, reason });
@@ -164,6 +165,8 @@ async function approveIdeaFor(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"p
 	if (site.status === "paused") return fail("This site is paused · resume it to approve ideas");
 	const r = await transitionPost(ctx, post, "briefed", { extra: { ideaApproval: { status: "approved", by: user.name, byUserId: user._id, at: Date.now() }, ideaStatus: "approved" } });
 	if (!r.ok) return fail(r.reason);
+	// Rubrics and authors (P1): the author is resolved and stored before drafting, so it's visible and editable.
+	await resolvePostAuthor(ctx, r.post);
 	const auto = site.publishing.autopost;
 	await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, postId: post._id, actor: user, action: "approved idea", target: post.title, detail: auto ? "Autopost on · the agents take it from here" : `Briefed · the writer picks it up in W${post.week}` });
 	// Under autopost the writer starts straight away (cap-checked; a refusal leaves it Briefed with a ledger item).

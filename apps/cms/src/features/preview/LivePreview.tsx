@@ -11,6 +11,7 @@ import { renderPost, type IRenderResult } from "@/render";
 import { SiteFrame } from "./SiteFrame";
 import { browserParse, useTemplateSource } from "./source";
 import { sitePath, previewPath } from "@/lib/routes";
+import { previewProfile, useAuthors } from "@/features/authors/data";
 
 export type TPreviewDevice = "desktop" | "tablet" | "mobile";
 
@@ -63,6 +64,11 @@ export function LivePreview({ postId, device: deviceProp = "desktop", embedded =
 	const [renderedAt] = useState(() => nowIso());
 	const publishedAt = mr?.mergedAt ?? renderedAt;
 	const pillarName = data.pillars.find((p) => p.id === post?.pillarId)?.name;
+	// D5: the byline and author card exactly as they'll render (the credited author, or the site default for an idea).
+	const authors = useAuthors();
+	const authorId = post?.author?.id ?? authors.data?.defaultAuthorId;
+	const authorRow = authors.data?.authors.find((a) => a.id === authorId);
+	const authorProfile = useMemo(() => previewProfile(authorRow), [authorRow]);
 
 	// Debounce edits (~250 ms) so typing doesn't reload the frame on every keystroke.
 	const input = useDebounced(useMemo(() => ({ post, slots }), [post, slots]), 250);
@@ -81,11 +87,12 @@ export function LivePreview({ postId, device: deviceProp = "desktop", embedded =
 				baseHref: source.baseHref ?? undefined,
 				rootHref: source.rootHref ?? null,
 				publishedAt,
+				...(authorProfile ? { authorProfile } : {}),
 			});
 		} catch (e) {
 			return { html: "", held: [], warnings: [], url: "", stats: { blocks: 0, images: 0, placeholders: 0 }, error: e instanceof Error ? e.message : "Render failed" };
 		}
-	}, [input, manifest, source, site, pillarName, publishedAt]);
+	}, [input, manifest, source, site, pillarName, publishedAt, authorProfile]);
 
 	if (!post)
 		return (
