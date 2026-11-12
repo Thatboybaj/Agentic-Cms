@@ -52,6 +52,7 @@ const PROVIDER_ICON: Record<TConnectionProvider, TIconName> = {
 	"higgsfield-mcp": "Sparkle",
 	"custom-mcp": "Plugs",
 	"openai-images": "Image",
+	"gateway-images": "Image",
 	replicate: "Stack",
 	fal: "Lightning",
 	openverse: "Globe",

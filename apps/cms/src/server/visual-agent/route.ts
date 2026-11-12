@@ -12,6 +12,7 @@ export const UNIT_USD: Partial<Record<TConnectionProvider, number>> = {
 	"higgsfield-mcp": 0.045,
 	"custom-mcp": 0.03,
 	"openai-images": 0.04,
+	"gateway-images": 0.04,
 	replicate: 0.03,
 	fal: 0.03,
 };
@@ -19,8 +20,8 @@ export const GENERATE_COUNT = 4;
 export const SOURCE_COUNT = 4;
 
 const MCP_ORDER: TConnectionProvider[] = ["higgsfield-mcp", "custom-mcp"];
-const BRAND_API_ORDER: TConnectionProvider[] = ["openai-images", "fal", "replicate"];
-const TEXT_API_ORDER: TConnectionProvider[] = ["openai-images", "fal", "replicate"];
+const BRAND_API_ORDER: TConnectionProvider[] = ["gateway-images", "openai-images", "fal", "replicate"];
+const TEXT_API_ORDER: TConnectionProvider[] = ["gateway-images", "openai-images", "fal", "replicate"];
 const VOLUME_ORDER: TConnectionProvider[] = ["fal", "replicate", "custom-mcp"];
 const SOURCE_ORDER: TConnectionProvider[] = ["openverse", "wikimedia", "unsplash", "pexels"];
 

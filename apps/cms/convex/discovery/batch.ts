@@ -11,6 +11,7 @@ import type { Id } from "../_generated/dataModel";
 import { type ActionCtx, internalAction } from "../_generated/server";
 import { costMicroUsd, holdMicroUsd, priceOf } from "../agents/pricing";
 import { agentsLive, formatFor, qwenKey } from "../agents/sdk";
+import { activeProvider } from "../agents/provider";
 import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, pageBlock } from "./agentCore";
 import { modelOf } from "../agents/provider";
 
@@ -38,6 +39,8 @@ export const start = internalAction({
 		const input = await ctx.runQuery(internal.discovery.agentData.extractInput, { siteId });
 		if (!input || input.pages.length <= BATCH_MIN_PAGES || !agentsLive()) return { batchId: null, requests: 0 };
 		const model = modelOf(input.routing.mechanical);
+		// Batch file inference is Alibaba-direct only; through the gateway (or on Claude) large sites use direct calls.
+		if (activeProvider() !== "qwen") return { batchId: null, requests: 0 };
 		if (!priceOf(model).batch) return { batchId: null, requests: 0, note: `${model} has no batch inference in this region; reading pages directly` };
 		const system = [DISCOVERY_SKILL.text, EXTRACT_CONTRACT, JSON_NOTE].join("\n\n");
 		const schema = formatFor(ExtractOutput);

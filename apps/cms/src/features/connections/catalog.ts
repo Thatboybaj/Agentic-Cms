@@ -2,7 +2,7 @@
 // and the Settings → Connections UI. No secrets, no Node imports — safe for client bundles.
 
 export type TConnectionKind = "mcp" | "image-api" | "web-source" | "llm";
-export type TConnectionProvider = "higgsfield-mcp" | "custom-mcp" | "openai-images" | "replicate" | "fal" | "openverse" | "wikimedia" | "unsplash" | "pexels" | "qwen";
+export type TConnectionProvider = "higgsfield-mcp" | "custom-mcp" | "openai-images" | "gateway-images" | "replicate" | "fal" | "openverse" | "wikimedia" | "unsplash" | "pexels" | "qwen";
 export type TMcpTransport = "streamable-http" | "sse" | "stdio";
 export type TUsedFor = "brand_imagery" | "text_in_image" | "volume" | "diagram" | "stock";
 export type TConnectionStatus = "untested" | "ok" | "failed";
@@ -100,6 +100,7 @@ export const PROVIDERS: Record<TConnectionProvider, IProviderSpec> = {
 		urlHint: "https://your-server.example.com/mcp",
 	},
 	"openai-images": { provider: "openai-images", kind: "image-api", label: "OpenAI images", blurb: "API · text-in-image and labelled visuals", secret: "required", secretLabel: "API key", model: true, defaultUsedFor: ["text_in_image"], secretHint: "From platform.openai.com → API keys" },
+	"gateway-images": { provider: "gateway-images", kind: "image-api", label: "OpenAI images · Vercel AI Gateway", blurb: "OpenAI image models through your Vercel AI Gateway key · text-in-image and labelled visuals", secret: "optional", secretLabel: "AI Gateway key", model: true, defaultUsedFor: ["text_in_image"], secretHint: "Optional · without one the CMS uses AI_GATEWAY_API_KEY from the server. Model e.g. openai/gpt-image-2" },
 	replicate: { provider: "replicate", kind: "image-api", label: "Replicate", blurb: "API · open-source models at volume", secret: "required", secretLabel: "API token", model: true, defaultUsedFor: ["volume"], secretHint: "From replicate.com → Account → API tokens" },
 	fal: { provider: "fal", kind: "image-api", label: "fal", blurb: "API · fast open-source image models", secret: "required", secretLabel: "API key", model: true, defaultUsedFor: ["volume"], secretHint: "From fal.ai → Keys" },
 	openverse: { provider: "openverse", kind: "web-source", label: "Openverse", blurb: "Openly licensed images · no key needed", secret: "optional", secretLabel: "OAuth token", model: false, defaultUsedFor: ["stock"], secretHint: "Optional · raises Openverse rate limits" },
@@ -111,7 +112,7 @@ export const PROVIDERS: Record<TConnectionProvider, IProviderSpec> = {
 
 export const KIND_GROUPS: { kind: TConnectionKind; title: string; meta: string; icon: "Plugs" | "ImagesSquare" | "Globe" | "TreeStructure"; providers: TConnectionProvider[] }[] = [
 	{ kind: "mcp", title: "Image generation — MCP servers", meta: "Brand imagery and styled scenes", icon: "Plugs", providers: ["higgsfield-mcp", "custom-mcp"] },
-	{ kind: "image-api", title: "Image APIs", meta: "Text-in-image and volume", icon: "ImagesSquare", providers: ["openai-images", "replicate", "fal"] },
+	{ kind: "image-api", title: "Image APIs", meta: "Text-in-image and volume", icon: "ImagesSquare", providers: ["gateway-images", "openai-images", "replicate", "fal"] },
 	{ kind: "web-source", title: "Web image sources", meta: "Real-world and stock · license recorded", icon: "Globe", providers: ["openverse", "wikimedia", "unsplash", "pexels"] },
 	{ kind: "llm", title: "Diagram model", meta: "Optional", icon: "TreeStructure", providers: ["qwen"] },
 ];

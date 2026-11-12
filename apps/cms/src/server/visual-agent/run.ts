@@ -27,7 +27,7 @@ const MIN_CANDIDATES = 2;
 const NO_RETRY = /key|model id|Set a model|Add your|Pick the|can't generate|isn't|turned off|rejected/i;
 
 const storeProvider = (p?: string): TProvider =>
-	p === "higgsfield-mcp" ? "higgsfield" : p === "openai-images" ? "openai" : p === "inline-svg" || p === "svg-template" || p === "qwen-svg" ? "inline-svg" : "open-source";
+	p === "higgsfield-mcp" ? "higgsfield" : p === "openai-images" || p === "gateway-images" ? "openai" : p === "inline-svg" || p === "svg-template" || p === "qwen-svg" ? "inline-svg" : "open-source";
 
 function log(siteId: string, slotId: string, a: IAttempt) {
 	console.info(`[visual-agent] site=${siteId} slot=${slotId} route=${a.route} provider=${a.provider ?? "-"} ok=${a.ok} ms=${a.ms} note=${JSON.stringify(a.note.slice(0, 160))}`);

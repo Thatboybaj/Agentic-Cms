@@ -63,12 +63,13 @@ export function classify(e: unknown): InferenceError {
 	const err = e as { status?: number; name?: string; message?: string };
 	const msg = err?.message ?? String(e);
 	const s = err?.status;
-	if (s === 451) return new InferenceError("refusal", "Qwen's content check declined this request");
+	if (s === 451) return new InferenceError("refusal", "The model provider's content check declined this request");
+	if (s === 402) return new InferenceError("auth", msg);
 	if (s === 429 || s === 529) return new InferenceError("rate-limited", msg);
 	if (s === 408 || err?.name === "APIConnectionTimeoutError" || err?.name === "TimeoutError") return new InferenceError("timeout", msg);
 	if (typeof s === "number" && s >= 500) return new InferenceError("server", msg);
 	if (s === 403 && /Unpurchased|Access to model denied|Arrearage|overdue/i.test(msg)) return new InferenceError("auth", "Qwen accepted the key but refused the model: the Model Studio account isn't activated for paid use (billing, verification or a risk-control hold). Fix it in the Model Studio console.");
-	if (s === 401 || s === 403) return new InferenceError("auth", activeProvider() === "anthropic" ? "The Anthropic key was rejected. Check ANTHROPIC_API_KEY in the Convex deployment." : "The Qwen key was rejected. Check DASHSCOPE_API_KEY in the Convex deployment.");
+	if (s === 401 || s === 403) return new InferenceError("auth", ({ anthropic: "The Anthropic key was rejected. Check ANTHROPIC_API_KEY in the Convex deployment.", gateway: "The Vercel AI Gateway key was rejected. Check AI_GATEWAY_API_KEY in the Convex deployment.", qwen: "The Qwen key was rejected. Check DASHSCOPE_API_KEY in the Convex deployment." } as const)[activeProvider()]);
 	if (typeof s === "number" && s >= 400) return new InferenceError("bad-request", msg);
 	if (err?.name === "APIConnectionError" || /fetch failed|ECONNRESET|ENOTFOUND|network/i.test(msg)) return new InferenceError("network", msg);
 	return new InferenceError("unknown", msg);

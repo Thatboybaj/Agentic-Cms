@@ -4,6 +4,7 @@
 import type { IConnection } from "../../features/connections/catalog";
 import { callMcpTool, getSecret } from "./deps";
 import { withMcpClient, type IMcpTarget } from "../mcp";
+import { gatewayImages } from "../../lib/gateway";
 
 export const API_TIMEOUT_MS = 120_000;
 const SCHEMA_TIMEOUT_MS = 20_000;
@@ -82,6 +83,28 @@ async function openAi(c: IConnection, g: IGenerateInput): Promise<IGenerated> {
 	const urls = bodies.flatMap((b) => ((b as { data?: { url?: string; b64_json?: string }[] })?.data ?? []).map((d) => d.url ?? (d.b64_json ? `data:image/png;base64,${d.b64_json}` : ""))).filter(Boolean);
 	if (!urls.length) throw new GenerateError("OpenAI returned no images.");
 	return { urls, model };
+}
+
+/** OpenAI image models through Vercel AI Gateway: the connection's key, or the server's AI_GATEWAY_API_KEY. */
+async function gatewayOpenAi(c: IConnection, g: IGenerateInput): Promise<IGenerated> {
+	const model = c.model?.trim() || "openai/gpt-image-2";
+	const key = (await secretFor(c, false)) ?? process.env.AI_GATEWAY_API_KEY?.trim() ?? null;
+	if (!key) throw new GenerateError("Add an AI Gateway key to this connection, or set AI_GATEWAY_API_KEY on the server.");
+	const bare = model.replace(/^openai\//, "");
+	try {
+		const urls = await gatewayImages(key, { model, prompt: g.prompt, n: g.n, size: openAiSize(bare, g.width, g.height) }, AbortSignal.timeout(API_TIMEOUT_MS));
+		if (!urls.length) throw new GenerateError("Vercel AI Gateway returned no images.");
+		return { urls, model };
+	} catch (e) {
+		if (e instanceof GenerateError) throw e;
+		const s = (e as { status?: number }).status;
+		if ((e as Error)?.name === "TimeoutError") throw new GenerateError(`No response from Vercel AI Gateway within ${API_TIMEOUT_MS / 1000} seconds.`);
+		if (s === 401 || s === 403) throw new GenerateError("Vercel AI Gateway rejected the key.");
+		if (s === 402) throw new GenerateError((e as Error).message);
+		if (s === 404) throw new GenerateError(`Vercel AI Gateway doesn't know the model "${model}".`);
+		if (s === 429) throw new GenerateError("Vercel AI Gateway is rate-limiting or out of credit (429).");
+		throw new GenerateError(`Vercel AI Gateway answered with an error${s ? ` (${s})` : ""}.`);
+	}
 }
 
 // ─── Replicate (POST /v1/models/{owner}/{name}/predictions or /v1/predictions with owner/name:version) ─────
@@ -256,6 +279,8 @@ export async function generate(c: IConnection, g: IGenerateInput): Promise<IGene
 	switch (c.provider) {
 		case "openai-images":
 			return openAi(c, g);
+		case "gateway-images":
+			return gatewayOpenAi(c, g);
 		case "replicate":
 			return replicate(c, g);
 		case "fal":

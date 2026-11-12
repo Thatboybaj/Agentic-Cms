@@ -67,7 +67,7 @@ export function thinkingBudget(effort: TEffort | undefined, maxTokens: number): 
 
 const JSON_NOTE = "Reply with a single JSON object that matches the response schema. No prose, no code fences.";
 
-function messagesOf(req: IQwenRequest) {
+export function messagesOf(req: IQwenRequest) {
 	const system = [...req.system, ...(req.jsonSchema ? [JSON_NOTE] : [])].join("\n\n");
 	return [
 		{ role: "system", content: system },
@@ -75,10 +75,10 @@ function messagesOf(req: IQwenRequest) {
 	];
 }
 
-const stopOf = (r: string | null | undefined): string | null => (r === "length" ? "max_tokens" : r === "content_filter" ? "refusal" : r ? "end_turn" : null);
+export const stopOf = (r: string | null | undefined): string | null => (r === "length" ? "max_tokens" : r === "content_filter" ? "refusal" : r ? "end_turn" : null);
 
 /** Server-sent events → JSON payloads (both endpoints stream `data: {...}` lines). */
-async function* sse(res: Response): AsyncGenerator<Record<string, unknown>> {
+export async function* sse(res: Response): AsyncGenerator<Record<string, unknown>> {
 	const reader = res.body!.getReader();
 	const dec = new TextDecoder();
 	let buf = "";

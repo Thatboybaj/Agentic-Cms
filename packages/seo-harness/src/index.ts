@@ -91,7 +91,7 @@ export const MODELS = {
   strongest: "qwen3.8-max",
 } as const satisfies Record<TModelTier, string>;
 
-export type TModelProvider = "qwen" | "anthropic";
+export type TModelProvider = "qwen" | "gateway" | "anthropic";
 
 /**
  * Model ids per provider. Qwen is the target; Anthropic stays available as a fallback while the Model Studio account
@@ -99,6 +99,8 @@ export type TModelProvider = "qwen" | "anthropic";
  */
 export const PROVIDER_MODELS = {
   qwen: MODELS,
+  /** The same Qwen models through Vercel AI Gateway (one key, provider list price). */
+  gateway: MODELS,
   anthropic: { fast: "claude-haiku-4-5", workhorse: "claude-sonnet-5", strongest: "claude-opus-5-5" },
 } as const satisfies Record<TModelProvider, Record<TModelTier, string>>;
 

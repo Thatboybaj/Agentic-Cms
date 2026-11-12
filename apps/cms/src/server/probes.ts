@@ -42,6 +42,13 @@ export async function probeApi(provider: TConnectionProvider, secret: string | n
 			expectOk(res, label, true);
 			return { note: "Key accepted" };
 		}
+		case "gateway-images": {
+			const key = secret?.trim() || process.env.AI_GATEWAY_API_KEY?.trim();
+			if (!key) throw new ConnectionError("Add an AI Gateway key, or set AI_GATEWAY_API_KEY on the server.");
+			const res = await hit("https://ai-gateway.vercel.sh/v1/credits", { Authorization: `Bearer ${key}` }, label);
+			expectOk(res, label, true);
+			return { note: "Key accepted" };
+		}
 		case "replicate": {
 			const res = await hit("https://api.replicate.com/v1/account", { Authorization: `Bearer ${need(secret, provider)}` }, label);
 			expectOk(res, label, true);

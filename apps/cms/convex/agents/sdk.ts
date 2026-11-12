@@ -2,12 +2,14 @@
 // The real transports, called from Convex Node actions. CMS_MODEL_PROVIDER picks one (agents/provider.ts):
 //   - qwen (default): Alibaba Cloud Model Studio via src/lib/qwen.ts; streamed, json_schema output, web search through
 //     the native endpoint so research keeps its sources. Key: DASHSCOPE_API_KEY.
+//   - gateway: the same Qwen models through Vercel AI Gateway (src/lib/gateway.ts). Key: AI_GATEWAY_API_KEY.
 //   - anthropic (fallback while the Model Studio account is verified): the Anthropic SDK; streamed, output_config
 //     format, server web search. Key: ANTHROPIC_API_KEY.
 // Keys live in the Convex deployment env; they never enter a prompt, a trace or a document.
 import Anthropic from "@anthropic-ai/sdk";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
+import { gatewayChat } from "../../src/lib/gateway";
 import { qwenChat } from "../../src/lib/qwen";
 import type { TTransport } from "./gateway";
 import type { ILedger } from "./capped";
@@ -28,7 +30,14 @@ export function qwenKey(): string {
 }
 
 export function modelTransport(): TTransport {
-	return activeProvider() === "anthropic" ? anthropicTransport() : qwenTransport();
+	const p = activeProvider();
+	return p === "anthropic" ? anthropicTransport() : p === "gateway" ? gatewayTransport() : qwenTransport();
+}
+
+function gatewayTransport(): TTransport {
+	const apiKey = process.env.AI_GATEWAY_API_KEY?.trim();
+	if (!apiKey) throw new Error("AI_GATEWAY_API_KEY is not set on this Convex deployment");
+	return async (req) => gatewayChat(apiKey, req, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 }
 
 function qwenTransport(): TTransport {
