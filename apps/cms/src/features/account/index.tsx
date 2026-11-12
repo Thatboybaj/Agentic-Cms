@@ -4,20 +4,23 @@
 import { useRouter } from "next/navigation";
 import { Avatar, Button, Card, Chip, EmptyState, IconButton, KeyValue, PageHeader, ROLE_LABEL, Section, SiteAvatar, WORKSPACE_ROLE_LABEL } from "@/ds";
 import { TopBarCta } from "@/features/shared/app-shell";
-import { useSiteRows, useWorkspaceActions, useWorkspaceView } from "@/features/workspace/data";
+import { PageLoading } from "@/features/shared/page-loading";
+import { PAGES_ON_CONVEX, usePageSiteRows, usePageWorkspaceActions, usePageWorkspaceView } from "@/features/workspace/data";
 import { STATUS_LABEL, plural } from "@/features/workspace/labels";
 import { sitePath, WORKSPACE_ROUTES } from "@/lib/routes";
 
 export function Account() {
 	const router = useRouter();
-	const { workspace, me, myWorkspaceRole } = useWorkspaceView();
-	const { signOut } = useWorkspaceActions();
-	const rows = useSiteRows();
+	const { workspace, me, myWorkspaceRole, loading } = usePageWorkspaceView();
+	const { signOut } = usePageWorkspaceActions();
+	const rows = usePageSiteRows();
 
 	const out = () => {
 		signOut();
-		router.push(WORKSPACE_ROUTES.signIn);
+		// Live: Clerk signs out and redirects itself; the demo store just clears the person.
+		if (!PAGES_ON_CONVEX) router.push(WORKSPACE_ROUTES.signIn);
 	};
+	if (loading) return <PageLoading rows={3} />;
 
 	return (
 		<>
@@ -33,7 +36,7 @@ export function Account() {
 						<Avatar name={me.name} initials={me.initials} size={44} />
 						<div className="flex min-w-0 flex-col">
 							<h2 className="truncate font-display text-xl leading-snug text-ink">{me.name}</h2>
-							<span className="truncate text-sm text-ink-3">{me.title ?? "No title set"}</span>
+							{me.title && <span className="truncate text-sm text-ink-3">{me.title}</span>}
 						</div>
 					</div>
 					<KeyValue
@@ -51,7 +54,7 @@ export function Account() {
 							{ k: "Sites", v: plural(rows.length, "site") },
 						]}
 					/>
-					<p className="text-xs text-ink-3">Profile details come from the identity provider (Clerk) once it's connected; this prototype uses seeded people.</p>
+					<p className="text-xs text-ink-3">{PAGES_ON_CONVEX ? "Name, email and photo come from your sign-in account (Clerk). Site roles are set by a workspace admin on the Team page." : "Demo data · with the backend connected, this shows your sign-in account."}</p>
 				</Card>
 
 				<Section title="My sites" count={rows.length}>
