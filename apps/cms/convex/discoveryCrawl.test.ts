@@ -119,3 +119,16 @@ test("without a Firecrawl key the run stops with a setup message", async () => {
 	expect(r.stop).toMatchObject({ reason: "not-configured" });
 	expect(r.stop!.message).toContain("FIRECRAWL_API_KEY");
 });
+
+test("one discovery run per site at a time (F4); the run opens with its report", async () => {
+	const { t, site } = await world();
+	await t.run(async (ctx) => {
+		for (const r of await ctx.db.query("runs").collect()) await ctx.db.patch(r._id, { status: "succeeded" });
+	});
+	const first = await t.mutation(internal.discovery.data.beginRun, { siteId: site, mode: "full" });
+	expect(first.ok).toBe(true);
+	if (!first.ok) return;
+	const report = await t.run((ctx) => ctx.db.get(first.reportId));
+	expect(report).toMatchObject({ runId: first.runId, status: "running", stage: "seed", mode: "full" });
+	expect(await t.mutation(internal.discovery.data.beginRun, { siteId: site, mode: "more-ideas" })).toEqual({ ok: false, reason: "Discovery is already running" });
+});

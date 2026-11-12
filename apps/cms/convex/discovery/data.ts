@@ -1,9 +1,11 @@
 // Site discovery persistence (prd-site-discovery §8): what the crawl and agent steps read and write. Internal only;
 // the screens read through discovery/queries.ts with the site's access rules.
 import { v } from "convex/values";
-import { DISCOVERY_DEFAULTS, type IDiscoverySettings } from "../../src/lib/logic";
+import { checkCap, DISCOVERY_DEFAULTS, estimateRun, type IDiscoverySettings } from "../../src/lib/logic";
 import type { Doc, Id } from "../_generated/dataModel";
-import { internalMutation, internalQuery, type QueryCtx } from "../_generated/server";
+import { internalMutation, internalQuery, type MutationCtx, type QueryCtx } from "../_generated/server";
+import { capSite } from "../lib/budget";
+import { createRun } from "../lib/runs";
 
 export const TEXT_RETENTION_MS = 90 * 86_400_000; // SD7
 
@@ -107,5 +109,33 @@ export const purgeExpiredText = internalMutation({
 			if (++n >= 500) break;
 		}
 		return n;
+	},
+});
+
+/**
+ * Opens a discovery run and its report (F2, F4): one run per site at a time, cap-checked against the text budget
+ * with the run's estimate, refused with the reason the screens show. The workflow (discovery/workflow.ts) starts
+ * on the returned ids.
+ */
+export async function openDiscoveryRun(ctx: MutationCtx, site: Doc<"sites">, o: { mode: "full" | "more-ideas"; trigger: "manual" | "workflow"; userId?: Id<"users"> }): Promise<{ ok: true; runId: Id<"runs">; reportId: Id<"discoveryReports"> } | { ok: false; reason: string }> {
+	const running = await ctx.db.query("runs").withIndex("by_site_status", (q) => q.eq("siteId", site._id).eq("status", "running")).take(50);
+	if (running.some((r) => r.kind === "site-discovery")) return { ok: false, reason: "Discovery is already running" };
+	const estimate = estimateRun("site-discovery", capSite(site));
+	const cap = checkCap(capSite(site), "site-discovery", estimate);
+	if (cap.status === "refused") return { ok: false, reason: cap.message };
+	const n = (await ctx.db.query("discoveryReports").withIndex("by_site_created", (q) => q.eq("siteId", site._id)).take(500)).length;
+	const runId = await createRun(ctx, { site, kind: "site-discovery", trigger: o.trigger, estimate, idempotencyKey: `run:${site._id}:site-discovery:${n + 1}:${o.mode}`, output: `Reading ${site.domain}`, ...(o.userId ? { triggeredBy: o.userId } : {}) });
+	await ctx.db.patch(runId, { stage: "seed" });
+	const reportId = await ctx.db.insert("discoveryReports", { siteId: site._id, runId, status: "running", stage: "seed", mode: o.mode, coverage: { crawled: 0, skipped: [], limitHit: false }, pillars: [], competitorNotes: [], refreshCandidates: [], ideaIds: [], dropped: [], costUsd: 0, createdAt: Date.now() });
+	return { ok: true, runId, reportId };
+}
+
+/** Internal entry (tests, ops, the crawl-only check): open a run without the workflow. */
+export const beginRun = internalMutation({
+	args: { siteId: v.id("sites"), mode: v.union(v.literal("full"), v.literal("more-ideas")) },
+	handler: async (ctx, { siteId, mode }) => {
+		const site = await ctx.db.get(siteId);
+		if (!site) return { ok: false as const, reason: "Site not found" };
+		return openDiscoveryRun(ctx, site, { mode, trigger: "workflow" });
 	},
 });
