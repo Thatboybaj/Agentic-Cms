@@ -66,6 +66,7 @@ export function classify(e: unknown): InferenceError {
 	if (s === 429 || s === 529) return new InferenceError("rate-limited", msg);
 	if (s === 408 || err?.name === "APIConnectionTimeoutError" || err?.name === "TimeoutError") return new InferenceError("timeout", msg);
 	if (typeof s === "number" && s >= 500) return new InferenceError("server", msg);
+	if (s === 403 && /Unpurchased|Access to model denied|Arrearage|overdue/i.test(msg)) return new InferenceError("auth", "Qwen accepted the key but refused the model: the Model Studio account isn't activated for paid use (billing, verification or a risk-control hold). Fix it in the Model Studio console.");
 	if (s === 401 || s === 403) return new InferenceError("auth", "The Qwen key was rejected. Check DASHSCOPE_API_KEY in the Convex deployment.");
 	if (typeof s === "number" && s >= 400) return new InferenceError("bad-request", msg);
 	if (err?.name === "APIConnectionError" || /fetch failed|ECONNRESET|ENOTFOUND|network/i.test(msg)) return new InferenceError("network", msg);

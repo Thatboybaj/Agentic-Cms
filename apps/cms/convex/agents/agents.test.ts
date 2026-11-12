@@ -50,6 +50,7 @@ describe("gateway", () => {
 		expect(classify({ status: 401 })).toMatchObject({ kind: "auth", retryable: false });
 		expect(classify(new TypeError("fetch failed"))).toMatchObject({ kind: "network", retryable: true });
 		expect(classify({ status: 451, message: "data_inspection_failed" })).toMatchObject({ kind: "refusal", retryable: false });
+		expect(classify({ status: 403, message: "Access to model denied. Please make sure you are eligible for using the model." })).toMatchObject({ kind: "auth", message: expect.stringContaining("isn't activated") });
 	});
 });
 
