@@ -62,7 +62,7 @@ describe("connections storage", () => {
 	it("encrypts at rest with CMS_SECRET_KEY (AES-256-GCM round-trip)", async () => {
 		process.env.CMS_SECRET_KEY = "test-key-please-use-32-random-bytes-in-prod";
 		const m = await load();
-		const c = await m.upsertConnection({ siteId: "lumen", provider: "anthropic" }, SECRET);
+		const c = await m.upsertConnection({ siteId: "lumen", provider: "qwen" }, SECRET);
 		const raw = readFileSync(join(dir, "secrets.json"), "utf8");
 		expect(raw).not.toContain(SECRET);
 		expect(raw).not.toContain(Buffer.from(SECRET).toString("base64"));

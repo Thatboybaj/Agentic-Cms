@@ -11,7 +11,7 @@ import { type ActionCtx, internalAction } from "../_generated/server";
 import { type TDraftOutput, vDraftInput, vDraftOutput, vReviseInput, vReviseOutput } from "../pipeline/steps";
 import { modelFor } from "./models";
 import { AgentError, type IAgentResult, runAgentCall } from "./run";
-import { anthropicTransport, formatFor, ledgerFor } from "./sdk";
+import { modelTransport, formatFor, ledgerFor } from "./sdk";
 import { CMS_CONTRACT, REVISE_CONTRACT, ReviseOutput, reviseUserPrompt, toDraft, toRevision, WRITER_SKILL, WriterOutput, writerUserPrompt } from "./writerCore";
 
 async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) {
@@ -32,7 +32,7 @@ export const draft = internalAction({
 		try {
 			const r = await runAgentCall(
 				ledgerFor(ctx, input.siteId, "text", runId),
-				anthropicTransport(),
+				modelTransport(),
 				`agent:${runId}:writer`,
 				choice,
 				{
@@ -62,7 +62,7 @@ export const revise = internalAction({
 		try {
 			const r = await runAgentCall(
 				ledgerFor(ctx, a.siteId, "text", a.runId),
-				anthropicTransport(),
+				modelTransport(),
 				`agent:${a.runId}:revise`,
 				choice,
 				{ system: [WRITER_SKILL.text, REVISE_CONTRACT], user: reviseUserPrompt(a), schema: ReviseOutput, maxTokens: 32_000, effort: "medium" },

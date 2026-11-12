@@ -1,25 +1,32 @@
 // Model price table (handoff 03 step 2: prices live in config with a source date, never inline in code paths).
-// Source: Anthropic first-party API rates, model table cached 2026-11-03 (platform.claude.com pricing). Re-verify in
-// 09 before the pilot. Cache writes bill at 1.25× input (5-minute TTL), cache reads at 0.1× input.
+// Source: Alibaba Cloud Model Studio model pages, Singapore region (International scope), read 2026-11-12. Requests
+// stay under 256K input, the lowest tier. Context cache: implicit cache hits bill at the listed cached rate; explicit
+// cache creation at 1.25× input. Thinking tokens bill as output. Re-verify before changing regions (QWEN_BASE_URL).
 import { MODELS } from "@studio/seo-harness";
 
-export const PRICES_SOURCE_DATE = "2026-11-03";
+export const PRICES_SOURCE_DATE = "2026-11-12";
 
 interface IPrice {
 	/** USD per million input tokens. */
 	inputPerM: number;
 	outputPerM: number;
-	/** Accepts output_config.effort (Haiku 4.5 rejects it). */
+	/** USD per million input tokens served from the context cache. */
+	cachedPerM: number;
+	/** Hybrid thinking model: effort maps to a thinking budget (see thinkingBudget in src/lib/qwen.ts). */
 	effort: boolean;
+	/** Batch (file) inference at half price in this region. */
+	batch: boolean;
 }
 
 export const PRICES: Readonly<Record<(typeof MODELS)[keyof typeof MODELS], IPrice>> = {
-	"claude-haiku-4-5": { inputPerM: 1, outputPerM: 5, effort: false },
-	"claude-sonnet-5": { inputPerM: 2, outputPerM: 10, effort: true },
-	"claude-opus-5-5": { inputPerM: 4, outputPerM: 20, effort: true },
+	// Flash: the page lists $0.113/$0.382 on one scope and third-party trackers $0.15/$0.47 for Singapore; hold the
+	// higher figures so a cap is never under-counted.
+	"qwen3.8-flash": { inputPerM: 0.15, outputPerM: 0.47, cachedPerM: 0.03, effort: true, batch: true },
+	"qwen3.7-plus": { inputPerM: 0.4, outputPerM: 1.6, cachedPerM: 0.08, effort: true, batch: true },
+	"qwen3.8-max": { inputPerM: 2, outputPerM: 6, cachedPerM: 0.25, effort: true, batch: false },
 };
 
-/** Server web search: USD per 1,000 searches (same source and date as the token prices). */
+/** Web search (agent strategy), Singapore: USD per 1,000 calls (same source and date as the token prices). */
 export const WEB_SEARCH_PER_1K = 10;
 
 export interface IUsage {
@@ -27,7 +34,7 @@ export interface IUsage {
 	outputTokens: number;
 	cacheReadTokens: number;
 	cacheWriteTokens: number;
-	/** Server-side web searches the call ran (billed per search). */
+	/** Web searches the call ran (billed per call). */
 	webSearches?: number;
 }
 
@@ -42,7 +49,7 @@ export function priceOf(model: string): IPrice {
 /** Integer micro-dollars (no floats on the money path); rounded up so we never under-charge a cap. */
 export function costMicroUsd(model: string, u: IUsage): number {
 	const p = priceOf(model);
-	const usd = (u.inputTokens * p.inputPerM + u.cacheWriteTokens * p.inputPerM * 1.25 + u.cacheReadTokens * p.inputPerM * 0.1 + u.outputTokens * p.outputPerM) / 1e6 + ((u.webSearches ?? 0) * WEB_SEARCH_PER_1K) / 1000;
+	const usd = (u.inputTokens * p.inputPerM + u.cacheWriteTokens * p.inputPerM * 1.25 + u.cacheReadTokens * p.cachedPerM + u.outputTokens * p.outputPerM) / 1e6 + ((u.webSearches ?? 0) * WEB_SEARCH_PER_1K) / 1000;
 	return Math.ceil(usd * 1e6);
 }
 

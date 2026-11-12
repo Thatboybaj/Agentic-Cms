@@ -8,21 +8,21 @@ Version 0.2.0. See "Changes from v0.1" at the end.
 
 | # | Agent | Role | Model | Why this model |
 |---|---|---|---|---|
-| 0 | orchestrator | Dispatcher: reads the schedule, checks preconditions, routes runs, passes report files between agents | claude-haiku-4-5 | Pure routing and state checks, highest frequency, lowest cost |
-| 1 | seo-action-plan | Strategy: the plan every other agent works from | claude-opus-5-5 | Rare runs, highest judgment density, sets direction for everything downstream |
-| 2 | keyword-research-swarm | Weekly pipeline refill | claude-sonnet-5 | Research synthesis and honest difficulty calls at moderate cost |
-| 3 | blog-writing-agent | Per-post drafting + image production sheet | claude-sonnet-5, escalate to claude-opus-5-5 for pillar pages and money pages | Volume work on Sonnet; the 10 percent of posts that carry rankings get the stronger writer |
-| 4 | on-page-seo-optimizer | Pre-publish audit gate | claude-sonnet-5 | Checklist reasoning plus rewrite quality |
-| 5 | technical-seo-monitor | Weekly site health digest | claude-haiku-4-5 | Mostly mechanical crawling, parsing, and diffing; escalate one-off gnarly diagnostics to Sonnet |
-| 6 | content-refresh-agent | Monthly decay and page-2 cycle | claude-sonnet-5 | Update drafting is real writing work |
-| 7 | link-building-prospector | Monthly prospecting + drafts | claude-sonnet-5 | Personalization judgment and research |
-| 8 | seo-qa-agent | Verifies agent output against reality, tracks progress, demands human updates | claude-sonnet-5 | Cross-checking other agents needs at least their level of reasoning |
-| 9 | visualization-report-agent | Bi-weekly visual progress report + pivot calls | claude-sonnet-5, escalate pivot analysis to claude-opus-5-5 when a pivot trigger fires | Chart generation and narration on Sonnet; strategy-changing recommendations deserve Opus |
-| 10 | visual-asset-agent | Per-post image slots: generate, diagram, or source licensed images; post-process; provenance | claude-sonnet-5 | Route choice, prompt construction, and license judgment are workhorse reasoning; the pixels come from the connected image providers |
-| 11 | site-discovery-agent | On a new site: crawl it, understand the business, propose pillars, keywords and the first batch of ideas, each with evidence | claude-sonnet-5 (site profile on claude-opus-5-5; page extraction on claude-haiku-4-5) | Extraction is high-volume and mechanical; the site profile is the one judgment everything downstream rests on; keywords and ideas are workhorse reasoning over a cached profile |
-| — | CMS agent (product surface) | Owns post state, resolves template slots, runs the auto-gate under autopost, the only component with repo write access (opens and merges MRs) | claude-sonnet-5 (configurable in the CMS) | Not a harness agent and not in the count of 11. It belongs to the Agentic CMS product, calls the harness agents, and consumes their artifacts |
+| 0 | orchestrator | Dispatcher: reads the schedule, checks preconditions, routes runs, passes report files between agents | qwen3.8-flash | Pure routing and state checks, highest frequency, lowest cost |
+| 1 | seo-action-plan | Strategy: the plan every other agent works from | qwen3.8-max | Rare runs, highest judgment density, sets direction for everything downstream |
+| 2 | keyword-research-swarm | Weekly pipeline refill | qwen3.7-plus | Research synthesis and honest difficulty calls at moderate cost |
+| 3 | blog-writing-agent | Per-post drafting + image production sheet | qwen3.7-plus, escalate to qwen3.8-max for pillar pages and money pages | Volume work on Qwen3.7-Plus; the 10 percent of posts that carry rankings get the stronger writer |
+| 4 | on-page-seo-optimizer | Pre-publish audit gate | qwen3.7-plus | Checklist reasoning plus rewrite quality |
+| 5 | technical-seo-monitor | Weekly site health digest | qwen3.8-flash | Mostly mechanical crawling, parsing, and diffing; escalate one-off gnarly diagnostics to Qwen3.7-Plus |
+| 6 | content-refresh-agent | Monthly decay and page-2 cycle | qwen3.7-plus | Update drafting is real writing work |
+| 7 | link-building-prospector | Monthly prospecting + drafts | qwen3.7-plus | Personalization judgment and research |
+| 8 | seo-qa-agent | Verifies agent output against reality, tracks progress, demands human updates | qwen3.7-plus | Cross-checking other agents needs at least their level of reasoning |
+| 9 | visualization-report-agent | Bi-weekly visual progress report + pivot calls | qwen3.7-plus, escalate pivot analysis to qwen3.8-max when a pivot trigger fires | Chart generation and narration on Qwen3.7-Plus; strategy-changing recommendations deserve Qwen3.8-Max |
+| 10 | visual-asset-agent | Per-post image slots: generate, diagram, or source licensed images; post-process; provenance | qwen3.7-plus | Route choice, prompt construction, and license judgment are workhorse reasoning; the pixels come from the connected image providers |
+| 11 | site-discovery-agent | On a new site: crawl it, understand the business, propose pillars, keywords and the first batch of ideas, each with evidence | qwen3.7-plus (site profile on qwen3.8-max; page extraction on qwen3.8-flash) | Extraction is high-volume and mechanical; the site profile is the one judgment everything downstream rests on; keywords and ideas are workhorse reasoning over a cached profile |
+| — | CMS agent (product surface) | Owns post state, resolves template slots, runs the auto-gate under autopost, the only component with repo write access (opens and merges MRs) | qwen3.7-plus (configurable in the CMS) | Not a harness agent and not in the count of 11. It belongs to the Agentic CMS product, calls the harness agents, and consumes their artifacts |
 
-Cost logic: Haiku for high-frequency mechanical work, Sonnet as the workhorse for everything requiring writing or judgment, Opus reserved for the rare runs that set or change strategy. Verify current model names and pricing at https://docs.claude.com before wiring API calls.
+Cost logic: Qwen3.8-Flash for high-frequency mechanical work, Qwen3.7-Plus as the workhorse for everything requiring writing or judgment, Qwen3.8-Max reserved for the rare runs that set or change strategy. Verify current model names and pricing at https://docs.claude.com before wiring API calls.
 
 Why the CMS agent sits outside the count: the harness is portable (it runs in Cowork, n8n, Make, or a custom loop with no CMS at all). The CMS agent is the product surface's native agent. It holds the post state machine, the repo credentials, and the merge decision. Keeping it outside the harness keeps repo writes in exactly one place.
 
@@ -30,7 +30,7 @@ Why the CMS agent sits outside the count: the harness is portable (it runs in Co
 
 ```
                           ┌────────────────────────────┐
-                          │   ORCHESTRATOR (Haiku)      │
+                          │   ORCHESTRATOR (Qwen3.8-Flash)      │
                           │   schedule + preconditions  │
                           └──────────┬─────────────────┘
         ┌────────────┬──────────────┼───────────────┬──────────────┐
@@ -114,5 +114,6 @@ The image path, end to end: blog-writing-agent's image production sheet → visu
 - Human gates changed (founder direction C10/C11, 27 Sep 2026): `publish` replaced by `approve_idea`; `spend_money` narrowed to `spend_over_cap` (runs inside the cap proceed after their estimate). New `publishing` block: autopost on by default, auto-merge on green CI, human review when autopost is off.
 - Escalation rule 4 rewritten to match: automatic publishing with guardrails; ideas, the plan, outreach sends, deletions/prunes, and spend above the cap still terminate at a human.
 - Operating loop, data contracts, and schedule updated for the visual-asset-agent and the CMS agent.
-- Model IDs updated to the current family: claude-opus-4-8 → claude-opus-5-5, claude-sonnet-4-6 → claude-sonnet-5, claude-haiku-4-5 unchanged. Verify at https://docs.claude.com before deploying.
+- Model IDs updated to the current family: claude-opus-4-8 → claude-opus-5-5, claude-sonnet-4-6 → claude-sonnet-5, claude-haiku-4-5 unchanged
+- 2026-11-12: provider switched from Anthropic to Qwen (Alibaba Cloud Model Studio): claude-haiku-4-5 → qwen3.8-flash, claude-sonnet-5 → qwen3.7-plus, claude-opus-5-5 → qwen3.8-max. Verify at https://docs.claude.com before deploying.
 - seo-qa-agent gained a contract line for the visual-asset-agent; blog-writing-agent carries "CMS v0.2 change" notes. All other skills are verbatim from v0.1.

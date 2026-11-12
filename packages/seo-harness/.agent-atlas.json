@@ -49,14 +49,14 @@
    "tags": [
     "dispatcher",
     "harness",
-    "model:claude-haiku-4-5"
+    "model:qwen3.8-flash"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 20,
-     "excerpt": "orchestrator: model claude-haiku-4-5"
+     "excerpt": "orchestrator: model qwen3.8-flash"
     },
     {
      "path": "HARNESS.md",
@@ -88,14 +88,14 @@
    "confidence": "confirmed",
    "tags": [
     "strategy",
-    "model:claude-opus-5-5"
+    "model:qwen3.8-max"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 25,
-     "excerpt": "seo-action-plan: model claude-opus-5-5"
+     "excerpt": "seo-action-plan: model qwen3.8-max"
     },
     {
      "path": "HARNESS.md",
@@ -134,14 +134,14 @@
    "tags": [
     "research",
     "ideas",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 32,
-     "excerpt": "keyword-research-swarm: model claude-sonnet-5"
+     "excerpt": "keyword-research-swarm: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -180,14 +180,14 @@
    "confidence": "confirmed",
    "tags": [
     "writing",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 39,
-     "excerpt": "blog-writing-agent: model claude-sonnet-5"
+     "excerpt": "blog-writing-agent: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -198,7 +198,7 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 41,
-     "excerpt": "escalate_to: claude-opus-5-5 when pillar_page, money_page"
+     "excerpt": "escalate_to: qwen3.8-max when pillar_page, money_page"
     },
     {
      "path": "harness-config.yaml",
@@ -237,14 +237,14 @@
    "confidence": "confirmed",
    "tags": [
     "gate",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 48,
-     "excerpt": "on-page-seo-optimizer: model claude-sonnet-5"
+     "excerpt": "on-page-seo-optimizer: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -280,14 +280,14 @@
    "confidence": "confirmed",
    "tags": [
     "technical",
-    "model:claude-haiku-4-5"
+    "model:qwen3.8-flash"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 55,
-     "excerpt": "technical-seo-monitor: model claude-haiku-4-5"
+     "excerpt": "technical-seo-monitor: model qwen3.8-flash"
     },
     {
      "path": "HARNESS.md",
@@ -298,7 +298,7 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 57,
-     "excerpt": "escalate_to: claude-sonnet-5 when ambiguous_diagnosis"
+     "excerpt": "escalate_to: qwen3.7-plus when ambiguous_diagnosis"
     },
     {
      "path": "skills/technical-seo-monitor/SKILL.md",
@@ -333,14 +333,14 @@
    "confidence": "confirmed",
    "tags": [
     "refresh",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 63,
-     "excerpt": "content-refresh-agent: model claude-sonnet-5"
+     "excerpt": "content-refresh-agent: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -380,14 +380,14 @@
    "confidence": "confirmed",
    "tags": [
     "links",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 70,
-     "excerpt": "link-building-prospector: model claude-sonnet-5"
+     "excerpt": "link-building-prospector: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -428,14 +428,14 @@
    "confidence": "confirmed",
    "tags": [
     "qa",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 77,
-     "excerpt": "seo-qa-agent: model claude-sonnet-5"
+     "excerpt": "seo-qa-agent: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -475,14 +475,14 @@
    "confidence": "confirmed",
    "tags": [
     "reporting",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 85,
-     "excerpt": "visualization-report-agent: model claude-sonnet-5"
+     "excerpt": "visualization-report-agent: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -493,7 +493,7 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 87,
-     "excerpt": "escalate_to: claude-opus-5-5 when pivot_trigger_fired"
+     "excerpt": "escalate_to: qwen3.8-max when pivot_trigger_fired"
     },
     {
      "path": "templates/biweekly-report-template.html",
@@ -537,14 +537,14 @@
    "tags": [
     "images",
     "new-in-v0.2",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "evidence": [
     {
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 93,
-     "excerpt": "visual-asset-agent: model claude-sonnet-5"
+     "excerpt": "visual-asset-agent: model qwen3.7-plus"
     },
     {
      "path": "HARNESS.md",
@@ -610,7 +610,7 @@
     "product",
     "autopost",
     "repo-writer",
-    "model:claude-sonnet-5"
+    "model:qwen3.7-plus"
    ],
    "limitations": [
     "In the current Agentic CMS build the agent's work is simulated in the client store; the model is configurable in the CMS."
@@ -648,7 +648,7 @@
    ]
   },
   {
-   "id": "model-claude-opus-5-5",
+   "id": "model-qwen3.8-max",
    "type": "model",
    "name": "Claude Opus 5.5",
    "role": "strongest tier",
@@ -667,12 +667,12 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 4,
-     "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+     "excerpt": "Current family: qwen3.8-max, qwen3.7-plus, qwen3.8-flash"
     }
    ]
   },
   {
-   "id": "model-claude-sonnet-5",
+   "id": "model-qwen3.7-plus",
    "type": "model",
    "name": "Claude Sonnet 5",
    "role": "workhorse tier",
@@ -691,12 +691,12 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 4,
-     "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+     "excerpt": "Current family: qwen3.8-max, qwen3.7-plus, qwen3.8-flash"
     }
    ]
   },
   {
-   "id": "model-claude-haiku-4-5",
+   "id": "model-qwen3.8-flash",
    "type": "model",
    "name": "Claude Haiku 4.5",
    "role": "fast tier",
@@ -715,7 +715,7 @@
      "path": "harness-config.yaml",
      "kind": "config",
      "line": 4,
-     "excerpt": "Current family: claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5"
+     "excerpt": "Current family: qwen3.8-max, qwen3.7-plus, qwen3.8-flash"
     }
    ]
   },
@@ -1368,7 +1368,7 @@
   },
   {
    "from": "seo-action-plan",
-   "to": "model-claude-opus-5-5",
+   "to": "model-qwen3.8-max",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1382,7 +1382,7 @@
   },
   {
    "from": "keyword-research-swarm",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1396,7 +1396,7 @@
   },
   {
    "from": "blog-writing-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1410,7 +1410,7 @@
   },
   {
    "from": "on-page-seo-optimizer",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1424,7 +1424,7 @@
   },
   {
    "from": "content-refresh-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1438,7 +1438,7 @@
   },
   {
    "from": "link-building-prospector",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1452,7 +1452,7 @@
   },
   {
    "from": "seo-qa-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1466,7 +1466,7 @@
   },
   {
    "from": "visualization-report-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1480,7 +1480,7 @@
   },
   {
    "from": "visual-asset-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1494,7 +1494,7 @@
   },
   {
    "from": "cms-agent",
-   "to": "model-claude-sonnet-5",
+   "to": "model-qwen3.7-plus",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1508,7 +1508,7 @@
   },
   {
    "from": "orchestrator",
-   "to": "model-claude-haiku-4-5",
+   "to": "model-qwen3.8-flash",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",
@@ -1522,7 +1522,7 @@
   },
   {
    "from": "technical-seo-monitor",
-   "to": "model-claude-haiku-4-5",
+   "to": "model-qwen3.8-flash",
    "type": "uses-model",
    "label": "declared model",
    "confidence": "confirmed",

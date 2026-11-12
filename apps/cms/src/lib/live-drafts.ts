@@ -35,7 +35,7 @@ export interface ILiveDraft {
 type TEntry = { status: "pending"; startedAt: number } | { status: "done"; draft: ILiveDraft } | { status: "failed"; reason: string; silent?: boolean };
 
 const entries = new Map<string, TEntry>();
-/** Longest the store waits for Claude before falling back to the simulated draft. */
+/** Longest the store waits for the model before falling back to the simulated draft. */
 export const LIVE_DRAFT_TIMEOUT_MS = 150_000;
 
 const canFetch = () => typeof window !== "undefined" && typeof fetch === "function";
@@ -57,7 +57,7 @@ export function requestLiveDraft(postId: string, body: ILiveDraftRequest) {
 		.catch((e: unknown) => entries.set(postId, { status: "failed", reason: e instanceof Error ? e.message : "Request failed" }));
 }
 
-/** "waiting" while Claude is still writing (and within the timeout); otherwise the result, consumed once. */
+/** "waiting" while the model is still writing (and within the timeout); otherwise the result, consumed once. */
 export function takeLiveDraft(postId: string): { status: "waiting"; seconds: number } | { status: "done"; draft: ILiveDraft } | { status: "failed"; reason: string; silent?: boolean } | { status: "none" } {
 	const e = entries.get(postId);
 	if (!e) return { status: "none" };
@@ -65,7 +65,7 @@ export function takeLiveDraft(postId: string): { status: "waiting"; seconds: num
 		const ms = Date.now() - e.startedAt;
 		if (ms < LIVE_DRAFT_TIMEOUT_MS) return { status: "waiting", seconds: Math.round(ms / 1000) };
 		entries.delete(postId);
-		return { status: "failed", reason: "Claude took too long" };
+		return { status: "failed", reason: "The model took too long" };
 	}
 	entries.delete(postId);
 	return e;

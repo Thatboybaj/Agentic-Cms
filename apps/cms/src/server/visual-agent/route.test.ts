@@ -62,10 +62,10 @@ describe("chooseRoute — harness routing table", () => {
 		expect(chooseRoute(s, [conn("higgsfield-mcp"), conn("replicate")]).connectionId).toBe("c-replicate");
 	});
 
-	it("diagram slots draw SVG (Claude when connected), never call an image provider", () => {
+	it("diagram slots draw SVG (Qwen when connected), never call an image provider", () => {
 		const s = slot({ type: "diagram", provider: "openai" });
 		expect(chooseRoute(s, [conn("openai-images")])).toMatchObject({ route: "diagram", provider: "svg-template", estimateUsd: 0 });
-		expect(chooseRoute(s, [conn("anthropic")])).toMatchObject({ route: "diagram", provider: "anthropic-svg", connectionId: "c-anthropic" });
+		expect(chooseRoute(s, [conn("qwen")])).toMatchObject({ route: "diagram", provider: "qwen-svg", connectionId: "c-qwen" });
 	});
 
 	it("charts are inline SVG, never generated, even with generators connected", () => {

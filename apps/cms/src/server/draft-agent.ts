@@ -1,13 +1,12 @@
 import "server-only";
-// Blog writing agent (harness agent: blog-writing-agent, Phase 1 text only). Calls Claude with the post brief and the
+// Blog writing agent (harness agent: blog-writing-agent, Phase 1 text only). Calls Qwen with the post brief and the
 // site's brand pack and returns structured blocks. Image slots are placed by the CMS, not the model. Claims the model
 // can't source come back as `unverified_claims` and become [VERIFY] fact markers in the editor (never invented).
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
+import { QwenHttpError, qwenChat } from "@/lib/qwen";
 
-/** Harness tier for blog-writing-agent is the workhorse model; override with ANTHROPIC_MODEL. */
-export const DEFAULT_DRAFT_MODEL = "claude-sonnet-5-5";
+/** Harness tier for blog-writing-agent is the workhorse model; override with QWEN_MODEL. */
+export const DEFAULT_DRAFT_MODEL = "qwen3.7-plus";
 const TIMEOUT_MS = 120_000;
 
 export class DraftError extends Error {
@@ -63,10 +62,9 @@ const SYSTEM = [
 ].join("\n");
 
 export async function writeDraft(input: TDraftInput): Promise<TDraftOutput> {
-	const apiKey = process.env.ANTHROPIC_API_KEY;
-	if (!apiKey) throw new DraftError("Live drafting isn't configured (no ANTHROPIC_API_KEY).", 503);
-	const model = process.env.ANTHROPIC_MODEL?.trim() || DEFAULT_DRAFT_MODEL;
-	const client = new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
+	const apiKey = process.env.DASHSCOPE_API_KEY?.trim();
+	if (!apiKey) throw new DraftError("Live drafting isn't configured (no DASHSCOPE_API_KEY).", 503);
+	const model = process.env.QWEN_MODEL?.trim() || DEFAULT_DRAFT_MODEL;
 	const words = Math.min(input.wordTarget, Number(process.env.LIVE_DRAFT_MAX_WORDS) || 1200);
 	const user = [
 		`Client: ${input.siteName}${input.industry ? ` (${input.industry})` : ""}`,
@@ -79,34 +77,37 @@ export async function writeDraft(input: TDraftInput): Promise<TDraftOutput> {
 	]
 		.filter(Boolean)
 		.join("\n");
+	let res;
 	try {
-		const res = await client.messages.parse({
-			model,
-			max_tokens: Math.min(16000, Math.round(words * 2.2) + 1500),
-			system: SYSTEM,
-			messages: [{ role: "user", content: user }],
-			output_config: { format: zodOutputFormat(DraftSchema) },
-		});
-		if (res.stop_reason === "refusal") throw new DraftError("Claude declined to write this post.");
-		if (res.stop_reason === "max_tokens") throw new DraftError("The draft was cut off before it finished.");
-		const out = res.parsed_output;
-		if (!out || !out.blocks.length) throw new DraftError("Claude returned an empty draft.");
-		return { ...out, model, inputTokens: res.usage.input_tokens, outputTokens: res.usage.output_tokens };
+		res = await qwenChat(apiKey, { model, system: [SYSTEM], user, jsonSchema: z.toJSONSchema(DraftSchema), maxTokens: Math.min(16000, Math.round(words * 2.2) + 1500), effort: "low" }, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 	} catch (e) {
-		if (e instanceof DraftError) throw e;
-		if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) throw new DraftError("Anthropic rejected the API key.", 503);
-		if (e instanceof Anthropic.NotFoundError) throw new DraftError(`Anthropic doesn't know the model "${model}". Set ANTHROPIC_MODEL.`, 503);
-		if (e instanceof Anthropic.RateLimitError) throw new DraftError("Anthropic is rate-limiting this key. Try again in a minute.", 429);
-		if (e instanceof Anthropic.APIConnectionTimeoutError) throw new DraftError("No response from Anthropic in time.", 504);
-		if (e instanceof Anthropic.APIError) throw new DraftError(`Anthropic answered with an error (${e.status ?? "unknown"}).`);
+		if (e instanceof QwenHttpError) {
+			if (e.status === 401 || e.status === 403) throw new DraftError("Qwen rejected the API key.", 503);
+			if (e.status === 404) throw new DraftError(`Qwen doesn't know the model "${model}". Set QWEN_MODEL.`, 503);
+			if (e.status === 429) throw new DraftError("Qwen is rate-limiting this key. Try again in a minute.", 429);
+			if (e.status === 451) throw new DraftError("Qwen's content check declined this post.");
+			throw new DraftError(`Qwen answered with an error (${e.status}).`);
+		}
+		if ((e as Error)?.name === "TimeoutError") throw new DraftError("No response from Qwen in time.", 504);
 		console.error("[draft-agent] unexpected:", (e as Error)?.name ?? "unknown");
 		throw new DraftError("The writing agent failed unexpectedly.");
 	}
+	if (res.stopReason === "refusal") throw new DraftError("The model declined to write this post.");
+	if (res.stopReason === "max_tokens") throw new DraftError("The draft was cut off before it finished.");
+	const parsed = (() => {
+		try {
+			return DraftSchema.safeParse(JSON.parse(res.text));
+		} catch {
+			return null;
+		}
+	})();
+	if (!parsed?.success || !parsed.data.blocks.length) throw new DraftError("The model returned an empty draft.");
+	return { ...parsed.data, model, inputTokens: res.usage.inputTokens + res.usage.cacheReadTokens, outputTokens: res.usage.outputTokens };
 }
 
 // ─── Abuse guard for public demos ────────────────────────────────────────────
 // Per-instance memory only (serverless instances don't share it). The real ceiling is the monthly spend limit you set
-// in the Anthropic Console; this just stops one visitor from hammering the key.
+// in the Model Studio console; this just stops one visitor from hammering the key.
 const hits = new Map<string, number[]>();
 export function rateLimited(ip: string, perHour = Number(process.env.LIVE_DRAFTS_PER_HOUR) || 5): boolean {
 	const now = Date.now();

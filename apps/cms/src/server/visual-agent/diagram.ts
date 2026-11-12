@@ -1,16 +1,15 @@
-// Diagram + chart routes (SKILL Step 4). With an Anthropic connection, Claude draws the SVG (structured output,
+// Diagram + chart routes (SKILL Step 4). With a Qwen connection, the model draws the SVG (structured output,
 // SVG only), which is then sanitized and fact-checked (every number in its text must appear in the post); anything
 // that fails falls back to the deterministic template diagram. Charts are only ever the inline SVG from svg.ts.
-import Anthropic from "@anthropic-ai/sdk";
-import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { z } from "zod/v4";
+import { QwenHttpError, qwenChat } from "../../lib/qwen";
 import type { IConnection } from "../../features/connections/catalog";
 import { getSecret } from "./deps";
 import { brandColors, chartSvg, deterministicDiagrams, sanitizeSvg, stepsFor } from "./svg";
 import type { IAgentBrandPack, IPostExcerpt, TAgentSlot } from "./types";
 
 /** Harness workhorse tier (harness-config.yaml visual-asset-agent.model); the connection's `model` overrides it. */
-export const DEFAULT_DIAGRAM_MODEL = "claude-sonnet-5";
+export const DEFAULT_DIAGRAM_MODEL = "qwen3.7-plus";
 const TIMEOUT_MS = 90_000;
 const MAX_EXCERPT_CHARS = 12_000;
 
@@ -46,16 +45,15 @@ export function inventedNumbers(svg: string, post: IPostExcerpt): string[] {
 	return [...new Set(nums.filter((n) => !new RegExp(`(^|[^\\d.])${n.replace(".", "\\.")}([^\\d]|$)`).test(source)))];
 }
 
-async function claudeDiagram(conn: IConnection, slot: TAgentSlot, post: IPostExcerpt, brand: IAgentBrandPack): Promise<{ svg: string; refs: string[]; model: string }> {
+async function modelDiagram(conn: IConnection, slot: TAgentSlot, post: IPostExcerpt, brand: IAgentBrandPack): Promise<{ svg: string; refs: string[]; model: string }> {
 	let apiKey: string | null;
 	try {
 		apiKey = await getSecret(conn.id);
 	} catch {
-		throw new DiagramError("The Anthropic key can't be read. Enter it again in Settings → Connections.");
+		throw new DiagramError("The Qwen key can't be read. Enter it again in Settings → Connections.");
 	}
-	if (!apiKey) throw new DiagramError("Add your Anthropic API key in Settings → Connections.");
+	if (!apiKey) throw new DiagramError("Add your Qwen (Model Studio) API key in Settings → Connections.");
 	const model = conn.model?.trim() || DEFAULT_DIAGRAM_MODEL;
-	const client = new Anthropic({ apiKey, timeout: TIMEOUT_MS, maxRetries: 1 });
 	const c = brandColors(brand.palette);
 	const { steps } = stepsFor(slot, post);
 	const user = [
@@ -68,36 +66,39 @@ async function claudeDiagram(conn: IConnection, slot: TAgentSlot, post: IPostExc
 		"<post_excerpt>",
 		excerptText(post),
 		"</post_excerpt>",
-	].filter((l) => l !== "").join("\n");
+	]
+		.filter((l) => l !== "")
+		.join("\n");
+	let res;
 	try {
-		const res = await client.messages.parse({
-			model,
-			max_tokens: 16000,
-			system: SYSTEM,
-			messages: [{ role: "user", content: user }],
-			output_config: { format: zodOutputFormat(DiagramSchema) },
-		});
-		if (res.stop_reason === "refusal") throw new DiagramError("Claude declined to draw this diagram.");
-		if (res.stop_reason === "max_tokens") throw new DiagramError("Claude's diagram was cut off before it finished.");
-		const out = res.parsed_output;
-		if (!out?.svg) throw new DiagramError("Claude returned no SVG.");
-		return { svg: out.svg, refs: out.source_refs, model };
+		res = await qwenChat(apiKey, { model, system: [SYSTEM], user, jsonSchema: z.toJSONSchema(DiagramSchema), maxTokens: 16000, effort: "low" }, { signal: AbortSignal.timeout(TIMEOUT_MS) });
 	} catch (e) {
-		if (e instanceof DiagramError) throw e;
-		if (e instanceof Anthropic.AuthenticationError || e instanceof Anthropic.PermissionDeniedError) throw new DiagramError("Anthropic rejected the key. Check it in Settings → Connections.");
-		if (e instanceof Anthropic.NotFoundError) throw new DiagramError(`Anthropic doesn't know the model "${model}". Check the model id on the connection.`);
-		if (e instanceof Anthropic.RateLimitError) throw new DiagramError("Anthropic is rate-limiting this key. Try again in a minute.");
-		if (e instanceof Anthropic.APIConnectionTimeoutError) throw new DiagramError(`No response from Anthropic within ${TIMEOUT_MS / 1000} seconds.`);
-		if (e instanceof Anthropic.APIConnectionError) throw new DiagramError("Couldn't reach Anthropic. Check the server's network.");
-		if (e instanceof Anthropic.BadRequestError) throw new DiagramError("Anthropic refused the request as malformed.");
-		if (e instanceof Anthropic.APIError) throw new DiagramError(`Anthropic answered with an error (${e.status ?? "unknown"}).`);
-		throw new DiagramError("The diagram model failed unexpectedly.");
+		if (e instanceof QwenHttpError) {
+			if (e.status === 401 || e.status === 403) throw new DiagramError("Qwen rejected the key. Check it in Settings → Connections.");
+			if (e.status === 404 || /model/i.test(e.code ?? "")) throw new DiagramError(`Qwen doesn't know the model "${model}". Check the model id on the connection.`);
+			if (e.status === 429) throw new DiagramError("Qwen is rate-limiting this key. Try again in a minute.");
+			if (e.status === 451) throw new DiagramError("Qwen's content check declined this diagram.");
+			throw new DiagramError(`Qwen answered with an error (${e.status}).`);
+		}
+		if ((e as Error)?.name === "TimeoutError") throw new DiagramError(`No response from Qwen within ${TIMEOUT_MS / 1000} seconds.`);
+		throw new DiagramError("Couldn't reach Qwen. Check the server's network.");
 	}
+	if (res.stopReason === "refusal") throw new DiagramError("The model declined to draw this diagram.");
+	if (res.stopReason === "max_tokens") throw new DiagramError("The diagram was cut off before it finished.");
+	const parsed = (() => {
+		try {
+			return DiagramSchema.safeParse(JSON.parse(res.text));
+		} catch {
+			return null;
+		}
+	})();
+	if (!parsed?.success || !parsed.data.svg) throw new DiagramError("The model returned no SVG.");
+	return { svg: parsed.data.svg, refs: parsed.data.source_refs, model };
 }
 
 export interface IDiagramOut {
 	svgs: { svg: string; note: string }[];
-	provider: "anthropic-svg" | "svg-template";
+	provider: "qwen-svg" | "svg-template";
 	model: string;
 	/** Why the model path was skipped or rejected, if it was. */
 	fallbackNote?: string;
@@ -108,14 +109,14 @@ export async function drawDiagram(slot: TAgentSlot, post: IPostExcerpt, brand: I
 	const templates = deterministicDiagrams(slot, post, brand);
 	if (llm) {
 		try {
-			const r = await claudeDiagram(llm, slot, post, brand);
+			const r = await modelDiagram(llm, slot, post, brand);
 			const clean = sanitizeSvg(r.svg);
-			if (!clean) throw new DiagramError("Claude's SVG didn't survive sanitizing.");
+			if (!clean) throw new DiagramError("The model's SVG didn't survive sanitizing.");
 			const invented = inventedNumbers(clean, post);
-			if (invented.length) throw new DiagramError(`Claude's diagram showed numbers the post doesn't state (${invented.slice(0, 3).join(", ")}).`);
+			if (invented.length) throw new DiagramError(`The model's diagram showed numbers the post doesn't state (${invented.slice(0, 3).join(", ")}).`);
 			const svgs = [{ svg: clean, note: `Drawn by ${r.model} from ${r.refs.slice(0, 3).join(" · ") || "the post excerpt"}` }];
 			if (templates[0]) svgs.push({ svg: templates[0].svg, note: `Template ${templates[0].kind} from ${templates[0].from}` });
-			return { svgs, provider: "anthropic-svg", model: r.model };
+			return { svgs, provider: "qwen-svg", model: r.model };
 		} catch (e) {
 			fallbackNote = e instanceof DiagramError ? e.message : "The diagram model failed.";
 		}

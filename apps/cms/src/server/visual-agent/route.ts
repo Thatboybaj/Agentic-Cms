@@ -91,13 +91,13 @@ function sourceDecision(c: IAgentConnection, need: TRoutingNeed, brand: IAgentBr
 }
 
 function diagramDecision(connections: IAgentConnection[], need: TRoutingNeed, why: string): IRouteDecision {
-	const llm = pick(connections, ["anthropic"])[0];
+	const llm = pick(connections, ["qwen"])[0];
 	return {
 		route: "diagram",
 		need,
 		connectionId: llm?.id,
-		provider: llm ? "anthropic-svg" : "svg-template",
-		label: llm ? "Will draw a diagram from this post's content with Claude" : "Will draw a diagram from this post's steps",
+		provider: llm ? "qwen-svg" : "svg-template",
+		label: llm ? "Will draw a diagram from this post's content with Qwen" : "Will draw a diagram from this post's steps",
 		reason: why,
 		count: 2,
 		estimateUsd: llm ? 0.02 : 0,

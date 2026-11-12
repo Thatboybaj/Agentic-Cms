@@ -59,7 +59,7 @@ test("instructAgent (live) queues one running run; asking twice while it works i
 
 test("guarded edits become pending diffs; a meta-description diff applies on accept and the audit re-runs", async () => {
 	const { t, as, site, postId } = await world();
-	const runId = await t.run(async (ctx) => (await ctx.db.insert("runs", { workspaceId: (await ctx.db.get(site))!.workspaceId, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "Blog writer agent", agentId: "post-generation", model: "claude-sonnet-5", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 0.06, budget: "text", startedAt: 0, output: "", idempotencyKey: "k", attempt: 1 })));
+	const runId = await t.run(async (ctx) => (await ctx.db.insert("runs", { workspaceId: (await ctx.db.get(site))!.workspaceId, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "Blog writer agent", agentId: "post-generation", model: "qwen3.7-plus", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 0.06, budget: "text", startedAt: 0, output: "", idempotencyKey: "k", attempt: 1 })));
 	const meta = "What implant cost in Lagos depends on, from the implant system to the crown, and the questions to ask before you book a consultation.";
 	await t.mutation(internal.agentEdits.saveSuggestions, {
 		siteId: site, postId, runId, version: 1, notes: "",
@@ -81,7 +81,7 @@ test("guarded edits become pending diffs; a meta-description diff applies on acc
 
 test("a stale answer (the draft moved on) is cancelled, not offered", async () => {
 	const { t, site, postId } = await world();
-	const runId = await t.run(async (ctx) => (await ctx.db.insert("runs", { workspaceId: (await ctx.db.get(site))!.workspaceId, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "a", agentId: "post-generation", model: "claude-sonnet-5", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 0.06, budget: "text", startedAt: 0, output: "", idempotencyKey: "k2", attempt: 1 })));
+	const runId = await t.run(async (ctx) => (await ctx.db.insert("runs", { workspaceId: (await ctx.db.get(site))!.workspaceId, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "a", agentId: "post-generation", model: "qwen3.7-plus", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 0.06, budget: "text", startedAt: 0, output: "", idempotencyKey: "k2", attempt: 1 })));
 	await t.mutation(internal.agentEdits.saveSuggestions, { siteId: site, postId, runId, version: 0, notes: "", meta: [{ taskId: "t1", instruction: "x" }], result: { edits: [], dropped: [] } });
 	expect((await t.run((ctx) => ctx.db.get(runId)))!.status).toBe("cancelled");
 });

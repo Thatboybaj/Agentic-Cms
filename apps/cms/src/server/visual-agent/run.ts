@@ -27,7 +27,7 @@ const MIN_CANDIDATES = 2;
 const NO_RETRY = /key|model id|Set a model|Add your|Pick the|can't generate|isn't|turned off|rejected/i;
 
 const storeProvider = (p?: string): TProvider =>
-	p === "higgsfield-mcp" ? "higgsfield" : p === "openai-images" ? "openai" : p === "inline-svg" || p === "svg-template" || p === "anthropic-svg" ? "inline-svg" : "open-source";
+	p === "higgsfield-mcp" ? "higgsfield" : p === "openai-images" ? "openai" : p === "inline-svg" || p === "svg-template" || p === "qwen-svg" ? "inline-svg" : "open-source";
 
 function log(siteId: string, slotId: string, a: IAttempt) {
 	console.info(`[visual-agent] site=${siteId} slot=${slotId} route=${a.route} provider=${a.provider ?? "-"} ok=${a.ok} ms=${a.ms} note=${JSON.stringify(a.note.slice(0, 160))}`);
@@ -102,11 +102,11 @@ export async function runVisualAgent(input: IRunInput): Promise<IVisualAgentResu
 						hue: 174 + i * 20,
 						selected: false,
 						url: svgDataUri(s.svg),
-						source: { kind: "diagram", provider: out.provider === "anthropic-svg" && i === 0 ? "anthropic" : "inline-svg", model: out.provider === "anthropic-svg" && i === 0 ? out.model : "svg-template", note: s.note },
+						source: { kind: "diagram", provider: out.provider === "qwen-svg" && i === 0 ? "qwen" : "inline-svg", model: out.provider === "qwen-svg" && i === 0 ? out.model : "svg-template", note: s.note },
 					})),
 					provider: out.provider,
 					model: out.model,
-					costEstimateUsd: out.provider === "anthropic-svg" ? d.estimateUsd : 0,
+					costEstimateUsd: out.provider === "qwen-svg" ? d.estimateUsd : 0,
 					meta: { provider: "inline-svg", model: out.model },
 					attempts,
 				};

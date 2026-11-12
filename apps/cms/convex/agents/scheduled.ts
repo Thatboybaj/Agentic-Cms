@@ -10,7 +10,7 @@ import { vRunArtifact, type TRunArtifact } from "../pipeline/steps";
 import { modelFor } from "./models";
 import { AgentError, type IAgentResult, runAgentCall } from "./run";
 import { QA_CONTRACT, QA_SKILL, QaOutput, qaScorecard, pipelineCsv, refreshCandidates, safeIdeas, SWARM_RESEARCH_CONTRACT, SWARM_SKILL, SWARM_STRUCTURE_CONTRACT, SwarmOutput, swarmResearchPrompt, swarmStructurePrompt } from "./scheduledCore";
-import { anthropicTransport, formatFor, ledgerFor } from "./sdk";
+import { modelTransport, formatFor, ledgerFor } from "./sdk";
 
 const MAX_SEARCHES = 6;
 const REFRESH_CAPACITY = 2;
@@ -29,7 +29,7 @@ async function swarm(ctx: ActionCtx, siteId: Id<"sites">, runId: Id<"runs">): Pr
 	if (!c) return { status: "failed", output: "Site not found", ideas: none };
 	if (!c.context.pillars.length) return { status: "succeeded", output: "No pillars in the plan yet · nothing to research", ideas: none };
 	const ledger = ledgerFor(ctx, siteId, "text", runId);
-	const transport = anthropicTransport();
+	const transport = modelTransport();
 	// Research on the site's strategy tier with web search; structuring on the mechanical tier (cheap, no tools).
 	const research = await runAgentCall<string>(ledger, transport, `agent:${runId}:swarm-research`, modelFor("keyword-research-swarm", c.modelRouting), { system: [SWARM_SKILL.text, SWARM_RESEARCH_CONTRACT], user: swarmResearchPrompt(c.context), maxTokens: 16_000, effort: "medium", webSearch: { maxUses: MAX_SEARCHES } }, formatFor as never);
 	await record(ctx, runId, research);
@@ -53,7 +53,7 @@ async function qa(ctx: ActionCtx, siteId: Id<"sites">, runId: Id<"runs">, mode: 
 	if (!d) return { status: "failed", output: "Site not found", ideas: none };
 	let out = null;
 	try {
-		const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `agent:${runId}:qa`, modelFor("seo-qa-agent", d.modelRouting), { system: [QA_SKILL.text, QA_CONTRACT], user: `<digest>\n${JSON.stringify(d.digest, null, 1)}\n</digest>`, schema: QaOutput, maxTokens: 4_000, effort: "low" }, formatFor);
+		const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), modelTransport(), `agent:${runId}:qa`, modelFor("seo-qa-agent", d.modelRouting), { system: [QA_SKILL.text, QA_CONTRACT], user: `<digest>\n${JSON.stringify(d.digest, null, 1)}\n</digest>`, schema: QaOutput, maxTokens: 4_000, effort: "low" }, formatFor);
 		await record(ctx, runId, r);
 		out = r.output;
 	} catch (e) {

@@ -10,7 +10,7 @@ import { type ActionCtx, internalAction } from "../_generated/server";
 import { vSafeEdits, vTask, vTaskMeta } from "../agentEdits";
 import { EDIT_CONTRACT, EditOutput, editUserPrompt, OPTIMIZER_SKILL, safeEdits, type ISafeEdits, type TEditTask } from "./editorCore";
 import { AgentError, runAgentCall } from "./run";
-import { anthropicTransport, formatFor, ledgerFor } from "./sdk";
+import { modelTransport, formatFor, ledgerFor } from "./sdk";
 
 const START = { tier: CMS_AGENT.modelTier, escalated: false };
 
@@ -18,7 +18,7 @@ async function runEdit(ctx: ActionCtx, siteId: Id<"sites">, postId: Id<"posts">,
 	const c = await ctx.runQuery(internal.agentEdits.context, { siteId, postId });
 	if (!c) throw new Error("Post not in this site");
 	try {
-		const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), key, START, { system: [OPTIMIZER_SKILL.text, EDIT_CONTRACT], user: editUserPrompt(c.post, tasks), schema: EditOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
+		const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), modelTransport(), key, START, { system: [OPTIMIZER_SKILL.text, EDIT_CONTRACT], user: editUserPrompt(c.post, tasks), schema: EditOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
 		await ctx.runMutation(internal.spend.recordUsage, { runId, model: r.model, tier: r.tier, escalated: r.escalated, inputTokens: r.totalInputTokens, outputTokens: r.totalOutputTokens, costMicroUsd: r.totalMicroUsd });
 		return { version: c.version, safe: safeEdits(r.output, c.post, tasks), notes: r.output.notes };
 	} catch (e) {

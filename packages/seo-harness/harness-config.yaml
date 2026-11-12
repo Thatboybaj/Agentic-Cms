@@ -1,8 +1,7 @@
 # Grandeur SEO Agent Harness - machine-readable config
 # Wire this into your scheduler of choice (Cowork scheduled runs, n8n, Make, or a custom API loop).
-# Model IDs MUST be verified against https://docs.claude.com before deploying.
-# Current family per the build environment (27 Sep 2026): claude-opus-5-5, claude-sonnet-5, claude-haiku-4-5.
-# v0.1 used claude-opus-4-8 and claude-sonnet-4-6 (see HARNESS.md "Changes from v0.1").
+# Models: Qwen on Alibaba Cloud Model Studio (verified 2026-11-12): qwen3.8-flash (fast), qwen3.7-plus (workhorse), qwen3.8-max (strongest).
+# Previously claude-haiku-4-5 / claude-sonnet-5 / claude-opus-5-5 (Anthropic), replaced on 2026-11-12.
 # Keep in sync with src/index.ts (checked by src/index.test.ts).
 
 harness:
@@ -18,27 +17,27 @@ harness:
 
 agents:
   orchestrator:
-    model: claude-haiku-4-5
+    model: qwen3.8-flash
     role: scheduler-dispatcher
     responsibilities: [check_preconditions, route_runs, pass_latest_artifacts, log_gaps_to_qa_ledger]
 
   seo-action-plan:
-    model: claude-opus-5-5
+    model: qwen3.8-max
     skill: seo-action-plan.skill
     schedule: on_demand            # plus auto-queued on pivot trigger
     inputs: [brand_interview, research]
     outputs: [plan_html, pillar_keywords_csv]
 
   keyword-research-swarm:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     skill: keyword-research-swarm.skill
     schedule: weekly_monday
     inputs: [pillar_keywords_csv, tracker_csv]
     outputs: [pipeline_csv, top10_md]
 
   blog-writing-agent:
-    model: claude-sonnet-5
-    escalate_to: { model: claude-opus-5-5, when: [pillar_page, money_page] }
+    model: qwen3.7-plus
+    escalate_to: { model: qwen3.8-max, when: [pillar_page, money_page] }
     skill: blog-writing-agent.skill
     schedule: per_publish_slot
     inputs: [brief_or_keyword, brand_pack]
@@ -46,36 +45,36 @@ agents:
     hands_off_to: visual-asset-agent
 
   on-page-seo-optimizer:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     skill: on-page-seo-optimizer.skill
     schedule: per_post_after_draft
     inputs: [draft_md, target_keyword, intent]
     outputs: [scorecard_md, optimized_post]
 
   technical-seo-monitor:
-    model: claude-haiku-4-5
-    escalate_to: { model: claude-sonnet-5, when: [ambiguous_diagnosis] }
+    model: qwen3.8-flash
+    escalate_to: { model: qwen3.7-plus, when: [ambiguous_diagnosis] }
     skill: technical-seo-monitor.skill
     schedule: weekly_friday
     inputs: [site_url, previous_digest]
     outputs: [digest_md]
 
   content-refresh-agent:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     skill: content-refresh-agent.skill
     schedule: monthly_day1
     inputs: [gsc_export, site_url, previous_cycle_report]
     outputs: [refresh_drafts, prune_signoff_list, cycle_report_md]
 
   link-building-prospector:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     skill: link-building-prospector.skill
     schedule: monthly_day1
     inputs: [competitors, backlink_export_optional, sender_profile]
     outputs: [prospect_csv, outreach_drafts, human_action_list]
 
   seo-qa-agent:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     skill: seo-qa-agent.skill
     schedule: { light: weekly_friday, full: biweekly_friday }
     inputs: [all_agent_artifacts, site_url, action_plan_milestones, human_ledger_previous]
@@ -83,15 +82,15 @@ agents:
     authority: demands_human_updates_with_deadlines
 
   visualization-report-agent:
-    model: claude-sonnet-5
-    escalate_to: { model: claude-opus-5-5, when: [pivot_trigger_fired] }
+    model: qwen3.7-plus
+    escalate_to: { model: qwen3.8-max, when: [pivot_trigger_fired] }
     skill: visualization-report-agent.skill
     schedule: biweekly_friday_after_qa
     inputs: [qa_scorecard, gsc_export, all_agent_artifacts, bound_template]
     outputs: [biweekly_report_html, pivot_flags]
 
   visual-asset-agent:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     model_tier: workhorse
     skill: visual-asset-agent.skill
     schedule: per_post_after_draft
@@ -116,9 +115,9 @@ agents:
       - on_failure_try_next_route_else_hold_slot_with_ledger_item
 
   site-discovery-agent:
-    model: claude-sonnet-5
+    model: qwen3.7-plus
     model_tier: workhorse
-    escalate_to: { model: claude-opus-5-5, when: [site_profile] }   # the site profile runs on the strongest tier
+    escalate_to: { model: qwen3.8-max, when: [site_profile] }   # the site profile runs on the strongest tier
     skill: site-discovery-agent.skill
     schedule: [on_site_add, on_demand]
     inputs: [site_domain, gsc_export, keyword_csv_import]

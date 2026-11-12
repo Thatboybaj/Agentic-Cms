@@ -142,7 +142,7 @@ describe("postPipeline", () => {
 		expect(versions.map((v) => [v.n, v.origin])).toEqual([[1, "agent-generation"]]);
 		expect(slots.map((s) => [s.name, s.status])).toEqual([["Hero", "candidates"], ["Data chart", "candidates"]]);
 		const state = await t.run(async (ctx) => ({ run: (await ctx.db.query("runs").collect())[0]!, site: (await ctx.db.get(site))!, notes: (await ctx.db.query("notifications").collect()).map((n) => n.title) }));
-		expect(state.run).toMatchObject({ status: "succeeded", kind: "post-generation", trigger: "manual", model: "claude-sonnet-5" });
+		expect(state.run).toMatchObject({ status: "succeeded", kind: "post-generation", trigger: "manual", model: "qwen3.7-plus" });
 		expect(state.site.spend.textMicroUsd).toBe(Math.round(state.run.costUsd * 1e6));
 		expect(state.notes).toContain("Images need you");
 		expect(await actions(t, id)).toEqual(["owner · added idea", "owner · approved idea", "owner · triggered run", "Blog writer agent · generated draft", "Visual-asset agent · returned candidates", "Visual-asset agent · returned candidates"]);

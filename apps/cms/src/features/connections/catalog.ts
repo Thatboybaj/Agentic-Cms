@@ -2,7 +2,7 @@
 // and the Settings → Connections UI. No secrets, no Node imports — safe for client bundles.
 
 export type TConnectionKind = "mcp" | "image-api" | "web-source" | "llm";
-export type TConnectionProvider = "higgsfield-mcp" | "custom-mcp" | "openai-images" | "replicate" | "fal" | "openverse" | "wikimedia" | "unsplash" | "pexels" | "anthropic";
+export type TConnectionProvider = "higgsfield-mcp" | "custom-mcp" | "openai-images" | "replicate" | "fal" | "openverse" | "wikimedia" | "unsplash" | "pexels" | "qwen";
 export type TMcpTransport = "streamable-http" | "sse" | "stdio";
 export type TUsedFor = "brand_imagery" | "text_in_image" | "volume" | "diagram" | "stock";
 export type TConnectionStatus = "untested" | "ok" | "failed";
@@ -106,14 +106,14 @@ export const PROVIDERS: Record<TConnectionProvider, IProviderSpec> = {
 	wikimedia: { provider: "wikimedia", kind: "web-source", label: "Wikimedia Commons", blurb: "Free-licensed media with attribution · no key needed", secret: "none", model: false, defaultUsedFor: ["stock"] },
 	unsplash: { provider: "unsplash", kind: "web-source", label: "Unsplash", blurb: "Licensed stock photography", secret: "required", secretLabel: "Access key", model: false, defaultUsedFor: ["stock"], secretHint: "From unsplash.com/developers → your app" },
 	pexels: { provider: "pexels", kind: "web-source", label: "Pexels", blurb: "Licensed stock photography", secret: "required", secretLabel: "API key", model: false, defaultUsedFor: ["stock"], secretHint: "From pexels.com/api" },
-	anthropic: { provider: "anthropic", kind: "llm", label: "Anthropic", blurb: "Diagram model · renders SVG diagrams from the post", secret: "required", secretLabel: "API key", model: true, defaultUsedFor: ["diagram"], secretHint: "From console.anthropic.com → API keys" },
+	qwen: { provider: "qwen", kind: "llm", label: "Qwen", blurb: "Diagram model · renders SVG diagrams from the post", secret: "required", secretLabel: "API key", model: true, defaultUsedFor: ["diagram"], secretHint: "From Alibaba Cloud Model Studio (international) → API keys" },
 };
 
 export const KIND_GROUPS: { kind: TConnectionKind; title: string; meta: string; icon: "Plugs" | "ImagesSquare" | "Globe" | "TreeStructure"; providers: TConnectionProvider[] }[] = [
 	{ kind: "mcp", title: "Image generation — MCP servers", meta: "Brand imagery and styled scenes", icon: "Plugs", providers: ["higgsfield-mcp", "custom-mcp"] },
 	{ kind: "image-api", title: "Image APIs", meta: "Text-in-image and volume", icon: "ImagesSquare", providers: ["openai-images", "replicate", "fal"] },
 	{ kind: "web-source", title: "Web image sources", meta: "Real-world and stock · license recorded", icon: "Globe", providers: ["openverse", "wikimedia", "unsplash", "pexels"] },
-	{ kind: "llm", title: "Diagram model", meta: "Optional", icon: "TreeStructure", providers: ["anthropic"] },
+	{ kind: "llm", title: "Diagram model", meta: "Optional", icon: "TreeStructure", providers: ["qwen"] },
 ];
 
 export const USED_FOR_LABEL: Record<TUsedFor, string> = {

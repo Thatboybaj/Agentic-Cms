@@ -54,7 +54,7 @@ async function world() {
 			modelRouting: { mechanical: "fast", writing: "workhorse", strategy: "strongest", pillarPages: "strongest" }, brandPack: { voice: "", palette: [], styleKeywords: [], disclaimers: {} }, liveBaseline: 0, timezone: "Asia/Qatar",
 			discovery: { onAdd: true, maxPages: 3, depth: 3, exclude: ["/cart"], subdomains: false, competitorCheck: true, batchSize: 0 },
 		});
-		const runId = await ctx.db.insert("runs", { workspaceId: ws, siteId: site, kind: "site-discovery", trigger: "workflow", status: "running", agent: "Site discovery agent", agentId: "site-discovery-agent", model: "claude-sonnet-5", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 1.6, budget: "text", startedAt: 0, output: "", idempotencyKey: "d1", attempt: 1 });
+		const runId = await ctx.db.insert("runs", { workspaceId: ws, siteId: site, kind: "site-discovery", trigger: "workflow", status: "running", agent: "Site discovery agent", agentId: "site-discovery-agent", model: "qwen3.7-plus", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 1.6, budget: "text", startedAt: 0, output: "", idempotencyKey: "d1", attempt: 1 });
 		const reportId = await ctx.db.insert("discoveryReports", { siteId: site, runId, status: "running", stage: "seed", mode: "full", coverage: { crawled: 0, skipped: [], limitHit: false }, pillars: [], competitorNotes: [], refreshCandidates: [], ideaIds: [], dropped: [], costUsd: 0, createdAt: 0 });
 		return { site, runId, reportId };
 	});

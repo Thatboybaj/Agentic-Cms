@@ -5,7 +5,7 @@
  * This module mirrors both for UI use (no fs reads, safe in the browser). src/index.test.ts
  * checks the agent ids, count, and models against the YAML.
  *
- * Model IDs must be verified against https://docs.claude.com before wiring API calls.
+ * Models are Qwen on Alibaba Cloud Model Studio (fast · workhorse · strongest), verified 2026-11-12.
  */
 
 export type TModelTier = "fast" | "workhorse" | "strongest";
@@ -86,9 +86,9 @@ export interface IHarness {
 }
 
 export const MODELS = {
-  fast: "claude-haiku-4-5",
-  workhorse: "claude-sonnet-5",
-  strongest: "claude-opus-5-5",
+  fast: "qwen3.8-flash",
+  workhorse: "qwen3.7-plus",
+  strongest: "qwen3.8-max",
 } as const satisfies Record<TModelTier, string>;
 
 export const HARNESS: IHarness = {

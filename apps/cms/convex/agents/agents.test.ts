@@ -13,7 +13,7 @@ import { toDraft, toRevision, WRITER_SKILL, WriterOutput, writerUserPrompt, type
 const toJson = (s: z.ZodType<unknown>) => ({ type: "json_schema", schema: z.toJSONSchema(s) });
 const noSleep = { sleep: async () => {} };
 const usage = (i: number, o: number) => ({ inputTokens: i, outputTokens: o, cacheReadTokens: 0, cacheWriteTokens: 0 });
-const ok = (out: unknown, model = "claude-sonnet-5"): ITransportResult => ({ text: JSON.stringify(out), stopReason: "end_turn", usage: usage(1000, 500), model });
+const ok = (out: unknown, model = "qwen3.7-plus"): ITransportResult => ({ text: JSON.stringify(out), stopReason: "end_turn", usage: usage(1000, 500), model });
 
 function memLedger(capMicro: number) {
 	const holds = new Map<string, number>();
@@ -38,7 +38,7 @@ function memLedger(capMicro: number) {
 }
 
 const Schema = z.object({ answer: z.string() });
-const req = { model: "claude-sonnet-5", system: ["skill"], user: "hi", schema: Schema, maxTokens: 1000 };
+const req = { model: "qwen3.7-plus", system: ["skill"], user: "hi", schema: Schema, maxTokens: 1000 };
 
 describe("gateway", () => {
 	test("maps provider errors to retryable / non-retryable kinds", () => {
@@ -49,6 +49,7 @@ describe("gateway", () => {
 		expect(classify({ status: 400, message: "bad" })).toMatchObject({ kind: "bad-request", retryable: false });
 		expect(classify({ status: 401 })).toMatchObject({ kind: "auth", retryable: false });
 		expect(classify(new TypeError("fetch failed"))).toMatchObject({ kind: "network", retryable: true });
+		expect(classify({ status: 451, message: "data_inspection_failed" })).toMatchObject({ kind: "refusal", retryable: false });
 	});
 });
 
@@ -65,7 +66,7 @@ describe("cappedInference", () => {
 		const m = memLedger(1e9);
 		const r = await cappedInference(m.ledger, async () => ok({ answer: "x" }), "k", req, toJson as never, noSleep);
 		expect(r.output).toEqual({ answer: "x" });
-		expect(r.costMicroUsd).toBe(costMicroUsd("claude-sonnet-5", usage(1000, 500)));
+		expect(r.costMicroUsd).toBe(costMicroUsd("qwen3.7-plus", usage(1000, 500)));
 		expect(m.spent()).toBe(r.costMicroUsd);
 		await m.ledger.settle("k", 999_999); // a second settle is a no-op
 		expect(m.spent()).toBe(r.costMicroUsd);
@@ -91,7 +92,7 @@ describe("cappedInference", () => {
 		).rejects.toMatchObject({ kind: "bad-request" });
 		expect(calls).toBe(1);
 		await expect(cappedInference(m.ledger, async () => ok({ wrong: 1 }), "b", req, toJson as never, noSleep)).rejects.toMatchObject({ kind: "invalid-output" });
-		expect(m.spent()).toBe(costMicroUsd("claude-sonnet-5", usage(1000, 500)));
+		expect(m.spent()).toBe(costMicroUsd("qwen3.7-plus", usage(1000, 500)));
 	});
 
 	test("a replayed key that already settled refuses instead of calling unmetered", async () => {
@@ -107,32 +108,32 @@ describe("D7: retry same tier, then escalate", () => {
 		const models: string[] = [];
 		const t: TTransport = async (r) => {
 			models.push(r.model);
-			return r.model === "claude-opus-5-5" ? ok({ answer: "good" }, r.model) : ok({ nope: true }, r.model);
+			return r.model === "qwen3.8-max" ? ok({ answer: "good" }, r.model) : ok({ nope: true }, r.model);
 		};
 		const r = await runAgentCall(m.ledger, t, "run1", { tier: "workhorse", escalated: false }, { system: ["s"], user: "u", schema: Schema, maxTokens: 1000 }, toJson as never, noSleep);
-		expect(models).toEqual(["claude-sonnet-5", "claude-sonnet-5", "claude-opus-5-5"]);
+		expect(models).toEqual(["qwen3.7-plus", "qwen3.7-plus", "qwen3.8-max"]);
 		expect(r).toMatchObject({ tier: "strongest", escalated: true, output: { answer: "good" } });
-		expect(r.totalMicroUsd).toBe(2 * costMicroUsd("claude-sonnet-5", usage(1000, 500)) + costMicroUsd("claude-opus-5-5", usage(1000, 500)));
+		expect(r.totalMicroUsd).toBe(2 * costMicroUsd("qwen3.7-plus", usage(1000, 500)) + costMicroUsd("qwen3.8-max", usage(1000, 500)));
 		expect(m.spent()).toBe(r.totalMicroUsd);
 	});
 
 	test("the cap blocking the escalation fails the run with what it already spent", async () => {
-		const sonnetHold = 3 * costMicroUsd("claude-sonnet-5", { inputTokens: Math.ceil(2 / 3), outputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 0 });
+		const sonnetHold = 3 * costMicroUsd("qwen3.7-plus", { inputTokens: Math.ceil(2 / 3), outputTokens: 1000, cacheReadTokens: 0, cacheWriteTokens: 0 });
 		const m = memLedger(2 * sonnetHold);
 		const t: TTransport = async (r) => ok({ nope: true }, r.model);
 		const err = await runAgentCall(m.ledger, t, "run2", { tier: "workhorse", escalated: false }, { system: ["s"], user: "u", schema: Schema, maxTokens: 1000 }, toJson as never, noSleep).catch((e) => e);
 		expect(err).toBeInstanceOf(AgentError);
 		expect(err.message).toMatch(/escalation refused/);
-		expect(err.billedMicroUsd).toBe(2 * costMicroUsd("claude-sonnet-5", usage(1000, 500)));
+		expect(err.billedMicroUsd).toBe(2 * costMicroUsd("qwen3.7-plus", usage(1000, 500)));
 	});
 });
 
 describe("routing", () => {
 	const routing = { mechanical: "fast", writing: "workhorse", strategy: "strongest", pillarPages: "strongest" } as const;
 	test("writer: workhorse; pillar/money pages escalate to strongest; model ids only from MODELS", () => {
-		expect(modelFor("blog-writing-agent", routing)).toEqual({ tier: "workhorse", model: "claude-sonnet-5", escalated: false });
-		expect(modelFor("blog-writing-agent", routing, { pillar: true })).toMatchObject({ tier: "strongest", model: "claude-opus-5-5" });
-		expect(modelFor("technical-seo-monitor", routing)).toMatchObject({ tier: "fast", model: "claude-haiku-4-5" });
+		expect(modelFor("blog-writing-agent", routing)).toEqual({ tier: "workhorse", model: "qwen3.7-plus", escalated: false });
+		expect(modelFor("blog-writing-agent", routing, { pillar: true })).toMatchObject({ tier: "strongest", model: "qwen3.8-max" });
+		expect(modelFor("technical-seo-monitor", routing)).toMatchObject({ tier: "fast", model: "qwen3.8-flash" });
 		expect(modelFor("technical-seo-monitor", routing, { ambiguous: true })).toMatchObject({ tier: "workhorse", escalated: true });
 	});
 });

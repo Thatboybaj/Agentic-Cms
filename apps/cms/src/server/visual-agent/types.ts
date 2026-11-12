@@ -59,7 +59,7 @@ export interface IRouteDecision {
 	route: TVisualRoute;
 	need: TRoutingNeed;
 	connectionId?: string;
-	provider?: TConnectionProvider | "svg-template" | "anthropic-svg" | "inline-svg";
+	provider?: TConnectionProvider | "svg-template" | "qwen-svg" | "inline-svg";
 	/** Short sentence for the UI: "Will source from Openverse · licensed for commercial use". */
 	label: string;
 	reason: string;

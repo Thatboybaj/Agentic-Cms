@@ -619,7 +619,7 @@ function generatedBlocks(post: IPost, keyword: string, disclaimer: string | unde
 	return blocks;
 }
 
-/** Blocks from a real Claude draft: direct answer, hero after it, chart after the first section's first paragraph. */
+/** Blocks from a real model draft: direct answer, hero after it, chart after the first section's first paragraph. */
 function liveBlocks(post: IPost, draft: ILiveDraft, disclaimer: string | undefined, heroSlot: string, chartSlot: string): IPostBlock[] {
 	const id = (s: string) => uid(`${post.id}-${s}`);
 	const clean = (t: string) => t.replace(/\*\*|^#+\s*/gm, "").trim();
@@ -635,7 +635,7 @@ function liveBlocks(post: IPost, draft: ILiveDraft, disclaimer: string | undefin
 	return blocks;
 }
 
-/** Claims Claude couldn't attribute become open [VERIFY] markers on the block that contains them (max 5). */
+/** Claims the model couldn't attribute become open [VERIFY] markers on the block that contains them (max 5). */
 function liveFacts(blocks: IPostBlock[], draft: ILiveDraft): IFactMarker[] {
 	const facts: IFactMarker[] = [];
 	for (const claim of draft.unverified_claims.slice(0, 5)) {
@@ -644,7 +644,7 @@ function liveFacts(blocks: IPostBlock[], draft: ILiveDraft): IFactMarker[] {
 		if (!block) continue;
 		const fid = uid("f");
 		block.factMarkerIds = [...(block.factMarkerIds ?? []), fid];
-		facts.push({ id: fid, claim: c, status: "open", note: `Claude couldn't attribute "${c}" to a source. Verify it or rewrite without it.` });
+		facts.push({ id: fid, claim: c, status: "open", note: `The writer couldn't attribute "${c}" to a source. Verify it or rewrite without it.` });
 	}
 	return facts;
 }
@@ -697,7 +697,7 @@ function applyJob(d: ICmsState, job: IJob, toasts: TToastIn[]) {
 				});
 			}
 			if (step > 7 && peekLiveDraft(post.id) === "waiting") {
-				post.progress = { label: "Claude is writing the draft", value: 85 };
+				post.progress = { label: "Qwen is writing the draft", value: 85 };
 				pushJob(d, job.siteId, "draft-progress", SIM_MS.tick * 2, { ...p, step: 8 });
 			} else if (step <= 7) {
 				post.progress = { label: `Writing section ${step} of 7`, value: Math.round((step / 7) * 80) };

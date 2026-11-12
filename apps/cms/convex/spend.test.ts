@@ -19,7 +19,7 @@ async function world(textCapUsd = 1) {
 			routing: { hero: "higgsfield", lifestyle: "higgsfield", diagram: "openai", screenshot: "openai", chart: "inline-svg", photo: "human" },
 			modelRouting: { mechanical: "fast", writing: "workhorse", strategy: "strongest", pillarPages: "strongest" }, brandPack: { voice: "", palette: [], styleKeywords: [], disclaimers: {} }, liveBaseline: 0, timezone: "Africa/Lagos",
 		});
-		const runId = await ctx.db.insert("runs", { workspaceId: ws, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "Blog writer agent", agentId: "post-generation", model: "claude-sonnet-5", tier: "workhorse", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 1.8, budget: "text", startedAt: 0, output: "", idempotencyKey: "run1", attempt: 1 });
+		const runId = await ctx.db.insert("runs", { workspaceId: ws, siteId: site, kind: "post-generation", trigger: "manual", status: "running", agent: "Blog writer agent", agentId: "post-generation", model: "qwen3.7-plus", tier: "workhorse", inputTokens: 0, outputTokens: 0, costUsd: 0, estimateUsd: 1.8, budget: "text", startedAt: 0, output: "", idempotencyKey: "run1", attempt: 1 });
 		return { site, runId };
 	});
 	const spent = () => t.run(async (ctx) => (await ctx.db.get(ids.site))!.spend.textMicroUsd);
@@ -48,9 +48,9 @@ test("hold refuses over the cap; settle credits the unused hold once; a settled 
 
 test("a run keeps the usage the agent recorded when it finishes (no second debit)", async () => {
 	const { t, spent, runId } = await world(5);
-	await t.mutation(internal.spend.recordUsage, { runId, model: "claude-sonnet-5", tier: "workhorse", escalated: false, inputTokens: 4000, outputTokens: 3000, costMicroUsd: 38_000 });
+	await t.mutation(internal.spend.recordUsage, { runId, model: "qwen3.7-plus", tier: "workhorse", escalated: false, inputTokens: 4000, outputTokens: 3000, costMicroUsd: 38_000 });
 	await t.run((ctx) => finishRun(ctx, runId, { status: "succeeded", output: "Draft ready" }));
 	const run = (await t.run((ctx) => ctx.db.get(runId)))!;
-	expect(run).toMatchObject({ status: "succeeded", costUsd: 0.038, inputTokens: 4000, outputTokens: 3000, model: "claude-sonnet-5" });
+	expect(run).toMatchObject({ status: "succeeded", costUsd: 0.038, inputTokens: 4000, outputTokens: 3000, model: "qwen3.7-plus" });
 	expect(await spent()).toBe(0); // recordUsage never moves money; the ledger did
 });

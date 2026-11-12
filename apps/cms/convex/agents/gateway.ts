@@ -1,5 +1,5 @@
-// Anthropic gateway (handoff 03 step 1). Pure: the transport (the SDK call) is injected, so the error mapping, usage
-// accounting and output validation are unit-tested with a fake. The only real transport is anthropicTransport in
+// Model gateway (handoff 03 step 1; provider: Qwen on Alibaba Cloud Model Studio). Pure: the transport (the SDK call) is injected, so the error mapping, usage
+// accounting and output validation are unit-tested with a fake. The only real transport is modelTransport in
 // agents/sdk.ts ("use node"). Every model call goes through cappedInference → this gateway; nothing else calls a model.
 import type { z } from "zod/v4";
 import { type IUsage, priceOf } from "./pricing";
@@ -46,7 +46,7 @@ export class InferenceError extends Error {
 		message: string,
 		/** Tokens the provider billed before the failure (invalid output still costs money). */
 		readonly usage?: IUsage,
-		readonly provider = "anthropic",
+		readonly provider = "qwen",
 	) {
 		super(message);
 		this.name = "InferenceError";
@@ -62,10 +62,11 @@ export function classify(e: unknown): InferenceError {
 	const err = e as { status?: number; name?: string; message?: string };
 	const msg = err?.message ?? String(e);
 	const s = err?.status;
+	if (s === 451) return new InferenceError("refusal", "Qwen's content check declined this request");
 	if (s === 429 || s === 529) return new InferenceError("rate-limited", msg);
-	if (s === 408 || err?.name === "APIConnectionTimeoutError") return new InferenceError("timeout", msg);
+	if (s === 408 || err?.name === "APIConnectionTimeoutError" || err?.name === "TimeoutError") return new InferenceError("timeout", msg);
 	if (typeof s === "number" && s >= 500) return new InferenceError("server", msg);
-	if (s === 401 || s === 403) return new InferenceError("auth", "The Anthropic key was rejected. Check ANTHROPIC_API_KEY in the Convex deployment.");
+	if (s === 401 || s === 403) return new InferenceError("auth", "The Qwen key was rejected. Check DASHSCOPE_API_KEY in the Convex deployment.");
 	if (typeof s === "number" && s >= 400) return new InferenceError("bad-request", msg);
 	if (err?.name === "APIConnectionError" || /fetch failed|ECONNRESET|ENOTFOUND|network/i.test(msg)) return new InferenceError("network", msg);
 	return new InferenceError("unknown", msg);

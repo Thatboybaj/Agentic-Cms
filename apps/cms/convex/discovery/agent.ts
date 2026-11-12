@@ -9,7 +9,7 @@ import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { type ActionCtx, internalAction } from "../_generated/server";
 import { AgentError, type IAgentResult, runAgentCall } from "../agents/run";
-import { agentsLive, anthropicTransport, formatFor, ledgerFor } from "../agents/sdk";
+import { agentsLive, modelTransport, formatFor, ledgerFor } from "../agents/sdk";
 import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, IDEAS_CONTRACT, IdeasOutput, ideasPrompt, KEYWORD_CONTRACT, KeywordOutput, keywordPrompt, pageBlock, planKeywords, PROFILE_CONTRACT, ProfileOutput, selectIdeas, extractLine, validEvidence, type IGscQuery } from "./agentCore";
 import { bareHost, normalizeUrl, USD_PER_CREDIT } from "./crawlCore";
 import { FirecrawlError, searchCredits, searchWeb } from "./firecrawl";
@@ -41,7 +41,7 @@ export const extract = internalAction({
 		if (!input.pages.length) return { ok: true, note: "Every page already extracted" };
 		if (!agentsLive()) return notLive();
 		const ledger = ledgerFor(ctx, siteId, "text", runId);
-		const transport = anthropicTransport();
+		const transport = modelTransport();
 		let done = 0;
 		for (let i = 0; i < input.pages.length; i += EXTRACT_PAGES_PER_CALL) {
 			const group = input.pages.slice(i, i + EXTRACT_PAGES_PER_CALL);
@@ -78,7 +78,7 @@ export const profile = internalAction({
 			input.interview?.length ? `Answers from the site owner:\n${input.interview.map((q) => `Q: ${q.question}\nA: ${q.answer}`).join("\n")}` : "",
 		].filter(Boolean).join("\n\n");
 		try {
-			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `discovery:${runId}:profile`, { tier: input.routing.strategy, escalated: false }, { system: [DISCOVERY_SKILL.text, PROFILE_CONTRACT], user, schema: ProfileOutput, maxTokens: 8_000, effort: "high" }, formatFor);
+			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), modelTransport(), `discovery:${runId}:profile`, { tier: input.routing.strategy, escalated: false }, { system: [DISCOVERY_SKILL.text, PROFILE_CONTRACT], user, schema: ProfileOutput, maxTokens: 8_000, effort: "high" }, formatFor);
 			await record(ctx, runId, r);
 			// Evidence that isn't a crawled page is dropped (§7.4); the voice examples must be real quotes from the site.
 			const crawled = new Set(input.extracts.map((e) => normalizeUrl(e.url) ?? e.url));
@@ -120,7 +120,7 @@ export const keywords = internalAction({
 		if (!agentsLive()) return notLive();
 		const gsc: IGscQuery[] = input.searchConsole === "connected" ? await ctx.runAction(internal.gsc.topQueries, { siteId, limit: 150 }) : [];
 		try {
-			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `discovery:${runId}:keywords`, { tier: input.routing.writing, escalated: false }, { system: [DISCOVERY_SKILL.text, KEYWORD_CONTRACT], user: keywordPrompt({ siteName: input.siteName, domain: input.domain, profileJson: input.profileJson, extracts: input.extracts, gsc, competitors: [], existingKeywords: input.existingKeywords, rejected: input.rejected }), schema: KeywordOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
+			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), modelTransport(), `discovery:${runId}:keywords`, { tier: input.routing.writing, escalated: false }, { system: [DISCOVERY_SKILL.text, KEYWORD_CONTRACT], user: keywordPrompt({ siteName: input.siteName, domain: input.domain, profileJson: input.profileJson, extracts: input.extracts, gsc, competitors: [], existingKeywords: input.existingKeywords, rejected: input.rejected }), schema: KeywordOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
 			await record(ctx, runId, r);
 			const seen = new Set<string>();
 			const crawled = new Set(input.extracts.map((e) => normalizeUrl(e.url) ?? e.url));
@@ -172,7 +172,7 @@ export const ideas = internalAction({
 		if (!agentsLive()) return notLive();
 		const pillars = input.pillars.map((p) => ({ name: p.name, why: p.why, evidence: p.evidence, keywords: p.keywords.map((k) => ({ term: k.term, intent: k.intent as "commercial", funnel: k.funnel as "awareness", volumeTier: "low" as const, volumeSource: k.volumeSource as "estimate", impressions: 0, position: null, quickWin: k.quickWin, ...(k.existingPageUrl ? { existingPageUrl: k.existingPageUrl } : {}), evidence: k.evidence })) }));
 		try {
-			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), anthropicTransport(), `discovery:${runId}:ideas`, { tier: input.routing.writing, escalated: false }, { system: [DISCOVERY_SKILL.text, IDEAS_CONTRACT], user: ideasPrompt({ siteName: input.siteName, profileJson: input.profileJson, extracts: input.extracts, pillars, batchSize: input.batchSize, existingTitles: input.existingTitles, quickWinShare: input.hasGsc }), schema: IdeasOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
+			const r = await runAgentCall(ledgerFor(ctx, siteId, "text", runId), modelTransport(), `discovery:${runId}:ideas`, { tier: input.routing.writing, escalated: false }, { system: [DISCOVERY_SKILL.text, IDEAS_CONTRACT], user: ideasPrompt({ siteName: input.siteName, profileJson: input.profileJson, extracts: input.extracts, pillars, batchSize: input.batchSize, existingTitles: input.existingTitles, quickWinShare: input.hasGsc }), schema: IdeasOutput, maxTokens: 12_000, effort: "medium" }, formatFor);
 			await record(ctx, runId, r);
 			const gscSet = new Set(pillars.flatMap((p) => p.keywords.flatMap((k) => k.evidence.filter((e) => e.startsWith("gsc:")).map((e) => e.slice(4)))));
 			const picked = selectIdeas(r.output, { pillars, crawled: new Set(input.crawled), pageTitles: input.pageTitles, existingTitles: input.existingTitles, existingKeywords: input.existingKeywords, seen: new Set(input.seen), gsc: gscSet, batchSize: input.batchSize });

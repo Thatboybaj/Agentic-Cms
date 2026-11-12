@@ -10,7 +10,7 @@ import { z } from "zod/v4";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import { runAgentCall } from "../agents/run";
-import { agentsLive, anthropicTransport, formatFor, ledgerFor } from "../agents/sdk";
+import { agentsLive, modelTransport, formatFor, ledgerFor } from "../agents/sdk";
 import { DISCOVERY_SKILL, EVIDENCE, EXTRACT_CONTRACT, IDEAS_CONTRACT, KEYWORD_CONTRACT, PROFILE_CONTRACT } from "./agentCore";
 import { behaviourHash, type ICheck, evalPassed, gradeDiscovery, JUDGE_PASS, JUDGE_RUBRIC } from "./evalCore";
 import { goldenFor } from "./golden";
@@ -45,7 +45,7 @@ export const run = internalAction({
 			]
 				.filter(Boolean)
 				.join("\n\n");
-			const r = await runAgentCall(ledgerFor(ctx, siteId, "text"), anthropicTransport(), `discovery-eval:${input.reportId}:judge:${Date.now()}`, { tier: input.routing.strategy, escalated: false }, { system: [JUDGE_RUBRIC], user, schema: JudgeOutput, maxTokens: 4_000, effort: "medium" }, formatFor);
+			const r = await runAgentCall(ledgerFor(ctx, siteId, "text"), modelTransport(), `discovery-eval:${input.reportId}:judge:${Date.now()}`, { tier: input.routing.strategy, escalated: false }, { system: [JUDGE_RUBRIC], user, schema: JudgeOutput, maxTokens: 4_000, effort: "medium" }, formatFor);
 			const ideas = r.output.ideas.map((x) => ({ title: x.title, score: Math.max(1, Math.min(5, Math.round(x.score))), reason: x.reason.slice(0, 300) }));
 			const mean = ideas.length ? ideas.reduce((n, x) => n + x.score, 0) / ideas.length : 0;
 			judged = { model: r.model, mean: Math.round(mean * 100) / 100, passed: mean >= JUDGE_PASS, ideas, costUsd: r.totalMicroUsd / 1e6 };

@@ -3,6 +3,7 @@
 import type { TConnectionProvider } from "../features/connections/catalog";
 import { PROVIDERS } from "../features/connections/catalog";
 import { ConnectionError } from "./mcp";
+import { compatUrl } from "../lib/qwen";
 
 export const PROBE_TIMEOUT_MS = 15_000;
 const UA = "StudioAgenticCMS/0.1 (connection test; https://github.com/The-Utopia-Studio/studio-product-framework)";
@@ -78,8 +79,8 @@ export async function probeApi(provider: TConnectionProvider, secret: string | n
 			expectOk(res, label, true);
 			return { note: "Key accepted · search works" };
 		}
-		case "anthropic": {
-			const res = await hit("https://api.anthropic.com/v1/models", { "x-api-key": need(secret, provider), "anthropic-version": "2023-06-01" }, label);
+		case "qwen": {
+			const res = await hit(compatUrl("/models"), { Authorization: `Bearer ${need(secret, provider)}` }, label);
 			expectOk(res, label, true);
 			return { note: "Key accepted" };
 		}

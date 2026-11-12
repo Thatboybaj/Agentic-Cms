@@ -58,7 +58,7 @@ const PROVIDER_ICON: Record<TConnectionProvider, TIconName> = {
 	wikimedia: "Images",
 	unsplash: "ImagesSquare",
 	pexels: "Image",
-	anthropic: "TreeStructure",
+	qwen: "TreeStructure",
 };
 
 const MODEL_PLACEHOLDER = "e.g. the model id from your provider's docs";
