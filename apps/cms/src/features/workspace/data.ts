@@ -9,7 +9,7 @@ import { sitePath } from "@/lib/routes";
 import { computeStats, type IInboxItem, type TInboxKind } from "@/lib/workspace";
 import type { IMembership, ISite, IUser, IWorkspace, TRole, TSiteStatus, TTone, TWorkspaceRole } from "@/lib/types";
 import { BACKEND_ENABLED } from "@/lib/backend";
-import { useLiveSiteRows, useLiveWorkspaceActions, useLiveWorkspaceView } from "./live";
+import { useLiveIdeaDecisions, useLiveInboxItems, useLiveSiteRows, useLiveWorkspaceActions, useLiveWorkspaceView } from "./live";
 
 // ---- Workspace + me -----------------------------------------------------------
 
@@ -197,23 +197,36 @@ export interface IInboxRow extends IInboxItem {
 	canDecide: boolean;
 }
 
-export function useInboxRows(): IInboxRow[] {
+function toInboxRows(items: (IInboxItem & { hue?: number })[], hue: Map<string, number | undefined>): IInboxRow[] {
+	// Within a group: blockers first, then oldest first.
+	const rank = (t: TTone) => (t === "block" ? 0 : t === "human" ? 1 : 2);
+	return items
+		.map((i) => ({ ...i, group: GROUP_OF[i.kind], hue: i.hue ?? (i.siteId ? hue.get(i.siteId) : undefined), canDecide: i.kind === "idea" }))
+		.sort((a, b) => rank(a.tone) - rank(b.tone) || a.at.localeCompare(b.at));
+}
+
+/** Live (backend on): Convex inbox.list, real rows only. */
+function useLiveInboxRows(): IInboxRow[] {
+	const items = useLiveInboxItems();
+	return useMemo(() => toInboxRows(items ?? [], new Map()), [items]);
+}
+
+/** Demo (backend off): built from the local store. */
+function useDemoInboxRows(): IInboxRow[] {
 	const items = useInbox();
 	const { sites } = useWorkspaceView();
-	return useMemo(() => {
-		const hue = new Map(sites.map((s) => [s.id, s.accent]));
-		// Within a group: blockers first, then oldest first.
-		const rank = (t: TTone) => (t === "block" ? 0 : t === "human" ? 1 : 2);
-		return items
-			.map((i) => ({
-				...i,
-				group: GROUP_OF[i.kind],
-				hue: i.siteId ? hue.get(i.siteId) : undefined,
-				canDecide: i.kind === "idea",
-			}))
-			.sort((a, b) => rank(a.tone) - rank(b.tone) || a.at.localeCompare(b.at));
-	}, [items, sites]);
+	return useMemo(() => toInboxRows(items, new Map(sites.map((s) => [s.id, s.accent]))), [items, sites]);
 }
+
+/** The inbox everywhere (page, rail count, palette). BACKEND_ENABLED is a build-time constant: hook order is stable. */
+export const useInboxRows: () => IInboxRow[] = BACKEND_ENABLED ? useLiveInboxRows : useDemoInboxRows;
+
+function useDemoIdeaDecisions() {
+	const { approveIdea, rejectIdea } = useWorkspaceActions();
+	return { approveIdea, rejectIdea };
+}
+/** Inbox idea approve / reject: Convex when the backend is on, the demo store otherwise. */
+export const useIdeaDecisions: () => { approveIdea: (siteId: string, postId: string) => unknown; rejectIdea: (siteId: string, postId: string, note: string) => unknown } = BACKEND_ENABLED ? useLiveIdeaDecisions : useDemoIdeaDecisions;
 
 // ---- Presence ---------------------------------------------------------------------
 

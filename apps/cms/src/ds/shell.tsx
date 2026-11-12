@@ -465,7 +465,9 @@ function RichSiteSwitcher({ site, onChange, entries, hue, allLabel, onAllSites, 
 								</button>
 							)}
 							{footer && (
-								<span className="ms-auto flex items-center gap-2" onClickCapture={() => setOpen(false)}>
+								// Close after the footer's own click has run (e.g. "Add site" opening its sheet): unmounting the
+								// panel while the click is still being handled could swallow the action.
+								<span className="ms-auto flex items-center gap-2" onClick={() => setTimeout(() => setOpen(false), 0)}>
 									{footer}
 								</span>
 							)}

@@ -5,7 +5,7 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMemo, useState, type FormEvent } from "react";
 import { Button, Card, Chip, EmptyState, formatRelative, Icon, PageHeader, Section, Select, SiteAvatar, StatStrip, TextField, type TIconName } from "@/ds";
-import { useInboxRows, useWorkspaceActions, type IInboxRow, type TInboxGroup } from "@/features/workspace/data";
+import { useIdeaDecisions, useInboxRows, type IInboxRow, type TInboxGroup } from "@/features/workspace/data";
 import { plural } from "@/features/workspace/labels";
 
 const GROUPS: {
@@ -183,7 +183,7 @@ export function Inbox() {
 }
 
 function InboxRow({ row: r, openLabel, icon }: { row: IInboxRow; openLabel: string; icon: TIconName }) {
-	const { approveIdea, rejectIdea } = useWorkspaceActions();
+	const { approveIdea, rejectIdea } = useIdeaDecisions();
 	const [rejecting, setRejecting] = useState(false);
 	const [note, setNote] = useState("");
 	const [tried, setTried] = useState(false);

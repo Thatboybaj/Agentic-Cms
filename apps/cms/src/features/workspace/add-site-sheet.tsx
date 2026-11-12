@@ -4,8 +4,8 @@
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import { Button, Callout, Select, Sheet, TextField } from "@/ds";
-import { WORKSPACE_ROUTES, sitePath } from "@/lib/routes";
-import { PAGES_ON_CONVEX, usePageWorkspaceActions } from "./data";
+import { sitePath } from "@/lib/routes";
+import { usePageWorkspaceActions } from "./data";
 
 const INDUSTRIES = ["Healthcare", "Legal", "Veterinary", "Fintech", "Physiotherapy", "Food & beverage", "Real estate", "Beauty & skincare", "SaaS", "Education", "Other"];
 
@@ -52,8 +52,8 @@ export function AddSiteSheet({ open, onClose }: { open: boolean; onClose: () => 
 			return;
 		}
 		onClose();
-		// On Convex the site pages (onboarding included) aren't ported yet, so the new site shows up on /sites instead.
-		router.push(PAGES_ON_CONVEX ? WORKSPACE_ROUTES.sites : sitePath(r.slug, "/onboarding"));
+		// Straight into the new site's onboarding (repo, paths, Search Console, template).
+		router.push(sitePath(r.slug, "/onboarding"));
 	};
 
 	return (

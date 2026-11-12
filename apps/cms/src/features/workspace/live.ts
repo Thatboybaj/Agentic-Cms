@@ -11,6 +11,7 @@ import { inviteIdOf, isInviteId, pipelineOf, toSite, toUsers, toWorkspace } from
 import { ROLE_LABEL } from "@/lib/logic";
 import { useToast, type TResult } from "@/lib/store";
 import type { TRole, TWorkspaceRole } from "@/lib/types";
+import type { IInboxItem } from "@/lib/workspace";
 import { api } from "../../../convex/_generated/api";
 import type { Id } from "../../../convex/_generated/dataModel";
 import type { ISiteRow, IWorkspaceView, TAddSiteResult } from "./data";
@@ -125,7 +126,7 @@ export function useLiveWorkspaceActions() {
 		return {
 			signOut: () => void clerk.signOut({ redirectUrl: "/sign-in" }),
 			addSite: async (input: { name: string; domain: string; industry: string }): Promise<TAddSiteResult> => {
-				const r = (await run(() => addSiteM(input) as Promise<TResult>, { text: `${input.name} added · onboarding comes with the next backend step` })) as TResult & { slug?: string };
+				const r = (await run(() => addSiteM(input) as Promise<TResult>, { text: `${input.name} added · finish onboarding` })) as TResult & { slug?: string };
 				return r.ok ? { ok: true, slug: r.slug ?? "" } : r;
 			},
 			inviteUsers: async (emails: string[], workspaceRole: TWorkspaceRole, siteRoles: Record<string, TRole>): Promise<TResult> => {
@@ -161,4 +162,31 @@ export function useLiveWorkspaceActions() {
 			},
 		};
 	}, [toast, clerk, addSiteM, inviteM, revokeM, setMembershipM, setWorkspaceRoleM]);
+}
+
+/** The cross-site inbox from Convex (inbox.list): same rows the demo builds, from real data. */
+export function useLiveInboxItems(): IInboxItem[] | undefined {
+	const { isAuthenticated } = useConvexAuth();
+	return useQuery(api.inbox.list, isAuthenticated ? {} : "skip") as IInboxItem[] | undefined;
+}
+
+/** Approve / reject an idea from the inbox (Convex site ids). */
+export function useLiveIdeaDecisions() {
+	const toast = useToast();
+	const approveM = useMutation(api.posts.approveIdea);
+	const rejectM = useMutation(api.posts.rejectIdea);
+	return useMemo(() => {
+		const run = async (fn: () => Promise<TResult>, ok: string) => {
+			try {
+				const r = await fn();
+				toast(r.ok ? { text: ok, tone: "pass" } : { text: r.reason, tone: "block" });
+			} catch (e) {
+				toast({ text: reasonOf(e), tone: "block" });
+			}
+		};
+		return {
+			approveIdea: (siteId: string, postId: string) => void run(() => approveM({ siteId: siteId as Id<"sites">, postId: postId as Id<"posts"> }) as Promise<TResult>, "Idea approved"),
+			rejectIdea: (siteId: string, postId: string, note: string) => void run(() => rejectM({ siteId: siteId as Id<"sites">, postId: postId as Id<"posts">, note }) as Promise<TResult>, "Idea rejected"),
+		};
+	}, [toast, approveM, rejectM]);
 }
