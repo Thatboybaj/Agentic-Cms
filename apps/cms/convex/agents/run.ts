@@ -2,11 +2,11 @@
 // then fail. Retryable transport errors are already retried inside cappedInference. Each attempt has its own ledger
 // key, so a replayed step finds its holds instead of making new ones.
 import type { TModelTier } from "@studio/seo-harness";
-import { MODELS } from "@studio/seo-harness";
 import type { z } from "zod/v4";
 import { billedOf, CapError, cappedInference, type ICappedOptions, type ICappedResult, type ILedger } from "./capped";
 import { type IInferenceRequest, InferenceError, type TTransport } from "./gateway";
 import { escalate } from "./models";
+import { modelOf } from "./provider";
 
 export interface IAgentResult<T> extends ICappedResult<T> {
 	tier: TModelTier;
@@ -48,7 +48,7 @@ export async function runAgentCall<T>(
 	for (let i = 0; i < plan.length; i++) {
 		const step = plan[i]!;
 		try {
-			const r = await cappedInference(ledger, transport, `${keyBase}:a${i + 1}`, { ...req, model: MODELS[step.tier] }, toJsonSchema, opts);
+			const r = await cappedInference(ledger, transport, `${keyBase}:a${i + 1}`, { ...req, model: modelOf(step.tier) }, toJsonSchema, opts);
 			return { ...r, tier: step.tier, escalated: step.escalated, totalMicroUsd: billed + r.costMicroUsd, totalInputTokens: tokensIn + r.usage.inputTokens + r.usage.cacheReadTokens + r.usage.cacheWriteTokens, totalOutputTokens: tokensOut + r.usage.outputTokens };
 		} catch (e) {
 			billed += billedOf(e);

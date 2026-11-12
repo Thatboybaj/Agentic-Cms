@@ -91,6 +91,17 @@ export const MODELS = {
   strongest: "qwen3.8-max",
 } as const satisfies Record<TModelTier, string>;
 
+export type TModelProvider = "qwen" | "anthropic";
+
+/**
+ * Model ids per provider. Qwen is the target; Anthropic stays available as a fallback while the Model Studio account
+ * is being verified. The backend picks one with CMS_MODEL_PROVIDER (default qwen); MODELS above is the Qwen set.
+ */
+export const PROVIDER_MODELS = {
+  qwen: MODELS,
+  anthropic: { fast: "claude-haiku-4-5", workhorse: "claude-sonnet-5", strongest: "claude-opus-5-5" },
+} as const satisfies Record<TModelProvider, Record<TModelTier, string>>;
+
 export const HARNESS: IHarness = {
   name: "grandeur-seo-harness",
   version: "0.2.0",

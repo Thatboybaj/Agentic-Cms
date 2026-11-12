@@ -2,7 +2,7 @@
 // CMS agent edits, live (handoff 03 steps 7 + 10): instructAgent, rewriteFactWithout and fixCheck schedule `suggest`;
 // the autopost gate's fixStep calls `autopostFixes`. Both go through runAgentCall → cappedInference, then the
 // no-invention guard (editorCore.safeEdits). Harness CMS_AGENT tier (workhorse); model ids only from MODELS.
-import { CMS_AGENT, MODELS } from "@studio/seo-harness";
+import { CMS_AGENT } from "@studio/seo-harness";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -11,6 +11,7 @@ import { vSafeEdits, vTask, vTaskMeta } from "../agentEdits";
 import { EDIT_CONTRACT, EditOutput, editUserPrompt, OPTIMIZER_SKILL, safeEdits, type ISafeEdits, type TEditTask } from "./editorCore";
 import { AgentError, runAgentCall } from "./run";
 import { modelTransport, formatFor, ledgerFor } from "./sdk";
+import { modelOf } from "./provider";
 
 const START = { tier: CMS_AGENT.modelTier, escalated: false };
 
@@ -22,7 +23,7 @@ async function runEdit(ctx: ActionCtx, siteId: Id<"sites">, postId: Id<"posts">,
 		await ctx.runMutation(internal.spend.recordUsage, { runId, model: r.model, tier: r.tier, escalated: r.escalated, inputTokens: r.totalInputTokens, outputTokens: r.totalOutputTokens, costMicroUsd: r.totalMicroUsd });
 		return { version: c.version, safe: safeEdits(r.output, c.post, tasks), notes: r.output.notes };
 	} catch (e) {
-		if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: MODELS[e.tier], tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
+		if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: modelOf(e.tier), tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
 		throw e;
 	}
 }

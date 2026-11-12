@@ -2,7 +2,6 @@
 // finds its row instead of making a second one. Spend is debited once when a run settles, with the cost the caller
 // measured. Steps are stubs until 03 (cappedInference records real token costs), so they cost $0: the spend cache and
 // caps must only ever reflect real money (the prototype simulated 94% of the estimate; we don't).
-import { MODELS } from "@studio/seo-harness";
 import { RUN_META, type ICapCheck, type IEstimate } from "../../src/lib/logic";
 import type { TRunKind } from "../../src/lib/types";
 import type { Doc, Id } from "../_generated/dataModel";
@@ -11,6 +10,7 @@ import { audit } from "./audit";
 import { fmtUsd } from "./budget";
 import { spendMonth } from "./defaults";
 import { notify, siteAudience } from "./notify";
+import { modelOf } from "../agents/provider";
 
 export interface IRunStart {
 	site: Doc<"sites">;
@@ -40,7 +40,7 @@ export async function createRun(ctx: MutationCtx, r: IRunStart): Promise<Id<"run
 		status: r.status ?? "running",
 		agent: meta.agent,
 		agentId: r.kind,
-		model: MODELS[r.estimate.tier],
+		model: modelOf(r.estimate.tier),
 		tier: r.estimate.tier,
 		inputTokens: 0,
 		outputTokens: 0,

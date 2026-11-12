@@ -4,7 +4,7 @@
 // other model call). Results are stored with the behaviour hash so a change to the skill, models or effort can be
 // compared before and after. Run it from the CLI:
 //   npx convex run discovery/evalRun:run '{"siteId":"…","judge":true}'
-import { MODELS } from "@studio/seo-harness";
+import { activeModels } from "../agents/provider";
 import { v } from "convex/values";
 import { z } from "zod/v4";
 import { internal } from "../_generated/api";
@@ -20,7 +20,7 @@ const JudgeOutput = z.object({ ideas: z.array(z.object({ title: z.string(), scor
 /** Effort per step as the agent sets it (agent.ts); part of the behaviour hash. */
 const EFFORT = "extract:low profile:high keywords:medium ideas:medium";
 
-export const currentHash = () => behaviourHash([DISCOVERY_SKILL.text, EXTRACT_CONTRACT, PROFILE_CONTRACT, KEYWORD_CONTRACT, IDEAS_CONTRACT, EVIDENCE, JSON.stringify(MODELS), EFFORT]);
+export const currentHash = () => behaviourHash([DISCOVERY_SKILL.text, EXTRACT_CONTRACT, PROFILE_CONTRACT, KEYWORD_CONTRACT, IDEAS_CONTRACT, EVIDENCE, JSON.stringify(activeModels()), EFFORT]);
 
 type TJudge = { model: string; mean: number; passed: boolean; ideas: { title: string; score: number; reason: string }[]; costUsd: number };
 type TEvalRun = { ok: false; reason: string } | { ok: true; passed: boolean; confirmed: boolean; hash: string; checks: ICheck[]; judge: TJudge | null };
@@ -52,7 +52,7 @@ export const run = internalAction({
 		}
 		const passed = evalPassed(checks) && (judged ? judged.passed : true);
 		const hash = currentHash();
-		await ctx.runMutation(internal.discovery.evals.saveEval, { siteId, reportId: input.reportId, goldenId: golden.id, goldenConfirmed: golden.confirmed, behaviourHash: hash, models: Object.values(MODELS).join(", "), checks, ...(judged ? { judge: judged } : {}), passed });
+		await ctx.runMutation(internal.discovery.evals.saveEval, { siteId, reportId: input.reportId, goldenId: golden.id, goldenConfirmed: golden.confirmed, behaviourHash: hash, models: Object.values(activeModels()).join(", "), checks, ...(judged ? { judge: judged } : {}), passed });
 		return { ok: true as const, passed, confirmed: golden.confirmed, hash, checks, judge: judged ?? null };
 	},
 });

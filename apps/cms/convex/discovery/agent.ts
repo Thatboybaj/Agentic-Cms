@@ -3,7 +3,6 @@
 // model call goes through runAgentCall → cappedInference (estimate, cap check, hold, call, settle; D7 retry then
 // escalate). Tiers come from the site's modelRouting: mechanical for extraction, strategy for the profile, writing
 // for keywords and ideas. Page text reaches a model only as fenced data in the user turn (§7.4).
-import { MODELS } from "@studio/seo-harness";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -13,6 +12,7 @@ import { agentsLive, modelTransport, formatFor, ledgerFor } from "../agents/sdk"
 import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, IDEAS_CONTRACT, IdeasOutput, ideasPrompt, KEYWORD_CONTRACT, KeywordOutput, keywordPrompt, pageBlock, planKeywords, PROFILE_CONTRACT, ProfileOutput, selectIdeas, extractLine, validEvidence, type IGscQuery } from "./agentCore";
 import { bareHost, normalizeUrl, USD_PER_CREDIT } from "./crawlCore";
 import { FirecrawlError, searchCredits, searchWeb } from "./firecrawl";
+import { modelOf } from "../agents/provider";
 
 const vStep = v.object({ ok: v.boolean(), error: v.optional(v.string()), note: v.optional(v.string()) });
 type TStep = typeof vStep.type;
@@ -26,7 +26,7 @@ async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) 
 	await ctx.runMutation(internal.spend.recordUsage, { runId, model: r.model, tier: r.tier, escalated: r.escalated, inputTokens: r.totalInputTokens, outputTokens: r.totalOutputTokens, costMicroUsd: r.totalMicroUsd });
 }
 async function recordFailure(ctx: ActionCtx, runId: Id<"runs">, e: unknown) {
-	if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: MODELS[e.tier], tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
+	if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: modelOf(e.tier), tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
 }
 const notLive = (): TStep => ({ ok: false, error: "Live agents are off on this deployment (CMS_AGENTS=live turns them on)" });
 const textOf = async (ctx: ActionCtx, id: Id<"_storage">) => (await (await ctx.storage.get(id))?.text()) ?? "";

@@ -1,7 +1,6 @@
 "use node";
 // Live scheduled agents (handoff 03 step 7), called by pipeline/steps.runKindStep. Each returns the run artifact
 // schedules.finishScheduled persists. Every model call goes through runAgentCall → cappedInference.
-import { MODELS } from "@studio/seo-harness";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -11,6 +10,7 @@ import { modelFor } from "./models";
 import { AgentError, type IAgentResult, runAgentCall } from "./run";
 import { QA_CONTRACT, QA_SKILL, QaOutput, qaScorecard, pipelineCsv, refreshCandidates, safeIdeas, SWARM_RESEARCH_CONTRACT, SWARM_SKILL, SWARM_STRUCTURE_CONTRACT, SwarmOutput, swarmResearchPrompt, swarmStructurePrompt } from "./scheduledCore";
 import { modelTransport, formatFor, ledgerFor } from "./sdk";
+import { modelOf } from "./provider";
 
 const MAX_SEARCHES = 6;
 const REFRESH_CAPACITY = 2;
@@ -19,7 +19,7 @@ async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) 
 	await ctx.runMutation(internal.spend.recordUsage, { runId, model: r.model, tier: r.tier, escalated: r.escalated, inputTokens: r.totalInputTokens, outputTokens: r.totalOutputTokens, costMicroUsd: r.totalMicroUsd });
 }
 async function recordFailure(ctx: ActionCtx, runId: Id<"runs">, e: unknown) {
-	if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: MODELS[e.tier], tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
+	if (e instanceof AgentError && e.billedMicroUsd > 0) await ctx.runMutation(internal.spend.recordUsage, { runId, model: modelOf(e.tier), tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
 }
 
 const none: TRunArtifact["ideas"] = [];

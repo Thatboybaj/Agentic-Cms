@@ -6,6 +6,7 @@ import type { z } from "zod/v4";
 import { type IInferenceRequest, type IInferenceResponse, InferenceError, infer, type TTransport } from "./gateway";
 import { costMicroUsd, holdMicroUsd, type IUsage, priceOf, ZERO_USAGE } from "./pricing";
 import { thinkingBudget } from "../../src/lib/qwen";
+import { isQwenModel } from "./provider";
 
 export class CapError extends Error {
 	constructor(message: string) {
@@ -41,7 +42,7 @@ export async function cappedInference<T>(ledger: ILedger, transport: TTransport,
 	const inputChars = req.system.reduce((n, s) => n + s.length, 0) + req.user.length;
 	// The hold covers every retry (each could bill in the worst case), so a run can never exceed its cap.
 	// Thinking tokens bill as output on top of max_tokens, so the hold covers the thinking budget too.
-	const thinking = priceOf(req.model).effort ? thinkingBudget(req.effort, req.maxTokens) : 0;
+	const thinking = isQwenModel(req.model) && priceOf(req.model).effort ? thinkingBudget(req.effort, req.maxTokens) : 0;
 	const hold = holdMicroUsd(req.model, inputChars, req.maxTokens + thinking, req.webSearch?.maxUses ?? 0) * maxAttempts;
 	const held = await ledger.hold(idempotencyKey, hold);
 	if (!held.ok) throw new CapError(held.message);

@@ -3,7 +3,6 @@
 // prompt from the single-site brief beginDraft assembled, runs it through runAgentCall → cappedInference (hold,
 // bounded retry, settle, D7 escalation), records the measured usage on the run, and returns the step's draft shape.
 // It never writes posts: persist.saveDraft does (README §3).
-import { MODELS } from "@studio/seo-harness";
 import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
@@ -13,6 +12,7 @@ import { modelFor } from "./models";
 import { AgentError, type IAgentResult, runAgentCall } from "./run";
 import { modelTransport, formatFor, ledgerFor } from "./sdk";
 import { CMS_CONTRACT, REVISE_CONTRACT, ReviseOutput, reviseUserPrompt, toDraft, toRevision, WRITER_SKILL, WriterOutput, writerUserPrompt } from "./writerCore";
+import { modelOf } from "./provider";
 
 async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) {
 	await ctx.runMutation(internal.spend.recordUsage, { runId, model: r.model, tier: r.tier, escalated: r.escalated, inputTokens: r.totalInputTokens, outputTokens: r.totalOutputTokens, costMicroUsd: r.totalMicroUsd });
@@ -20,7 +20,7 @@ async function record<T>(ctx: ActionCtx, runId: Id<"runs">, r: IAgentResult<T>) 
 
 async function recordFailure(ctx: ActionCtx, runId: Id<"runs">, e: unknown) {
 	if (e instanceof AgentError && e.billedMicroUsd > 0) {
-		await ctx.runMutation(internal.spend.recordUsage, { runId, model: MODELS[e.tier], tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
+		await ctx.runMutation(internal.spend.recordUsage, { runId, model: modelOf(e.tier), tier: e.tier, escalated: e.escalated, inputTokens: 0, outputTokens: 0, costMicroUsd: e.billedMicroUsd });
 	}
 }
 

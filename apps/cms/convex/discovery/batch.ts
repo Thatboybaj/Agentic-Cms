@@ -4,7 +4,6 @@
 // a JSONL file and creates the batch, holding the estimate against the text cap; poll settles to what the batch
 // actually billed once it ends. Pages a batch couldn't extract (errors, expiry, invalid output, or a model without
 // batch in this region) are left without an extract, so the normal extract step reads them with direct calls.
-import { MODELS } from "@studio/seo-harness";
 import { v } from "convex/values";
 import { compatUrl, stripFences } from "../../src/lib/qwen";
 import { internal } from "../_generated/api";
@@ -13,6 +12,7 @@ import { type ActionCtx, internalAction } from "../_generated/server";
 import { costMicroUsd, holdMicroUsd, priceOf } from "../agents/pricing";
 import { agentsLive, formatFor, qwenKey } from "../agents/sdk";
 import { DISCOVERY_SKILL, EXTRACT_CONTRACT, ExtractOutput, pageBlock } from "./agentCore";
+import { modelOf } from "../agents/provider";
 
 export const BATCH_MIN_PAGES = 40;
 const PAGES_PER_REQUEST = 6;
@@ -37,7 +37,7 @@ export const start = internalAction({
 	handler: async (ctx, { siteId, runId }): Promise<{ batchId: string | null; requests: number; note?: string }> => {
 		const input = await ctx.runQuery(internal.discovery.agentData.extractInput, { siteId });
 		if (!input || input.pages.length <= BATCH_MIN_PAGES || !agentsLive()) return { batchId: null, requests: 0 };
-		const model = MODELS[input.routing.mechanical];
+		const model = modelOf(input.routing.mechanical);
 		if (!priceOf(model).batch) return { batchId: null, requests: 0, note: `${model} has no batch inference in this region; reading pages directly` };
 		const system = [DISCOVERY_SKILL.text, EXTRACT_CONTRACT, JSON_NOTE].join("\n\n");
 		const schema = formatFor(ExtractOutput);
@@ -93,7 +93,7 @@ export const poll = internalAction({
 		const input = await ctx.runQuery(internal.discovery.agentData.extractInput, { siteId });
 		const byUrl = new Map((input?.pages ?? []).map((p) => [p.url, p.id]));
 		const tier = input?.routing.mechanical ?? "fast";
-		const model = MODELS[tier];
+		const model = modelOf(tier);
 		let micro = 0;
 		let inTok = 0;
 		let outTok = 0;

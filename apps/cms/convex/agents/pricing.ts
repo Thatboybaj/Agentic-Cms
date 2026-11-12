@@ -2,7 +2,7 @@
 // Source: Alibaba Cloud Model Studio model pages, Singapore region (International scope), read 2026-11-12. Requests
 // stay under 256K input, the lowest tier. Context cache: implicit cache hits bill at the listed cached rate; explicit
 // cache creation at 1.25× input. Thinking tokens bill as output. Re-verify before changing regions (QWEN_BASE_URL).
-import { MODELS } from "@studio/seo-harness";
+import { PROVIDER_MODELS } from "@studio/seo-harness";
 
 export const PRICES_SOURCE_DATE = "2026-11-12";
 
@@ -18,12 +18,19 @@ interface IPrice {
 	batch: boolean;
 }
 
-export const PRICES: Readonly<Record<(typeof MODELS)[keyof typeof MODELS], IPrice>> = {
+type TModelId = (typeof PROVIDER_MODELS)[keyof typeof PROVIDER_MODELS][keyof (typeof PROVIDER_MODELS)["qwen"]];
+
+export const PRICES: Readonly<Record<TModelId, IPrice>> = {
 	// Flash: the page lists $0.113/$0.382 on one scope and third-party trackers $0.15/$0.47 for Singapore; hold the
 	// higher figures so a cap is never under-counted.
 	"qwen3.8-flash": { inputPerM: 0.15, outputPerM: 0.47, cachedPerM: 0.03, effort: true, batch: true },
 	"qwen3.7-plus": { inputPerM: 0.4, outputPerM: 1.6, cachedPerM: 0.08, effort: true, batch: true },
 	"qwen3.8-max": { inputPerM: 2, outputPerM: 6, cachedPerM: 0.25, effort: true, batch: false },
+	// Anthropic fallback (CMS_MODEL_PROVIDER=anthropic): first-party API rates cached 2026-11-03. Cache reads 0.1× input.
+	// Batch off: on this provider large sites are read with direct calls. Haiku 4.5 rejects output_config.effort.
+	"claude-haiku-4-5": { inputPerM: 1, outputPerM: 5, cachedPerM: 0.1, effort: false, batch: false },
+	"claude-sonnet-5": { inputPerM: 2, outputPerM: 10, cachedPerM: 0.2, effort: true, batch: false },
+	"claude-opus-5-5": { inputPerM: 4, outputPerM: 20, cachedPerM: 0.4, effort: true, batch: false },
 };
 
 /** Web search (agent strategy), Singapore: USD per 1,000 calls (same source and date as the token prices). */

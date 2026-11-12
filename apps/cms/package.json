@@ -15,6 +15,7 @@
     "check:convex-auth": "node scripts/check-cms-convex-auth.mjs"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0",
     "@clerk/nextjs": "^7.9.25",
     "@convex-dev/rate-limiter": "^0.4.3",
     "@convex-dev/workflow": "^0.4.10",

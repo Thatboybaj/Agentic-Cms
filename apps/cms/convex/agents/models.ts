@@ -1,6 +1,7 @@
 // Tier routing (handoff 03 step 6). Base tier from the harness roster, overridden by the site's task-group routing,
 // then static escalation. Model ids only ever come from MODELS in @studio/seo-harness.
-import { getAgent, MODELS, type TAgentId, type TModelTier } from "@studio/seo-harness";
+import { getAgent, type TAgentId, type TModelTier } from "@studio/seo-harness";
+import { modelOf } from "./provider";
 
 export type TTaskGroup = "mechanical" | "writing" | "strategy" | "pillarPages";
 export type TSiteRouting = Record<TTaskGroup, TModelTier>;
@@ -47,7 +48,7 @@ export function modelFor(agentId: TAgentId, routing: TSiteRouting | undefined, o
 		escalated = next !== tier;
 		tier = next;
 	}
-	return { tier, model: MODELS[tier], escalated };
+	return { tier, model: modelOf(tier), escalated };
 }
 
 const maxTier = (a: TModelTier, b: TModelTier): TModelTier => (ORDER.indexOf(a) >= ORDER.indexOf(b) ? a : b);

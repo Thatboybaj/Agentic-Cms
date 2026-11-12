@@ -16,6 +16,7 @@ import type * as agents_editorCore from "../agents/editorCore.js";
 import type * as agents_gateway from "../agents/gateway.js";
 import type * as agents_models from "../agents/models.js";
 import type * as agents_pricing from "../agents/pricing.js";
+import type * as agents_provider from "../agents/provider.js";
 import type * as agents_run from "../agents/run.js";
 import type * as agents_scheduled from "../agents/scheduled.js";
 import type * as agents_scheduledCore from "../agents/scheduledCore.js";
@@ -121,6 +122,7 @@ declare const fullApi: ApiFromModules<{
   "agents/gateway": typeof agents_gateway;
   "agents/models": typeof agents_models;
   "agents/pricing": typeof agents_pricing;
+  "agents/provider": typeof agents_provider;
   "agents/run": typeof agents_run;
   "agents/scheduled": typeof agents_scheduled;
   "agents/scheduledCore": typeof agents_scheduledCore;
