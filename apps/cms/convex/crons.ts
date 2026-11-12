@@ -9,5 +9,7 @@ crons.interval("schedules tick", { minutes: 5 }, internal.schedules.tick, {});
 crons.daily("search console import", { hourUTC: 2, minuteUTC: 15 }, internal.gsc.importAll, {});
 
 crons.daily("retention", { hourUTC: 3, minuteUTC: 30 }, internal.ops.retention, {});
+// Site discovery: crawled page text expires after 90 days (SD7); extracts and outlines stay.
+crons.daily("discovery text expiry", { hourUTC: 3, minuteUTC: 45 }, internal.discovery.data.purgeExpiredText, {});
 
 export default crons;

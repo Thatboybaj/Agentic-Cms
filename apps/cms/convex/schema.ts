@@ -1008,7 +1008,8 @@ export default defineSchema({
 		runId: v.id("runs"),
 	})
 		.index("by_site_url", ["siteId", "url"])
-		.index("by_site_type", ["siteId", "type"]),
+		.index("by_site_type", ["siteId", "type"])
+		.index("by_text_expiry", ["textExpiresAt"]),
 
 	/** The site profile and brand pack draft. TENANT-SCOPED, versioned (one row per run); the latest is current. */
 	siteProfiles: defineTable({
