@@ -28,7 +28,8 @@ export type TAgentId =
   | "link-building-prospector"
   | "seo-qa-agent"
   | "visualization-report-agent"
-  | "visual-asset-agent";
+  | "visual-asset-agent"
+  | "site-discovery-agent";
 
 export type TSchedule =
   | "continuous"
@@ -39,7 +40,8 @@ export type TSchedule =
   | "weekly_friday"
   | "monthly_day1"
   | "weekly_friday_light_biweekly_friday_full"
-  | "biweekly_friday_after_qa";
+  | "biweekly_friday_after_qa"
+  | "on_site_add";
 
 export interface IEscalation {
   modelId: string;
@@ -49,7 +51,7 @@ export interface IEscalation {
 
 export interface IHarnessAgent {
   id: TAgentId;
-  /** Roster number in HARNESS.md (0 to 10). */
+  /** Roster number in HARNESS.md (0 to 11). */
   number: number;
   name: string;
   role: string;
@@ -245,6 +247,19 @@ export const AGENTS: readonly IHarnessAgent[] = [
     outputs: ["asset_candidates", "svg_diagrams", "provenance_log"],
     skillPath: skill("visual-asset-agent"),
   },
+  {
+    id: "site-discovery-agent",
+    number: 11,
+    name: "Site discovery agent",
+    role: "On a new site: crawl it, understand the business, propose pillars, keywords and the first batch of ideas with evidence",
+    modelTier: "workhorse",
+    modelId: MODELS.workhorse,
+    escalateTo: { modelId: MODELS.strongest, modelTier: "strongest", when: ["site_profile"] },
+    schedule: "on_site_add",
+    inputs: ["site_domain", "gsc_export", "keyword_csv_import"],
+    outputs: ["site_profile", "pillar_keywords_csv", "brand_pack_draft", "content_map"],
+    skillPath: skill("site-discovery-agent"),
+  },
 ];
 
 /** The Agentic CMS's native agent. Not a harness agent and not counted in AGENTS. */
@@ -265,6 +280,7 @@ export interface IScheduleEntry {
 }
 
 export const SCHEDULE: readonly IScheduleEntry[] = [
+  { cadence: "When a site is added, or on demand", agents: ["site-discovery-agent"], note: "First ideas for a new site; re-runs add ideas, never edit or delete" },
   { cadence: "Monday", agents: ["keyword-research-swarm"] },
   {
     cadence: "Per publish day",

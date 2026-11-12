@@ -450,7 +450,56 @@ export const RUN_META: Record<TRunKind, IRunMeta> = {
 	"biweekly-report": { label: "Bi-weekly report", agent: "Visualization agent", tier: "strongest", budget: "text", baseUsd: 2.4, cadence: "Alternate Fridays", produces: "The visual progress report" },
 	"kas-recalc": { label: "KAS recalculation", agent: "CMS agent", tier: "fast", budget: "text", baseUsd: 0.3, cadence: "24 hours post-merge, then weekly", produces: "Updated attribution" },
 	"image-generation": { label: "Image generation", agent: "Image pipeline agent", tier: "workhorse", budget: "image", baseUsd: 0.12, cadence: "On slot creation", produces: "Candidates for each image slot" },
+	"site-discovery": { label: "Site discovery", agent: "Site discovery agent", tier: "workhorse", budget: "text", baseUsd: 1.6, cadence: "When a site is added, or on demand", produces: "Site profile, pillars, keywords and the first ideas" },
 };
+
+// ─── Site discovery (prd-site-discovery) ─────────────────────────────────────
+
+export interface IDiscoverySettings {
+	/** Start discovery automatically when the site is added (F1). */
+	onAdd: boolean;
+	maxPages: number;
+	depth: number;
+	exclude: string[];
+	subdomains: boolean;
+	/** Web search for who ranks, top 2 keywords per pillar (F17). */
+	competitorCheck: boolean;
+	/** Ideas per batch; 0 = four weeks at the site's cadence (SD5). */
+	batchSize: number;
+}
+
+export const DISCOVERY_MAX_PAGES_CAP = 1000;
+export const DISCOVERY_DEFAULTS: IDiscoverySettings = { onAdd: true, maxPages: 150, depth: 3, exclude: ["/cart", "/checkout", "/account", "/login", "/wp-admin", "?"], subdomains: false, competitorCheck: true, batchSize: 0 };
+
+/** Ideas per batch (F18/SD5): four weeks at the site's cadence unless set; halved for a very small site (§11). */
+export function discoveryBatchSize(site: Pick<ISite, "cadenceTarget">, settings: Pick<IDiscoverySettings, "batchSize">, contentPages?: number): number {
+	const base = settings.batchSize > 0 ? settings.batchSize : Math.max(4, Math.round(site.cadenceTarget * 4));
+	return contentPages !== undefined && contentPages < 5 ? Math.max(2, Math.ceil(base / 2)) : base;
+}
+
+export type TReadinessItem = "repo" | "paths" | "template";
+export const READINESS_LABEL: Record<TReadinessItem, string> = { repo: "connect the repo", paths: "confirm the content and image folders", template: "confirm the article template" };
+export const READINESS_STEP: Record<TReadinessItem, "/onboarding" | "/templates"> = { repo: "/onboarding", paths: "/onboarding", template: "/templates" };
+
+export interface IPublishReadiness {
+	ready: boolean;
+	missing: TReadinessItem[];
+}
+
+/**
+ * F22: a site is ready to publish when its repo connection is active, the content and asset folders are confirmed,
+ * and an article template is confirmed. Search Console is recommended, not required.
+ */
+export function publishReadiness(i: { repo: { active: boolean; contentDir?: string | null; assetDir?: string | null } | null; templateConfirmed: boolean }): IPublishReadiness {
+	const missing: TReadinessItem[] = [];
+	if (!i.repo?.active) missing.push("repo");
+	if (!i.repo?.active || !i.repo.contentDir?.trim() || !i.repo.assetDir?.trim()) missing.push("paths");
+	if (!i.templateConfirmed) missing.push("template");
+	return { ready: missing.length === 0, missing };
+}
+
+/** "Waiting for setup: connect the repo, confirm the article template" (F23). */
+export const waitingForSetup = (missing: TReadinessItem[]) => `Waiting for setup: ${missing.map((m) => READINESS_LABEL[m]).join(", ")}`;
 
 export const TIER_LABEL: Record<TModelTier, string> = { fast: "Fast", workhorse: "Workhorse", strongest: "Strongest" };
 
@@ -555,7 +604,9 @@ export type TPermission =
 	| "budget.set"
 	| "routing.set"
 	| "members.manage"
-	| "site.add";
+	| "site.add"
+	| "discovery.run"
+	| "discovery.configure";
 
 const S: TRole = "specialist";
 const D: TRole = "developer";
@@ -592,6 +643,8 @@ export const PERMISSIONS: Record<TPermission, TRole[]> = {
 	"routing.set": [A],
 	"members.manage": [A],
 	"site.add": [A],
+	"discovery.run": [S, A], // start or re-run site discovery, edit and accept the profile
+	"discovery.configure": [A], // crawl limits and the discovery budget
 };
 
 export const ROLE_LABEL: Record<TRole, string> = { specialist: "Content specialist", developer: "Developer", stakeholder: "Client stakeholder", admin: "Agency admin" };
@@ -608,6 +661,8 @@ export function lockReason(role: TRole, p: TPermission): string | null {
 	if (p === "repo.connect" || p === "template.ingest" || p === "template.confirm" || p === "searchConsole.connect") return "Repo and template setup belongs to the developer";
 	if (p === "budget.set" || p === "routing.set" || p === "members.manage" || p === "site.add" || p === "publishing.autoMerge") return "Only an agency admin can change this";
 	if (p === "publishing.set") return "Only the content specialist or an admin changes publishing";
+	if (p === "discovery.run") return "Only the content specialist or an admin runs site discovery";
+	if (p === "discovery.configure") return "Only an agency admin changes discovery limits";
 	return `${ROLE_LABEL[role]}s can't do this`;
 }
 

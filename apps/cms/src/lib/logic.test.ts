@@ -328,3 +328,28 @@ describe("seed", () => {
 		expect(d.trajectory).toHaveLength(8);
 	});
 });
+
+describe("site discovery: publish readiness and batch size", async () => {
+	const { publishReadiness, waitingForSetup, discoveryBatchSize, DISCOVERY_DEFAULTS, roleCan, lockReason } = await import("./logic");
+	it("is ready only with an active repo, both folders, and a confirmed template", () => {
+		expect(publishReadiness({ repo: null, templateConfirmed: false })).toEqual({ ready: false, missing: ["repo", "paths", "template"] });
+		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "" }, templateConfirmed: true })).toEqual({ ready: false, missing: ["paths"] });
+		expect(publishReadiness({ repo: { active: false, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: true }).missing).toEqual(["repo", "paths"]);
+		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: false }).missing).toEqual(["template"]);
+		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: true })).toEqual({ ready: true, missing: [] });
+		expect(waitingForSetup(["repo", "template"])).toBe("Waiting for setup: connect the repo, confirm the article template");
+	});
+	it("sizes the first batch at four weeks of the site's cadence, halved for a tiny site", () => {
+		expect(discoveryBatchSize({ cadenceTarget: 3 }, DISCOVERY_DEFAULTS)).toBe(12);
+		expect(discoveryBatchSize({ cadenceTarget: 2 }, DISCOVERY_DEFAULTS)).toBe(8);
+		expect(discoveryBatchSize({ cadenceTarget: 3 }, { batchSize: 20 })).toBe(20);
+		expect(discoveryBatchSize({ cadenceTarget: 3 }, DISCOVERY_DEFAULTS, 3)).toBe(6);
+	});
+	it("lets specialists and admins run discovery; only admins configure it", () => {
+		expect(roleCan("specialist", "discovery.run")).toBe(true);
+		expect(roleCan("developer", "discovery.run")).toBe(false);
+		expect(roleCan("specialist", "discovery.configure")).toBe(false);
+		expect(roleCan("admin", "discovery.configure")).toBe(true);
+		expect(lockReason("developer", "discovery.run")).toBe("Only the content specialist or an admin runs site discovery");
+	});
+});

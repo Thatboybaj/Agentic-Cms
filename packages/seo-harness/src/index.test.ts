@@ -31,10 +31,10 @@ interface IYaml {
 const config = parse(readFileSync(resolve(root, "harness-config.yaml"), "utf8")) as IYaml;
 
 describe("harness-config.yaml and src/index.ts stay in sync", () => {
-  it("has the same agent ids, in roster order, and 11 agents", () => {
-    expect(AGENTS).toHaveLength(11);
+  it("has the same agent ids, in roster order, and 12 agents", () => {
+    expect(AGENTS).toHaveLength(12);
     expect(Object.keys(config.agents)).toEqual(AGENTS.map((a) => a.id));
-    expect(AGENTS.map((a) => a.number)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(AGENTS.map((a) => a.number)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
   });
 
   it("matches models and escalation models", () => {

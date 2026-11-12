@@ -1897,6 +1897,7 @@ export const RUN_KIND_ICON: Record<TRunKind, TIconName> = {
 	"qa-sweep": "ListChecks",
 	"content-refresh": "ArrowsClockwise",
 	"link-prospecting": "LinkSimple",
+	"site-discovery": "TreeStructure",
 	"biweekly-report": "ChartLineUp",
 	"kas-recalc": "Target",
 	"image-generation": "ImagesSquare",

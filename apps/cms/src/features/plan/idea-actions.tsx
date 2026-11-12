@@ -11,6 +11,7 @@ import type { IPost, ISite, ISiteData, TIdeaSource, TProvider } from "@/lib/type
 
 export const IDEA_SOURCE_LABEL: Record<TIdeaSource, string> = {
 	"kas-gap": "KAS gap",
+	"site-discovery": "Site discovery",
 	"keyword-swarm": "Keyword swarm",
 	manual: "Added by hand",
 	refresh: "Refresh cycle",

@@ -41,7 +41,16 @@ export const vContentType = v.union(
 	v.literal("pillar"),
 	v.literal("money-page"),
 );
-export const vIdeaSource = v.union(v.literal("keyword-swarm"), v.literal("kas-gap"), v.literal("manual"), v.literal("refresh"));
+/** Site discovery settings (prd-site-discovery F1, F6, F17, SD5). Absent = DISCOVERY_DEFAULTS. */
+export const vDiscoverySettings = v.object({ onAdd: v.boolean(), maxPages: v.number(), depth: v.number(), exclude: v.array(v.string()), subdomains: v.boolean(), competitorCheck: v.boolean(), batchSize: v.number() });
+export const vVolumeTier = v.union(v.literal("low"), v.literal("medium"), v.literal("high"));
+export const vFunnel = v.union(v.literal("awareness"), v.literal("consideration"), v.literal("decision"));
+export const vPageType = v.union(v.literal("home"), v.literal("service"), v.literal("product"), v.literal("blog-post"), v.literal("category"), v.literal("location"), v.literal("about"), v.literal("contact"), v.literal("legal"), v.literal("other"));
+export const vRegulatedCategory = v.union(v.literal("health"), v.literal("finance"), v.literal("legal"), v.literal("none"));
+/** A claim and the evidence it rests on: crawled page URLs, "gsc:<query>", or competitor URLs. */
+export const vCited = v.object({ value: v.string(), evidence: v.array(v.string()) });
+
+export const vIdeaSource = v.union(v.literal("keyword-swarm"), v.literal("kas-gap"), v.literal("manual"), v.literal("refresh"), v.literal("site-discovery"));
 export const vModelTier = v.union(v.literal("fast"), v.literal("workhorse"), v.literal("strongest"));
 export const vBudgetKind = v.union(v.literal("text"), v.literal("image"));
 export const vRunKind = v.union(
@@ -51,6 +60,7 @@ export const vRunKind = v.union(
 	v.literal("qa-sweep"),
 	v.literal("content-refresh"),
 	v.literal("link-prospecting"),
+	v.literal("site-discovery"),
 	v.literal("biweekly-report"),
 	v.literal("kas-recalc"),
 	v.literal("image-generation"),
@@ -269,6 +279,7 @@ export default defineSchema({
 		ctrCurve: v.optional(v.array(v.number())),
 		liveBaseline: v.number(),
 		timezone: v.string(), // "Africa/Lagos"; drives cron-local schedules and the spend month
+		discovery: v.optional(vDiscoverySettings),
 	})
 		.index("by_workspace", ["workspaceId"])
 		.index("by_workspace_slug", ["workspaceId", "slug"]),
@@ -337,6 +348,16 @@ export default defineSchema({
 		rankingUrl: v.union(v.string(), v.null()),
 		rankingPages: v.number(),
 		decaying: v.boolean(),
+		/** Site discovery: what this keyword rests on (crawled URLs, "gsc:<query>", competitor URLs). */
+		evidence: v.optional(v.array(v.string())),
+		/** Where the volume came from; "estimate" means a tier only, never a number (F15). */
+		volumeSource: v.optional(v.union(v.literal("gsc"), v.literal("import"), v.literal("estimate"))),
+		volumeTier: v.optional(vVolumeTier),
+		funnel: v.optional(vFunnel),
+		/** Search Console position 8 to 20: a quick win. */
+		quickWin: v.optional(v.boolean()),
+		/** Already targeted by this crawled page (cannibalisation check, F16): no new idea for it. */
+		existingPageId: v.optional(v.id("crawledPages")),
 	})
 		.index("by_site", ["siteId"])
 		.index("by_site_term", ["siteId", "termNormalized"])
@@ -432,6 +453,14 @@ export default defineSchema({
 		approvedVersion: v.optional(v.number()), // the version the human gate (or autopost gate) asserted
 		liveAt: v.optional(v.number()),
 		mergeCommitSha: v.optional(v.string()),
+		/** Site discovery idea: evidence, angle, secondary keywords and internal link targets (F19). */
+		discoveryEvidence: v.optional(v.array(v.string())),
+		angle: v.optional(v.string()),
+		secondaryKeywords: v.optional(v.array(v.string())),
+		internalLinkTargets: v.optional(v.array(v.string())),
+		discoveryRunId: v.optional(v.id("runs")),
+		/** Approved but not drafted because the site is not ready to publish yet (F23). Cleared when drafting starts. */
+		hold: v.optional(v.object({ reason: v.literal("waiting-for-setup"), missing: v.array(v.string()), since: v.number() })),
 		createdAt: v.number(),
 		updatedAt: v.number(),
 	})
@@ -710,6 +739,9 @@ export default defineSchema({
 		workflowId: v.optional(v.string()),
 		idempotencyKey: v.string(),
 		attempt: v.number(),
+		/** Multi-step runs (site discovery): the current step and page counts, for progress cards. */
+		stage: v.optional(v.string()),
+		progress: v.optional(v.object({ pagesTotal: v.number(), pagesCrawled: v.number(), pagesSkipped: v.number() })),
 	})
 		.index("by_site_started", ["siteId", "startedAt"])
 		.index("by_site_status", ["siteId", "status"])
@@ -940,6 +972,97 @@ export default defineSchema({
 
 	/** Idempotent webhook intake (GitHub / GitLab / Clerk / Polar / Autumn). Workspace-agnostic until resolved. */
 	/** Deployment-level integration credentials created in-app (GitHub App manifest flow), sealed with CMS_SECRETS_KEY. */
+	// ── Site discovery (prd-site-discovery §8) ────────────────────────────────
+
+	/** One crawled page. TENANT-SCOPED. Text is PII-stripped before storage; long text in file storage (90-day expiry). */
+	crawledPages: defineTable({
+		siteId: v.id("sites"),
+		url: v.string(),
+		canonical: v.optional(v.string()),
+		status: v.number(),
+		type: v.optional(vPageType),
+		title: v.string(),
+		metaDescription: v.optional(v.string()),
+		outline: v.array(v.object({ level: v.number(), text: v.string() })),
+		textStorageId: v.optional(v.id("_storage")),
+		textExpiresAt: v.optional(v.number()),
+		wordCount: v.number(),
+		publishedAt: v.optional(v.string()),
+		modifiedAt: v.optional(v.string()),
+		schemaTypes: v.array(v.string()),
+		internalLinks: v.array(v.string()),
+		hash: v.string(),
+		/** Page extraction (F10); absent until the extract step ran on this hash. */
+		extract: v.optional(
+			v.object({
+				topic: v.string(),
+				entities: v.array(v.string()),
+				targetQuery: v.optional(v.string()),
+				funnel: vFunnel,
+				refreshCandidate: v.boolean(),
+				refreshReason: v.optional(v.string()),
+				hash: v.string(),
+			}),
+		),
+		lastCrawledAt: v.number(),
+		runId: v.id("runs"),
+	})
+		.index("by_site_url", ["siteId", "url"])
+		.index("by_site_type", ["siteId", "type"]),
+
+	/** The site profile and brand pack draft. TENANT-SCOPED, versioned (one row per run); the latest is current. */
+	siteProfiles: defineTable({
+		siteId: v.id("sites"),
+		runId: v.id("runs"),
+		version: v.number(),
+		confidence: v.union(v.literal("normal"), v.literal("low")),
+		sells: vCited,
+		offerings: v.array(vCited),
+		audience: vCited,
+		regions: v.array(vCited),
+		pricePositioning: v.optional(vCited),
+		differentiators: v.array(vCited),
+		competitorsNamed: v.array(vCited),
+		regulated: v.object({ category: vRegulatedCategory, evidence: v.array(v.string()) }),
+		blogCoverage: v.array(vCited),
+		brandPackDraft: v.object({ voice: v.string(), voiceExamples: v.array(vCited), styleKeywords: v.array(v.string()), disclaimers: v.array(v.string()) }),
+		gaps: v.array(v.string()),
+		/** Interview answers when the crawl could not read the site (robots-blocked, tiny site). */
+		interview: v.optional(v.array(v.object({ question: v.string(), answer: v.string() }))),
+		acceptedBy: v.optional(v.id("users")),
+		acceptedAt: v.optional(v.number()),
+		editedBy: v.optional(v.id("users")),
+		createdAt: v.number(),
+	}).index("by_site_version", ["siteId", "version"]),
+
+	/** What one discovery run found, for the report (F26): coverage, pillars and keywords, competitors, the ideas. */
+	discoveryReports: defineTable({
+		siteId: v.id("sites"),
+		runId: v.id("runs"),
+		status: v.union(v.literal("running"), v.literal("succeeded"), v.literal("failed"), v.literal("needs-interview")),
+		stage: v.string(),
+		error: v.optional(v.string()),
+		mode: v.union(v.literal("full"), v.literal("more-ideas")),
+		coverage: v.object({ crawled: v.number(), skipped: v.array(v.object({ url: v.string(), reason: v.string() })), limitHit: v.boolean() }),
+		pillars: v.array(
+			v.object({
+				name: v.string(),
+				why: v.string(),
+				evidence: v.array(v.string()),
+				keywords: v.array(v.object({ term: v.string(), intent: v.string(), funnel: v.string(), volume: v.string(), volumeSource: v.string(), quickWin: v.boolean(), existingPageUrl: v.optional(v.string()), evidence: v.array(v.string()) })),
+			}),
+		),
+		competitorNotes: v.array(v.object({ keyword: v.string(), ranking: v.array(v.string()), difficulty: v.string() })),
+		refreshCandidates: v.array(v.object({ url: v.string(), reason: v.string() })),
+		ideaIds: v.array(v.id("posts")),
+		dropped: v.array(v.string()),
+		costUsd: v.number(),
+		createdAt: v.number(),
+		finishedAt: v.optional(v.number()),
+	})
+		.index("by_site_created", ["siteId", "createdAt"])
+		.index("by_run", ["runId"]),
+
 	appConfig: defineTable({
 		key: v.string(),
 		ciphertext: v.string(),

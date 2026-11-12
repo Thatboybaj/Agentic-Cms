@@ -13,7 +13,7 @@ export type TTone = "neutral" | "ink" | "agent" | "human" | "block" | "pass" | "
 
 export type TIntent = "transactional" | "commercial" | "informational" | "navigational";
 export type TContentType = "guide" | "comparison" | "listicle" | "how-to" | "faq" | "pillar" | "money-page";
-export type TIdeaSource = "keyword-swarm" | "kas-gap" | "manual" | "refresh";
+export type TIdeaSource = "keyword-swarm" | "kas-gap" | "manual" | "refresh" | "site-discovery";
 
 export interface ISite {
 	id: string;
@@ -263,7 +263,7 @@ export interface IPost {
 	editingBy?: { userId: string; since: string };
 }
 
-export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation";
+export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation" | "site-discovery";
 
 export interface ISchedule {
 	kind: TRunKind;

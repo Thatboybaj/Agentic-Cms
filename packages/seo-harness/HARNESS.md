@@ -19,6 +19,7 @@ Version 0.2.0. See "Changes from v0.1" at the end.
 | 8 | seo-qa-agent | Verifies agent output against reality, tracks progress, demands human updates | claude-sonnet-5 | Cross-checking other agents needs at least their level of reasoning |
 | 9 | visualization-report-agent | Bi-weekly visual progress report + pivot calls | claude-sonnet-5, escalate pivot analysis to claude-opus-5-5 when a pivot trigger fires | Chart generation and narration on Sonnet; strategy-changing recommendations deserve Opus |
 | 10 | visual-asset-agent | Per-post image slots: generate, diagram, or source licensed images; post-process; provenance | claude-sonnet-5 | Route choice, prompt construction, and license judgment are workhorse reasoning; the pixels come from the connected image providers |
+| 11 | site-discovery-agent | On a new site: crawl it, understand the business, propose pillars, keywords and the first batch of ideas, each with evidence | claude-sonnet-5 (site profile on claude-opus-5-5; page extraction on claude-haiku-4-5) | Extraction is high-volume and mechanical; the site profile is the one judgment everything downstream rests on; keywords and ideas are workhorse reasoning over a cached profile |
 | — | CMS agent (product surface) | Owns post state, resolves template slots, runs the auto-gate under autopost, the only component with repo write access (opens and merges MRs) | claude-sonnet-5 (configurable in the CMS) | Not a harness agent and not in the count of 11. It belongs to the Agentic CMS product, calls the harness agents, and consumes their artifacts |
 
 Cost logic: Haiku for high-frequency mechanical work, Sonnet as the workhorse for everything requiring writing or judgment, Opus reserved for the rare runs that set or change strategy. Verify current model names and pricing at https://docs.claude.com before wiring API calls.
@@ -79,6 +80,7 @@ Every agent writes its output to a dated file in a shared reports folder. The or
 | keyword-research-swarm | pipeline CSV (fixed columns) + top-10 md | blog agent (after a human approves the idea), QA, viz |
 | blog-writing-agent | post file + image production sheet + [VERIFY] list | visual-asset-agent (sheet), on-page gate, CMS agent, QA |
 | visual-asset-agent | selected assets (WebP/AVIF + breakpoint variants) + SVG diagrams + provenance log (JSON) + hold list | CMS agent (renders into the template, writes to repo in the post's MR), on-page gate (alt text, filenames), QA, human (held slots only) |
+| site-discovery-agent | site profile + brand pack draft + pillar keywords (CSV) + content map + first batch of ideas, all with evidence URLs | keyword-research-swarm (pillar keywords), seo-action-plan (profile), content-refresh-agent (content map), blog-writing-agent (brand pack, internal links), human (approve ideas, accept the profile on regulated sites) |
 | on-page-seo-optimizer | scorecard md per post | CMS agent (auto-gate input), QA, viz |
 | CMS agent (product surface) | MR per post, merge result, agent-edit log, autopost reasons | QA (reality check), viz, human (held posts only) |
 | technical-seo-monitor | dated digest md with severity counts | QA, viz |

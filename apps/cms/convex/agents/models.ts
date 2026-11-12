@@ -15,6 +15,7 @@ const GROUP: Partial<Record<TAgentId, TTaskGroup>> = {
 	"seo-action-plan": "strategy",
 	"visualization-report-agent": "strategy",
 	"link-building-prospector": "strategy",
+	"site-discovery-agent": "writing", // keywords and ideas; extraction runs on the mechanical tier and the profile on strategy (agents/discovery)
 };
 
 const ORDER: TModelTier[] = ["fast", "workhorse", "strongest"];

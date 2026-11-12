@@ -115,6 +115,16 @@ agents:
       - secrets_never_in_prompts
       - on_failure_try_next_route_else_hold_slot_with_ledger_item
 
+  site-discovery-agent:
+    model: claude-sonnet-5
+    model_tier: workhorse
+    escalate_to: { model: claude-opus-5-5, when: [site_profile] }   # the site profile runs on the strongest tier
+    skill: site-discovery-agent.skill
+    schedule: [on_site_add, on_demand]
+    inputs: [site_domain, gsc_export, keyword_csv_import]
+    outputs: [site_profile, pillar_keywords_csv, brand_pack_draft, content_map]
+    hands_off: { pillar_keywords_csv: keyword-research-swarm, content_map: content-refresh-agent }
+
 escalation:
   stale_human_item_days_warn: 7
   stale_human_item_days_block: 14
