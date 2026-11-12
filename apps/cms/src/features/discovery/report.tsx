@@ -375,6 +375,26 @@ function Coverage({ data }: { data: TDiscoveryOverview }) {
 					))}
 				</Card>
 			</Section>
+			{data.evaluation && (
+				<Section title="Eval" meta={`Golden set${data.evaluation.confirmed ? "" : " (draft expectations)"} · behaviour ${data.evaluation.hash}`}>
+					<Card padding="none" className="divide-y divide-line-2">
+						{data.evaluation.checks.map((c) => (
+							<div key={c.id} className="flex flex-wrap items-start gap-2 px-4 py-2 text-sm">
+								<Chip size="sm" tone={c.passed ? "pass" : "block"}>{c.passed ? "Pass" : "Fail"}</Chip>
+								<span className="min-w-0 flex-1"><span className="text-ink">{c.label}</span><span className="block text-xs text-ink-3">{c.detail}</span></span>
+								<span className="text-ink-3">{Math.round(c.score * 100)}%</span>
+							</div>
+						))}
+						{data.evaluation.judge && (
+							<div className="flex items-center gap-2 px-4 py-2 text-sm">
+								<Chip size="sm" tone={data.evaluation.judge.passed ? "pass" : "block"}>{data.evaluation.judge.passed ? "Pass" : "Fail"}</Chip>
+								<span className="flex-1 text-ink">Angle quality (LLM judge)</span>
+								<span className="text-ink-3">{data.evaluation.judge.mean} / 5</span>
+							</div>
+						)}
+					</Card>
+				</Section>
+			)}
 			<SourceNote icon="Info">Page text is kept for 90 days for re-runs, then deleted; what each page is about stays.</SourceNote>
 		</div>
 	);

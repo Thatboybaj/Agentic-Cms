@@ -12,6 +12,8 @@ import { workflow } from "./manager";
 
 const RESUME_MS = 20_000;
 const MAX_SLICES = 12; // 12 × 7 minutes: far beyond a 1,000-page crawl at one request at a time
+const BATCH_POLL_MS = 60_000;
+const BATCH_POLLS = 20; // most batches of this size end in minutes; after 20 cancel and read the rest directly (15-minute target)
 
 export const discovery = workflow
 	.define({ args: { siteId: v.id("sites"), runId: v.id("runs"), reportId: v.id("discoveryReports"), mode: v.union(v.literal("full"), v.literal("more-ideas"), v.literal("interview")) } })
@@ -29,6 +31,17 @@ export const discovery = workflow
 				return void (await stop(r.stop.reason === "robots-blocked" ? "needs-interview" : "failed", r.stop.message));
 			}
 			if (!r.done) return void (await stop("failed", "The crawl didn't finish in time · re-run discovery"));
+			// Over ~40 pages: extraction through the Message Batches API (half price); the extract step below then
+			// reads whatever the batch didn't (errors, expiry, or the wait running out) with direct calls.
+			await step.runMutation(internal.discovery.agentData.setStage, { runId: a.runId, reportId: a.reportId, stage: "extract", output: "Reading what each page is about" });
+			const b = await step.runAction(internal.discovery.batch.start, { siteId: a.siteId, runId: a.runId }, { retry: false });
+			if (b.batchId) {
+				let p = { ended: false, saved: 0, failed: 0 };
+				for (let i = 0; i < BATCH_POLLS && !p.ended; i++) {
+					await step.sleep(BATCH_POLL_MS);
+					p = await step.runAction(internal.discovery.batch.poll, { siteId: a.siteId, runId: a.runId, batchId: b.batchId, cancel: i === BATCH_POLLS - 1 }, { retry: false });
+				}
+			}
 			for (const [stage, label, fn] of [
 				["extract", "Reading what each page is about", internal.discovery.agent.extract],
 				["profile", "Understanding the business", internal.discovery.agent.profile],

@@ -51,6 +51,7 @@ export const overview = siteQuery({
 		const run = latest ? await ctx.db.get(latest.runId) : null;
 		const profile = (await ctx.db.query("siteProfiles").withIndex("by_site_version", (q) => q.eq("siteId", siteId)).order("desc").take(1))[0];
 		const pages = await pagesOf(ctx, siteId);
+		const ev = (await ctx.db.query("discoveryEvals").withIndex("by_site_created", (q) => q.eq("siteId", siteId)).order("desc").take(1))[0];
 		const ideaIds = new Set(reports.flatMap((r) => r.ideaIds));
 		const ideas = [];
 		for (const id of ideaIds) {
@@ -87,6 +88,7 @@ export const overview = siteQuery({
 			contentMap: pages.map((p) => ({ url: p.url, title: p.title, type: p.type ?? null, wordCount: p.wordCount, topic: p.extract?.topic ?? null, targetQuery: p.extract?.targetQuery ?? null, refresh: p.extract?.refreshCandidate ? (p.extract.refreshReason ?? "Thin or dated") : null })),
 			interviewQuestions: INTERVIEW_QUESTIONS,
 			needsInterview: latest?.status === "needs-interview",
+			evaluation: ev ? { reportId: ev.reportId, confirmed: ev.goldenConfirmed, hash: ev.behaviourHash, checks: ev.checks, judge: ev.judge ? { mean: ev.judge.mean, passed: ev.judge.passed, model: ev.judge.model } : null, passed: ev.passed, createdAt: ev.createdAt } : null,
 		};
 	},
 });

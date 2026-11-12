@@ -66,5 +66,6 @@ export const DEMO_DISCOVERY: TDiscoveryOverview = {
 	],
 	interviewQuestions: ["What does the business sell, at what price point, and where?", "What 3–5 services, features or angles can competitors not easily copy?", "Who buys, and who influences the decision?", "How many posts a week can the team sustain, and who reviews them?", "What's the monthly budget ceiling for SEO tools?", "Is the domain new or established? Any current rankings or traffic?", "Name 2–3 competitors (or say if we should find them)."],
 	needsInterview: false,
+	evaluation: null,
 };
 void DAY;

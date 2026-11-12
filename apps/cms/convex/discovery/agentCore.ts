@@ -178,7 +178,7 @@ export function validEvidence(list: string[], allowed: { crawled: Set<string>; g
 export const normTerm = (s: string) => s.trim().toLowerCase().replace(/[?:!.,"'’]/g, "").replace(/\s+/g, " ");
 /** Light stemming so "choose" / "choosing" / "chooses" and "service" / "services" compare equal. */
 const stem = (w: string) => w.replace(/(ing|ed|es|s)$/, "").replace(/e$/, "");
-const tokens = (s: string) => new Set(normTerm(s).split(" ").filter((w) => w.length > 2 && !STOP.has(w)).map(stem));
+export const tokens = (s: string) => new Set(normTerm(s).split(" ").filter((w) => w.length > 2 && !STOP.has(w)).map(stem));
 const STOP = new Set(["the", "and", "for", "with", "your", "you", "how", "what", "why", "are", "can", "from", "that", "this", "into", "our", "who", "when", "does"]);
 
 /** Near-duplicate: same normalised text, one contains the other, or ≥ 70% token overlap (F20). */

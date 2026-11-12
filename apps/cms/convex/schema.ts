@@ -1066,6 +1066,22 @@ export default defineSchema({
 		.index("by_site_created", ["siteId", "createdAt"])
 		.index("by_run", ["runId"]),
 
+	/** Site discovery eval results (prd-site-discovery §13), stored with the behaviour hash they were graded under. */
+	discoveryEvals: defineTable({
+		siteId: v.id("sites"),
+		reportId: v.id("discoveryReports"),
+		goldenId: v.string(),
+		goldenConfirmed: v.boolean(),
+		behaviourHash: v.string(),
+		models: v.string(),
+		checks: v.array(v.object({ id: v.string(), label: v.string(), passed: v.boolean(), score: v.number(), detail: v.string() })),
+		judge: v.optional(v.object({ model: v.string(), mean: v.number(), passed: v.boolean(), ideas: v.array(v.object({ title: v.string(), score: v.number(), reason: v.string() })), costUsd: v.number() })),
+		passed: v.boolean(),
+		createdAt: v.number(),
+	})
+		.index("by_site_created", ["siteId", "createdAt"])
+		.index("by_report", ["reportId"]),
+
 	appConfig: defineTable({
 		key: v.string(),
 		ciphertext: v.string(),
