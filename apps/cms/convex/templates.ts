@@ -10,6 +10,7 @@ import { audit } from "./lib/audit";
 import { siteMutation, siteQuery } from "./lib/functions";
 import { notify, siteAudienceWith } from "./lib/notify";
 import { vTemplateMapping } from "./schema";
+import { releaseWaiting } from "./posts";
 import { workflow } from "./workflows/manager";
 
 type TResult = { ok: true; id?: string } | { ok: false; reason: string };
@@ -107,6 +108,7 @@ export const confirm = siteMutation({
 		for (const x of await ctx.db.query("templateManifests").withIndex("by_site_status", (q) => q.eq("siteId", siteId).eq("status", "confirmed")).take(20)) await ctx.db.patch(x._id, { status: "superseded" });
 		await ctx.db.patch(manifestId, { status: "confirmed", confirmedBy: user.name, confirmedByUserId: user._id, confirmedAt: Date.now() });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: user, action: "confirmed manifest", target: `Template manifest v${m.version}`, detail: `${m.source} · output ${m.output.toUpperCase()}` });
+		await releaseWaiting(ctx, siteId); // F24: posts waiting for setup start if this was the last missing step
 		// Posts held only because there was no confirmed manifest go back through the gate (autopost sites).
 		if (site.publishing.autopost) {
 			const held = await ctx.db.query("ledgerItems").withIndex("by_site_done", (q) => q.eq("siteId", siteId).eq("done", false)).take(300);

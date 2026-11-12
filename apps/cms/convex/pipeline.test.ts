@@ -127,6 +127,7 @@ describe("postPipeline", () => {
 	test("generateNow (autopost off): draft v1, slots wait for a person, run settled and debited, pointer cleared", async () => {
 		const t = await setup();
 		const { site } = await world(t);
+		await connect(t, site);
 		const id = await idea(t, site);
 		expect(await as(t).mutation(api.posts.generateNow, { siteId: site, postId: id })).toEqual({ ok: false, reason: "Approve the idea first · only an approved idea becomes a brief" });
 		await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id });
@@ -147,27 +148,26 @@ describe("postPipeline", () => {
 		expect(await actions(t, id)).toEqual(["owner · added idea", "owner · approved idea", "owner · triggered run", "Blog writer agent · generated draft", "Visual-asset agent · returned candidates", "Visual-asset agent · returned candidates"]);
 	});
 
-	test("approveIdea under autopost runs the agents, then the gate holds it (no repo connected)", async () => {
+	test("readiness gate (prd-site-discovery F23–F24): no repo means the approved idea waits in Briefed; connecting it starts drafting", async () => {
 		const t = await setup();
 		const { site } = await world(t, { autopost: true });
+		await connect(t, site, { repo: false });
 		const id = await idea(t, site);
-		await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id });
+		expect(await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id })).toEqual({ ok: true });
 		await settle(t);
-		const { post, slots } = await as(t).query(api.posts.get, { siteId: site, postId: id });
-		expect(post.state).toBe("in-review");
-		expect(slots.every((s) => s.status === "selected")).toBe(true);
-		expect(await actions(t, id)).toEqual([
-			"owner · added idea",
-			"owner · approved idea",
-			"CMS agent (autopost) · triggered run",
-			"CMS agent (autopost) · generated draft",
-			"Visual-asset agent · selected asset",
-			"Visual-asset agent · selected asset",
-			"CMS agent (autopost) · held autopost",
-		]);
-		const out = await t.run(async (ctx) => ({ notes: (await ctx.db.query("notifications").collect()).map((n) => n.title), ledger: (await ctx.db.query("ledgerItems").collect()).map((l) => l.title) }));
-		expect(out.notes).toContain("Autopost held a post");
-		expect(out.ledger).toEqual(["Autopost held: No repo connected · the MR has nowhere to open"]);
+		const waiting = (await t.run((ctx) => ctx.db.get(id)))!;
+		expect(waiting.state).toBe("briefed");
+		expect(waiting.hold).toMatchObject({ reason: "waiting-for-setup", missing: ["repo", "paths"] });
+		expect(await t.run((ctx) => ctx.db.query("runs").collect())).toHaveLength(0); // nothing drafted, nothing spent
+		expect(await as(t).mutation(api.posts.generateNow, { siteId: site, postId: id })).toEqual({ ok: false, reason: "Waiting for setup: connect the repo, confirm the content and image folders" });
+		await connect(t, site, { manifest: false });
+		const { releaseWaiting } = await import("./posts");
+		expect(await t.run((ctx) => releaseWaiting(ctx, site))).toBe(1);
+		await settle(t);
+		const { post } = await as(t).query(api.posts.get, { siteId: site, postId: id });
+		expect(post.hold).toBeUndefined();
+		expect(post.state).toBe("mr-open");
+		expect(await actions(t, id)).toContain("CMS agent (autopost) · generated draft");
 	});
 
 	test("a human-only hero (not pinned) goes to the gate under autopost, which would fill it", async () => {
@@ -185,6 +185,7 @@ describe("postPipeline", () => {
 	test("over the text cap: generateNow refused with a run row; autopost approval leaves it Briefed with a ledger item", async () => {
 		const t = await setup();
 		const { site } = await world(t, { textSpentUsd: 99.5 });
+		await connect(t, site);
 		const id = await idea(t, site);
 		await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id });
 		const r = await as(t).mutation(api.posts.generateNow, { siteId: site, postId: id });
@@ -195,6 +196,7 @@ describe("postPipeline", () => {
 
 		const t2 = await setup();
 		const w2 = await world(t2, { autopost: true, textSpentUsd: 99.5 });
+		await connect(t2, w2.site);
 		const id2 = await idea(t2, w2.site);
 		expect(await as(t2).mutation(api.posts.approveIdea, { siteId: w2.site, postId: id2 })).toEqual({ ok: true });
 		const out = await t2.run(async (ctx) => ({ post: (await ctx.db.get(id2))!, ledger: (await ctx.db.query("ledgerItems").collect()).map((l) => [l.kind, l.title]) }));
@@ -486,6 +488,7 @@ describe("schedules", () => {
 	test("paused sites and disabled schedules don't run; per-publish-slot generates the oldest due briefed post", async () => {
 		const t = await setup();
 		const { site } = await world(t);
+		await connect(t, site);
 		await schedule(t, site, "keyword-swarm", { enabled: false });
 		const id = await idea(t, site);
 		await as(t).mutation(api.posts.approveIdea, { siteId: site, postId: id });

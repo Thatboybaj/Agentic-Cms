@@ -1,7 +1,7 @@
 // Posts: ideas, approval, generation (api-map §3). Wording and refusals match src/lib/store.tsx so the UI copy holds.
 // State changes go through lib/transition.ts only; generation runs as the postPipeline workflow.
 import { v } from "convex/values";
-import { AUTOPOST_ACTOR, checkCap, estimateRun, evaluateGate } from "../src/lib/logic";
+import { AUTOPOST_ACTOR, checkCap, estimateRun, evaluateGate, waitingForSetup } from "../src/lib/logic";
 import type { TPostState } from "../src/lib/types";
 import { internal } from "./_generated/api";
 import type { Doc, Id } from "./_generated/dataModel";
@@ -9,6 +9,7 @@ import type { MutationCtx } from "./_generated/server";
 import { loadPostInSite } from "./lib/access";
 import { approveAndShip } from "./lib/approval";
 import { gateInputs } from "./lib/gateInputs";
+import { readinessOf } from "./lib/readiness";
 import { audit } from "./lib/audit";
 import { capSite, fmtUsd } from "./lib/budget";
 import { siteMutation, siteQuery } from "./lib/functions";
@@ -123,6 +124,13 @@ export const addIdea = siteMutation({
 export async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post: Doc<"posts">, by: { user?: Doc<"users">; trigger: "manual" | "workflow" }): Promise<TResult> {
 	if (post.workflowId) return fail("Already generating · wait for the current run to finish");
 	if (!(await siteEntitled(ctx, site._id))) return fail(NOT_ENTITLED);
+	// Publish-readiness gate (prd-site-discovery F23): nothing is drafted that can't ship. The post waits in Briefed.
+	const ready = await readinessOf(ctx, site);
+	if (!ready.ready) {
+		if (post.hold?.missing.join() !== ready.missing.join()) await ctx.db.patch(post._id, { hold: { reason: "waiting-for-setup", missing: ready.missing, since: post.hold?.since ?? Date.now() } });
+		return fail(waitingForSetup(ready.missing));
+	}
+	if (post.hold) await ctx.db.patch(post._id, { hold: undefined });
 	const strong = post.strongModel || post.contentType === "pillar" || post.contentType === "money-page";
 	const est = estimateRun("post-generation", capSite(site), { strongModel: strong });
 	const cap = checkCap(capSite(site), "post-generation", est);
@@ -288,3 +296,24 @@ export const shipNow = siteMutation({
 });
 
 export type { Id };
+
+/**
+ * F24: when the readiness gate passes, posts waiting for setup start in plan order (week, then oldest): the first
+ * cadenceTarget start drafting now, cap-checked like a publish slot; the rest leave the hold and go to the normal
+ * publish-slot schedule. Called after the repo connects, a template is confirmed, or the profile is accepted.
+ */
+export async function releaseWaiting(ctx: MutationCtx, siteId: Id<"sites">): Promise<number> {
+	const site = await ctx.db.get(siteId);
+	if (!site || !(await readinessOf(ctx, site)).ready) return 0;
+	const waiting = (await ctx.db.query("posts").withIndex("by_site_state", (q) => q.eq("siteId", siteId).eq("state", "briefed")).take(500)).filter((p) => p.hold?.reason === "waiting-for-setup").sort((a, b) => a.week - b.week || a.createdAt - b.createdAt);
+	let started = 0;
+	for (const p of waiting) {
+		if (started < Math.max(1, site.cadenceTarget)) {
+			const r = await startGeneration(ctx, site, p, { trigger: "workflow" });
+			if (r.ok) started++;
+			else await ctx.db.patch(p._id, { hold: undefined }); // e.g. over the cap: the publish slot retries it
+		} else await ctx.db.patch(p._id, { hold: undefined });
+	}
+	if (waiting.length) await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: { system: AUTOPOST_ACTOR }, action: "readiness gate passed", target: site.domain, detail: `${started} post${started === 1 ? "" : "s"} drafting now · ${waiting.length - started} on the publish schedule` });
+	return started;
+}

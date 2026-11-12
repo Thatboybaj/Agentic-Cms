@@ -338,6 +338,7 @@ describe("site discovery: publish readiness and batch size", async () => {
 		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: false }).missing).toEqual(["template"]);
 		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: true })).toEqual({ ready: true, missing: [] });
 		expect(waitingForSetup(["repo", "template"])).toBe("Waiting for setup: connect the repo, confirm the article template");
+		expect(publishReadiness({ repo: { active: true, contentDir: "dist/blog", assetDir: "dist/assets/blog" }, templateConfirmed: true, profileAcceptanceNeeded: true })).toEqual({ ready: false, missing: ["profile"] });
 	});
 	it("sizes the first batch at four weeks of the site's cadence, halved for a tiny site", () => {
 		expect(discoveryBatchSize({ cadenceTarget: 3 }, DISCOVERY_DEFAULTS)).toBe(12);

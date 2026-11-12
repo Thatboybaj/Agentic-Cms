@@ -477,9 +477,9 @@ export function discoveryBatchSize(site: Pick<ISite, "cadenceTarget">, settings:
 	return contentPages !== undefined && contentPages < 5 ? Math.max(2, Math.ceil(base / 2)) : base;
 }
 
-export type TReadinessItem = "repo" | "paths" | "template";
-export const READINESS_LABEL: Record<TReadinessItem, string> = { repo: "connect the repo", paths: "confirm the content and image folders", template: "confirm the article template" };
-export const READINESS_STEP: Record<TReadinessItem, "/onboarding" | "/templates"> = { repo: "/onboarding", paths: "/onboarding", template: "/templates" };
+export type TReadinessItem = "repo" | "paths" | "template" | "profile";
+export const READINESS_LABEL: Record<TReadinessItem, string> = { repo: "connect the repo", paths: "confirm the content and image folders", template: "confirm the article template", profile: "accept the site profile (regulated site)" };
+export const READINESS_STEP: Record<TReadinessItem, "/onboarding" | "/templates" | "/discovery"> = { repo: "/onboarding", paths: "/onboarding", template: "/templates", profile: "/discovery" };
 
 export interface IPublishReadiness {
 	ready: boolean;
@@ -490,11 +490,12 @@ export interface IPublishReadiness {
  * F22: a site is ready to publish when its repo connection is active, the content and asset folders are confirmed,
  * and an article template is confirmed. Search Console is recommended, not required.
  */
-export function publishReadiness(i: { repo: { active: boolean; contentDir?: string | null; assetDir?: string | null } | null; templateConfirmed: boolean }): IPublishReadiness {
+export function publishReadiness(i: { repo: { active: boolean; contentDir?: string | null; assetDir?: string | null } | null; templateConfirmed: boolean; /** SD3: a regulated site's first draft waits for the profile (disclaimers) to be accepted. */ profileAcceptanceNeeded?: boolean }): IPublishReadiness {
 	const missing: TReadinessItem[] = [];
 	if (!i.repo?.active) missing.push("repo");
 	if (!i.repo?.active || !i.repo.contentDir?.trim() || !i.repo.assetDir?.trim()) missing.push("paths");
 	if (!i.templateConfirmed) missing.push("template");
+	if (i.profileAcceptanceNeeded) missing.push("profile");
 	return { ready: missing.length === 0, missing };
 }
 

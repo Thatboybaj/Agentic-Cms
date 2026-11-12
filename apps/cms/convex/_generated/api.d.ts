@@ -64,6 +64,7 @@ import type * as lib_notify from "../lib/notify.js";
 import type * as lib_onpage from "../lib/onpage.js";
 import type * as lib_pathScope from "../lib/pathScope.js";
 import type * as lib_prDescription from "../lib/prDescription.js";
+import type * as lib_readiness from "../lib/readiness.js";
 import type * as lib_runs from "../lib/runs.js";
 import type * as lib_transition from "../lib/transition.js";
 import type * as members from "../members.js";
@@ -162,6 +163,7 @@ declare const fullApi: ApiFromModules<{
   "lib/onpage": typeof lib_onpage;
   "lib/pathScope": typeof lib_pathScope;
   "lib/prDescription": typeof lib_prDescription;
+  "lib/readiness": typeof lib_readiness;
   "lib/runs": typeof lib_runs;
   "lib/transition": typeof lib_transition;
   members: typeof members;

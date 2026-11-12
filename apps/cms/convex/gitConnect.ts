@@ -10,6 +10,7 @@ import { siteAction, siteMutation, siteQuery } from "./lib/functions";
 import { signState } from "./lib/github";
 import { scopeError } from "./lib/pathScope";
 import { githubConfig } from "./appConfig";
+import { releaseWaiting } from "./posts";
 import type { IScan } from "./gitNode";
 
 type TResult = { ok: true; url?: string } | { ok: false; reason: string };
@@ -151,6 +152,7 @@ export const writeConnection = internalMutation({
 		if (!rows.some((i) => i.installationId === a.installationId)) await ctx.db.insert("gitInstallations", { siteId: a.siteId, host: "github", installationId: a.installationId, account: a.installedAs, createdBy: a.userId, createdAt: Date.now() });
 		await ctx.db.insert("repoConnections", { workspaceId: site.workspaceId, siteId: a.siteId, host: "github", repo: a.repo, baseBranch: a.baseBranch, contentDir: a.contentDir, assetDir: a.assetDir, branchPattern: a.branchPattern, installedAs: a.installedAs, installationId: a.installationId, ...(a.indexFiles?.length ? { indexFiles: a.indexFiles } : {}), status: "active", live: true, connectedBy: a.userId, connectedAt: Date.now() });
 		await audit(ctx, { workspaceId: site.workspaceId, siteId: a.siteId, actor: user, action: "connected repo", target: a.repo, detail: `Writes only to ${a.contentDir} and ${a.assetDir} · never pushes to ${a.baseBranch}` });
+		await releaseWaiting(ctx, a.siteId); // F24: posts waiting for setup start if this was the last missing step
 	},
 });
 
