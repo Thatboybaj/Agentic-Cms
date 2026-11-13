@@ -127,7 +127,11 @@ export function blockProblem(src: ISourceBlock, text: string, lang: string): str
 	if (su.join(" ") !== tu.join(" ")) return `the links changed: the source links to ${su.join(", ") || "nothing"}, the translation to ${tu.join(", ") || "nothing"}`;
 	const sn = numbersOf(src.text);
 	const tn = numbersOf(t);
-	if (sn.join(" ") !== tn.join(" ")) return `the numbers changed: the source has ${sn.join(", ") || "none"}, the translation ${tn.join(", ") || "none"}. Write each of ${sn.join(", ") || "no number"} in Western digits, times included (الساعة 3 صباحاً, not الثالثة), and add no other number`;
+	// Arabic writes one and two with the singular and dual (دقيقة، دقيقتان) instead of a digit: only those may go missing.
+	const rest = [...tn];
+	const missing = sn.filter((n) => { const i = rest.indexOf(n); if (i >= 0) { rest.splice(i, 1); return false; } return true; });
+	const grammatical = lang === "ar" && rest.length === 0 && missing.every((n) => n === "1" || n === "2");
+	if (!grammatical && sn.join(" ") !== tn.join(" ")) return `the numbers changed: the source has ${sn.join(", ") || "none"}, the translation ${tn.join(", ") || "none"}. Write each of ${sn.join(", ") || "no number"} in Western digits, times included (الساعة 3 صباحاً, not الثالثة), and add no other number`;
 	if (src.kind === "ul" || src.kind === "faq") {
 		const sl = src.text.split("\n").filter((l) => l.trim()).length;
 		const tl = t.split("\n").filter((l) => l.trim()).length;
