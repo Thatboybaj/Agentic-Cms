@@ -269,7 +269,7 @@ export interface IPost {
 	author?: { id: string; source: "override" | "rubric" | "default"; reviewerId?: string; rubricId?: string };
 }
 
-export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation" | "site-discovery";
+export type TRunKind = "keyword-swarm" | "post-generation" | "technical-monitor" | "qa-sweep" | "content-refresh" | "link-prospecting" | "biweekly-report" | "kas-recalc" | "image-generation" | "site-discovery" | "translation";
 
 export interface ISchedule {
 	kind: TRunKind;

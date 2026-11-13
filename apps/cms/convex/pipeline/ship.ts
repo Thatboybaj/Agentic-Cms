@@ -39,6 +39,7 @@ export const prepare = internalMutation({
 		const branch = repo.branchPattern.replace("{slug}", post.slug);
 		return {
 			stop: false as const,
+			languages: (site.languages ?? []).some((l) => l.enabled) && process.env.CMS_AGENTS === "live",
 			render: { siteId, postId, slug: post.slug, words: post.words, output: manifest.output, contentDir: repo.contentDir, assetDir: repo.assetDir, rasterSlots: raster, svgSlots: slots.length - raster },
 			pr: { siteId, postId, branch, base: repo.baseBranch, title: `content: add ${post.title}`, domain: site.domain, slug: post.slug },
 		};

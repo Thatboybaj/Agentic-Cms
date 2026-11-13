@@ -38,6 +38,12 @@ export interface IRenderInput {
 	authorProfile?: IAuthorProfile;
 	/** Publish: whether per-width variant files exist (default true). False → one src, no srcset (never reference files the MR doesn't carry). */
 	variants?: boolean;
+	/** Language versions (every site): the page's language ("ar"), the same post in every language with its URL
+	 * (rel=alternate hreflang links and the template's language switch), and the main template, which lends any
+	 * structure a language template lacks (an h3 for FAQ questions, a list) — both share the site's CSS. */
+	lang?: string;
+	alternates?: { hreflang: string; href: string }[];
+	fallbackHtml?: string;
 }
 
 export interface IRenderResult {
@@ -53,6 +59,9 @@ export interface IRenderResult {
 const WORDS_PER_MIN = 250;
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const MONTHS_LONG = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const MONTHS_AR = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+/** "5 دقائق": Arabic counts take a different noun form by number. */
+const arMinutes = (n: number) => (n === 1 ? "دقيقة واحدة" : n === 2 ? "دقيقتان" : n <= 10 ? `${n} دقائق` : `${n} دقيقة`);
 const ARTICLE_TYPES = new Set(["Article", "BlogPosting", "NewsArticle", "MedicalWebPage", "TechArticle", "Report"]);
 
 type TJson = Record<string, unknown>;
@@ -85,7 +94,11 @@ function clone<T extends Element>(el: T): T {
 /** Sets the text of a cloned prototype, keeping its wrappers: writes into the deepest first element chain. */
 function setText(el: Element, text: string, rich?: { host: string }) {
 	let target: Element = el;
-	while (target.children.length === 1 && !["img", "br"].includes(tagOf(target.children[0]!))) target = target.children[0]!;
+	// Descend into a lone wrapper (<li><span>…</span></li>) but not into inline emphasis that sits beside text
+	// (<li><strong>Lead.</strong> sample sentence</li>): there the whole element is the text (the sample's tail
+	// sentence used to survive next to the post's text).
+	const ownText = (e: Element) => Array.from(e.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? "").trim());
+	while (target.children.length === 1 && !["img", "br"].includes(tagOf(target.children[0]!)) && !ownText(target)) target = target.children[0]!;
 	if (target.children.length > 1) {
 		// e.g. <blockquote><p>…</p><cite>…</cite></blockquote>: fill the first text-bearing child, drop the rest.
 		const first = Array.from(target.children).find((c) => (c.textContent ?? "").trim()) ?? target.children[0]!;
@@ -127,6 +140,7 @@ function formatLike(sample: string, iso: string): string {
 	if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return iso.slice(0, 10);
 	if (/^[A-Z][a-z]+ \d{1,2}, \d{4}$/.test(t)) return `${(t.split(" ")[0]!.length > 3 ? MONTHS_LONG : MONTHS)[m]} ${day}, ${y}`;
 	if (/^\d{1,2} [A-Z][a-z]+ \d{4}$/.test(t)) return `${day} ${(t.split(" ")[1]!.length > 3 ? MONTHS_LONG : MONTHS)[m]} ${y}`;
+	if (/[؀-ۿ]/.test(t)) return `${day} ${MONTHS_AR[m]} ${y}`;
 	if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(t)) return `${String(day).padStart(2, "0")}/${String(m + 1).padStart(2, "0")}/${y}`;
 	return `${day} ${MONTHS[m]} ${y}`;
 }
@@ -205,6 +219,12 @@ export function renderPost(input: IRenderInput): IRenderResult {
 	const stats = { blocks: 0, images: 0, placeholders: 0 };
 	stripUnsafe(doc);
 	const s: IStructure = analyze(doc);
+	// A language template that lacks a structure borrows the main template's (same site, same CSS).
+	if (input.fallbackHtml) {
+		const f = analyze(parseHtml(input.fallbackHtml));
+		const borrow = (e: Element) => ((doc as Document & { importNode?: Document["importNode"] }).importNode ? doc.importNode(e, true) : (e.cloneNode(true) as Element));
+		for (const k of ["h2", "h3", "p", "ul", "ol", "quote", "table", "faq"] as const) if (!s[k] && f[k]) s[k] = borrow(f[k]!);
+	}
 	const url = postUrlFromTemplate(s.canonical?.getAttribute("href"), site.domain, post.slug);
 	const title = post.seoTitle || post.title;
 	const sampleTitle = (s.h1?.textContent ?? "").trim();
@@ -465,7 +485,11 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		const sep = /\s[·|–—-]\s(?!.*\s[·|–—-]\s)/.exec(t);
 		// "<post title> · Site" keeps the site suffix; otherwise swap the sample's title wherever it appears.
 		// The sample's own title wins: "BAYNOR AI | <sample>" keeps the site prefix. Only then guess "<title> · Site".
-		s.title.textContent = sampleCore.length > 3 && t.includes(sampleCore) ? t.replace(sampleCore, title) : sep ? `${title}${t.slice(sep.index)}` : title;
+		// A shortened sample headline in one part of the title ("Site | Start with one workflow") is that part.
+		const parts = t.split(/(\s[·|–—-]\s)/);
+		const short = parts.findIndex((x, i) => i % 2 === 0 && x.trim().length > 3 && sampleCore.startsWith(x.trim().replace(/[.!?…]+$/, "")));
+		s.title.textContent =
+			sampleCore.length > 3 && t.includes(sampleCore) ? t.replace(sampleCore, title) : short >= 0 && parts.length > 1 ? parts.map((x, i) => (i === short ? title : x)).join("") : sep ? `${title}${t.slice(sep.index)}` : title;
 	}
 	if (s.description) s.description.setAttribute("content", description);
 	if (s.canonical) s.canonical.setAttribute("href", url);
@@ -489,13 +513,20 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		const mapped = (input.mappings ?? []).filter((m) => m.label === "Author bio" && m.status !== "needs-you").map((m) => m.selector);
 		for (const card of authorCards(doc, mapped)) if (fillAuthorCard(card, input.authorProfile).missingPhoto) warnings.push("Author card shows no photo: the author has none yet");
 	}
+	if (input.pillarName && s.category && !s.tags.some((t) => s.category!.contains(t))) setText(s.category, input.pillarName);
 	if (input.pillarName && s.tags[0]) {
 		setText(s.tags[0], input.pillarName);
 		const href = s.tags[0].getAttribute("href");
-		if (href && hasPathSegment(href)) s.tags[0].setAttribute("href", href.replace(/[^/]+\/?$/, (seg) => `${input.pillarName!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}${seg.endsWith("/") ? "/" : ""}`));
+		const pillarSlug = input.pillarName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+		// Only a typed tag link's last segment names the tag; a plain link in a tag list (Arabic "/ar/blog") stays.
+		if (href && pillarSlug && s.tags[0].matches("a[rel=tag], a[class*=tag], a[class*=category]") && hasPathSegment(href)) s.tags[0].setAttribute("href", href.replace(/[^/]+\/?$/, (seg) => `${input.pillarName!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}${seg.endsWith("/") ? "/" : ""}`));
 		for (const extra of s.tags.slice(1)) extra.remove();
 	}
-	if (s.readTime) s.readTime.textContent = (s.readTime.textContent ?? "").replace(/\d+/, String(Math.max(1, Math.round(post.words / WORDS_PER_MIN))));
+	if (s.readTime) {
+		const n = Math.max(1, Math.round(post.words / WORDS_PER_MIN));
+		const t = s.readTime.textContent ?? "";
+		s.readTime.textContent = /دقيق|دقائق/.test(t) ? t.replace(/[\d٠-٩]*\s*(دقيقة واحدة|دقيقتان|دقائق|دقيقة)/, arMinutes(n)) : t.replace(/\d+/, String(n));
+	}
 	// "Keep reading" cards that point at the sample post itself are the sample's, not this post's: drop them, and a
 	// related section left with no links (Baynor's template linked its own sample article, since deleted). A card is
 	// the sample's when it links to the sample's URL or carries the sample's headline.
@@ -531,6 +562,38 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		}
 	}
 	if (!s.description) warnings.push("Template has no meta description tag");
+
+	// ---- language versions and template placeholders
+	if (input.alternates?.length) {
+		const head = doc.querySelector("head");
+		for (const l of Array.from(doc.querySelectorAll('link[rel="alternate"][hreflang]'))) l.remove();
+		for (const a of input.alternates) {
+			if (head) {
+				const l = doc.createElement("link");
+				l.setAttribute("rel", "alternate");
+				l.setAttribute("hreflang", a.hreflang);
+				l.setAttribute("href", a.href);
+				head.appendChild(l);
+			}
+			let local = a.href;
+			try {
+				const u = new URL(a.href);
+				if (u.hostname.replace(/^www\./, "") === site.domain.replace(/^www\./, "")) local = u.pathname + u.search;
+			} catch {
+				/* a relative href stays as given */
+			}
+			for (const el of Array.from(doc.querySelectorAll(`a[hreflang="${a.hreflang}"]`))) if (!s.region.contains(el)) el.setAttribute("href", local);
+		}
+	}
+	if (input.lang) doc.documentElement?.setAttribute("lang", input.lang);
+	// Templates written with placeholders ("/assets/blog/{slug}-hero.webp", a share URL ending in {slug}).
+	for (const el of Array.from(doc.querySelectorAll("*"))) {
+		for (const at of Array.from(el.attributes)) {
+			if (!at.value.includes("{slug}")) continue;
+			el.setAttribute(at.name, at.value.split("{slug}").join(post.slug));
+		}
+		for (const at of Array.from(el.attributes)) if (/\{[a-z-]+\}/.test(at.value)) warnings.push(`Template placeholder left in ${tagOf(el)}[${at.name}]: ${at.value}`);
+	}
 
 	// ---- JSON-LD in the shape the sample already uses
 	const faqs = post.blocks.filter((b) => b.kind === "faq").flatMap((b) => faqPairs(b.text));

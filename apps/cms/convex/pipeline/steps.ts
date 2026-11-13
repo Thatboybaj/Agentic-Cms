@@ -133,6 +133,9 @@ export const vRenderOutput = v.object({
 	/** The rendered post file (real render only; the stub world has none) and the asset paths the commit carries. */
 	post: v.optional(v.object({ path: v.string(), content: v.string() })),
 	assets: v.optional(v.array(v.object({ path: v.string(), slotId: v.string() }))),
+	/** Language versions committed with the post, and why one isn't. */
+	extra: v.optional(v.array(v.object({ path: v.string(), content: v.string() }))),
+	langNotes: v.optional(v.array(v.string())),
 });
 
 /** Renderer in publish mode (convex/render.ts) when the confirmed manifest has a stored template; otherwise the stub. */
@@ -144,8 +147,9 @@ export const renderStep = internalAction({
 		if (real) {
 			const kb = (n: number) => `${Math.max(1, Math.round(n / 1024))} KB`;
 			const files: Infer<typeof vRenderOutput>["files"] = [{ path: real.post.path, change: `+${real.post.content.split("\n").length}`, kind: "post" }];
+			for (const x of real.extra ?? []) files.push({ path: x.path, change: `+${x.content.split("\n").length}`, kind: "post" });
 			if (real.assets.length) files.push({ path: `${a.assetDir.replace(/\/+$/, "")}/ ·${real.assets.length} image${real.assets.length === 1 ? "" : "s"}`, change: kb(real.assets.length * 80_000), kind: "assets" });
-			return { held: real.held, files, post: real.post, assets: real.assets };
+			return { held: real.held, files, post: real.post, assets: real.assets, ...(real.extra?.length ? { extra: real.extra } : {}), ...(real.langNotes?.length ? { langNotes: real.langNotes } : {}) };
 		}
 		const ext = ({ mdx: "mdx", html: "html", json: "json", component: "tsx" } as Record<string, string>)[a.output] ?? "mdx";
 		const files: { path: string; change: string; kind: "post" | "assets" | "index" }[] = [{ path: `${a.contentDir}/${a.slug}.${ext}`, change: `+${Math.max(40, Math.round(a.words / 7.6))}`, kind: "post" }];
@@ -180,6 +184,7 @@ export const openPrStep = internalAction({
 		slug: v.string(),
 		post: v.optional(v.object({ path: v.string(), content: v.string() })),
 		assets: v.optional(v.array(v.object({ path: v.string(), slotId: v.string() }))),
+		extra: v.optional(v.array(v.object({ path: v.string(), content: v.string() }))),
 		autopost: v.optional(v.boolean()),
 		overrides: v.optional(v.array(v.string())),
 	},
@@ -191,7 +196,7 @@ export const openPrStep = internalAction({
 		if (!sc) return stub;
 		const missing = sc.assets.filter((x) => !x.storageId);
 		if (missing.length) return { headSha: "", held: `Image files aren't produced yet for: ${missing.map((m) => m.name).join(", ")}` };
-		const files = [{ path: a.post.path, content: a.post.content }, ...(a.assets ?? []).map((x) => ({ path: x.path, storageId: sc.assets.find((s) => s.slotId === x.slotId)!.storageId! }))];
+		const files = [{ path: a.post.path, content: a.post.content }, ...(a.extra ?? []), ...(a.assets ?? []).map((x) => ({ path: x.path, storageId: sc.assets.find((s) => s.slotId === x.slotId)!.storageId! }))];
 		const pr = await ctx.runAction(internal.gitNode.openPr, { installationId: sc.installationId, repo: sc.repo, base: sc.base, branch: sc.branch, scope: sc.scope, files, message: sc.message, title: sc.title, body: sc.body });
 		return { number: pr.number, externalId: pr.externalId, headSha: pr.headSha, url: pr.url };
 	},

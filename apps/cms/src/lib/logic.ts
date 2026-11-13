@@ -451,6 +451,7 @@ export const RUN_META: Record<TRunKind, IRunMeta> = {
 	"kas-recalc": { label: "KAS recalculation", agent: "CMS agent", tier: "fast", budget: "text", baseUsd: 0.3, cadence: "24 hours post-merge, then weekly", produces: "Updated attribution" },
 	"image-generation": { label: "Image generation", agent: "Image pipeline agent", tier: "workhorse", budget: "image", baseUsd: 0.12, cadence: "On slot creation", produces: "Candidates for each image slot" },
 	"site-discovery": { label: "Site discovery", agent: "Site discovery agent", tier: "workhorse", budget: "text", baseUsd: 1.6, cadence: "When a site is added, or on demand", produces: "Site profile, pillars, keywords and the first ideas" },
+	translation: { label: "Language version", agent: "Translation agent", tier: "workhorse", budget: "text", baseUsd: 0.05, cadence: "Each time a post ships", produces: "The post in the site's other languages" },
 };
 
 // ─── Site discovery (prd-site-discovery) ─────────────────────────────────────

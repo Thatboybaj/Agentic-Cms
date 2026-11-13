@@ -1906,6 +1906,7 @@ export const RUN_KIND_ICON: Record<TRunKind, TIconName> = {
 	"biweekly-report": "ChartLineUp",
 	"kas-recalc": "Target",
 	"image-generation": "ImagesSquare",
+	translation: "Globe",
 };
 
 const RUN_STATUS: Record<IRun["status"], { tone: TTone; label: string; icon?: TIconName }> = {

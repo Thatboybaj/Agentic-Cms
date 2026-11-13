@@ -6,6 +6,7 @@ import { clsx } from "clsx";
 import { Callout, Card, CardHeader, Chip, Icon, SourceNote, Toggle, type TIconName } from "@/ds";
 import { publishingSteps } from "@/lib/logic";
 import { useSiteCms } from "@/features/shared/site-source";
+import { LanguageSettings } from "./languages";
 import { LockLine } from "./shared";
 
 const OWNER_META: Record<"human" | "agent" | "developer", { icon: TIconName; label: string; tone: "human" | "agent" | "neutral" }> = {
@@ -81,6 +82,8 @@ export function PublishingSettings() {
 					</Callout>
 				)}
 			</Card>
+
+			<LanguageSettings />
 
 			<Card className="flex flex-col gap-3">
 				<CardHeader icon="ListChecks" title="What happens to a new idea" meta={p.autopost ? "Autopost" : "Human review"} />

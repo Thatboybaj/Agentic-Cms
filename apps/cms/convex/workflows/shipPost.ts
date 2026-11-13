@@ -1,4 +1,4 @@
-// shipPost (api-map §10): render (publish mode, fidelity hold) → open/update the PR → transition → mr-open.
+// shipPost (api-map §10): language versions (when the site publishes them) → render (publish mode, fidelity hold) → open/update the PR → transition → mr-open.
 // Started by an approval (human or autopost) for one approved version; CI and merge arrive later as webhook events
 // (git.onCi / git.onMerged), so this workflow never waits on them.
 import { v } from "convex/values";
@@ -10,12 +10,15 @@ export const shipPost = workflow
 	.handler(async (step, args): Promise<void> => {
 		const prep = await step.runMutation(internal.pipeline.ship.prepare, { siteId: args.siteId, postId: args.postId, version: args.version });
 		if (prep.stop) return;
+		// Language versions first (sites that publish them): an up-to-date version exists, or its run says why not.
+		// Never holds the main post: a language that fails simply isn't in this commit.
+		if (prep.languages) await step.runAction(internal.agents.translate.ensure, { siteId: args.siteId, postId: args.postId }, { retry: false });
 		const render = await step.runAction(internal.pipeline.steps.renderStep, prep.render);
 		if (render.held.length) {
 			await step.runMutation(internal.pipeline.ship.renderHeld, { siteId: args.siteId, postId: args.postId, held: render.held });
 			return;
 		}
-		const pr = await step.runAction(internal.pipeline.steps.openPrStep, { ...prep.pr, ...(render.post ? { post: render.post } : {}), ...(render.assets ? { assets: render.assets } : {}), autopost: args.autopost, overrides: args.overrides });
+		const pr = await step.runAction(internal.pipeline.steps.openPrStep, { ...prep.pr, ...(render.post ? { post: render.post } : {}), ...(render.assets ? { assets: render.assets } : {}), ...(render.extra ? { extra: render.extra } : {}), autopost: args.autopost, overrides: args.overrides });
 		if (pr.held) {
 			await step.runMutation(internal.pipeline.ship.renderHeld, { siteId: args.siteId, postId: args.postId, held: [pr.held] });
 			return;

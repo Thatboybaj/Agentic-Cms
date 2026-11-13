@@ -7,6 +7,8 @@ export interface IScope {
 	contentDir: string;
 	assetDir: string;
 	indexFiles?: string[];
+	/** The site's language-version folders (dist/ar/blog), each its own content dir. */
+	extraDirs?: string[];
 }
 
 export class PathScopeError extends Error {
@@ -38,7 +40,7 @@ export function assertWritable(path: string, scope: IScope): string {
 	if (DENY.some((re) => re.test(p))) throw new PathScopeError(p, "CI, config and package files are never written");
 	const index = new Set((scope.indexFiles ?? []).map(normDir));
 	if (index.has(p)) return p;
-	for (const dir of [normDir(scope.contentDir), normDir(scope.assetDir)]) {
+	for (const dir of [normDir(scope.contentDir), normDir(scope.assetDir), ...(scope.extraDirs ?? []).map(normDir)]) {
 		if (dir && p.startsWith(`${dir}/`) && p.length > dir.length + 1) return p;
 	}
 	throw new PathScopeError(p, `outside ${normDir(scope.contentDir)}/, ${normDir(scope.assetDir)}/ and the declared index files`);

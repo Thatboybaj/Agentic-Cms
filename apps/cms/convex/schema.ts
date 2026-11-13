@@ -65,6 +65,7 @@ export const vRunKind = v.union(
 	v.literal("biweekly-report"),
 	v.literal("kas-recalc"),
 	v.literal("image-generation"),
+	v.literal("translation"),
 );
 export const vProvider = v.union(
 	v.literal("higgsfield"),
@@ -83,6 +84,40 @@ export const vPublishing = v.object({
 	autopost: v.boolean(),
 	autoMergeOnGreenCi: v.boolean(),
 	humanOnlyAssets: v.optional(v.boolean()),
+});
+
+/**
+ * A language version of the site's blog (every site, off unless turned on): each post is adapted into `lang` by the
+ * chosen agent and published beside the main one from the site's own language template in the repo.
+ */
+export const vLanguageVersion = v.object({
+	lang: v.string(), // "ar"
+	enabled: v.boolean(),
+	agent: v.union(v.literal("fanar"), v.literal("gateway")),
+	/** Repo path of the language's article template, e.g. templates/blog/article-ar.html. */
+	templatePath: v.string(),
+	/** Where the language's article files go, e.g. dist/ar/blog. */
+	contentDir: v.string(),
+	/** URL prefix of the site's pages in this language ("/ar"): internal links move under it when that page exists. */
+	linkPrefix: v.string(),
+	/** The site's own wording rules and fixed translations for this language (brand name, key phrases). */
+	styleGuide: v.optional(v.string()),
+});
+
+export const vPostTranslation = v.object({
+	lang: v.string(),
+	title: v.string(),
+	seoTitle: v.string(),
+	metaDescription: v.optional(v.string()),
+	pillarName: v.optional(v.string()),
+	blocks: v.array(v.object({ id: v.string(), kind: v.string(), text: v.string() })),
+	/** Image alt text in this language, by slot. */
+	alts: v.array(v.object({ slotId: v.string(), alt: v.string() })),
+	/** Hash of the source content it was made from: an unchanged post is never translated twice. */
+	sourceHash: v.string(),
+	agent: v.string(),
+	model: v.string(),
+	at: v.number(),
 });
 
 export const vIdeaApproval = v.object({
@@ -281,6 +316,7 @@ export default defineSchema({
 		liveBaseline: v.number(),
 		timezone: v.string(), // "Africa/Lagos"; drives cron-local schedules and the spend month
 		discovery: v.optional(vDiscoverySettings),
+		languages: v.optional(v.array(vLanguageVersion)),
 	})
 		.index("by_workspace", ["workspaceId"])
 		.index("by_workspace_slug", ["workspaceId", "slug"]),
@@ -444,6 +480,8 @@ export default defineSchema({
 		title: v.string(),
 		seoTitle: v.string(),
 		metaDescription: v.optional(v.string()),
+		/** Language versions of the post (site languages), kept in step with the content by the ship flow. */
+		translations: v.optional(v.array(vPostTranslation)),
 		/** Why content-refresh picked this live post (the writer's refresh brief). */
 		refreshReason: v.optional(v.string()),
 		keywordId: v.id("keywords"),

@@ -118,6 +118,23 @@ export interface IScan {
 	truncated: boolean;
 }
 
+/** Reads one text file from the repo at a branch (a language template, say). Null when it isn't there. */
+export const readFile = internalAction({
+	args: { installationId: v.string(), repo: v.string(), ref: v.string(), path: v.string() },
+	handler: async (ctx, { installationId, repo, ref, path }): Promise<string | null> => {
+		const { owner, name } = split(repo);
+		const token = await installationToken(await cfgOf(ctx), installationId, name);
+		try {
+			const f = await gh<{ content?: string; encoding?: string; type?: string }>(token, "GET", `/repos/${owner}/${name}/contents/${path.split("/").map(encodeURIComponent).join("/")}?ref=${encodeURIComponent(ref)}`);
+			if (f.type !== "file" || !f.content) return null;
+			return Buffer.from(f.content, (f.encoding ?? "base64") as BufferEncoding).toString("utf8");
+		} catch (e) {
+			if (e instanceof GitHubError && e.status === 404) return null;
+			throw e;
+		}
+	},
+});
+
 // ─── Open / update the PR ────────────────────────────────────────────────────
 
 const vFile = v.object({ path: v.string(), content: v.optional(v.string()), storageId: v.optional(v.id("_storage")) });
@@ -128,7 +145,7 @@ export const openPr = internalAction({
 		repo: v.string(),
 		base: v.string(),
 		branch: v.string(),
-		scope: v.object({ contentDir: v.string(), assetDir: v.string(), indexFiles: v.optional(v.array(v.string())) }),
+		scope: v.object({ contentDir: v.string(), assetDir: v.string(), indexFiles: v.optional(v.array(v.string())), extraDirs: v.optional(v.array(v.string())) }),
 		files: v.array(vFile),
 		message: v.string(),
 		title: v.string(),
@@ -221,7 +238,7 @@ export const rebase = internalAction({
 			if (!sc) throw new GitHubError(0, "The repo connection is gone");
 			const missing = sc.assets.filter((x) => !x.storageId);
 			if (missing.length) throw new GitHubError(0, `Image files aren't produced yet for: ${missing.map((x) => x.name).join(", ")}`);
-			const files = [{ path: r.post.path, content: r.post.content }, ...r.assets.map((x) => ({ path: x.path, storageId: sc.assets.find((s) => s.slotId === x.slotId)!.storageId! }))];
+			const files = [{ path: r.post.path, content: r.post.content }, ...(r.extra ?? []), ...r.assets.map((x) => ({ path: x.path, storageId: sc.assets.find((s) => s.slotId === x.slotId)!.storageId! }))];
 			const pr = await ctx.runAction(internal.gitNode.openPr, { installationId: sc.installationId, repo: sc.repo, base: sc.base, branch: sc.branch, scope: sc.scope, files, message: `${sc.message} (rebased)`, title: sc.title, body: sc.body });
 			await ctx.runMutation(internal.gitHooks.rebased, { mrId, headSha: pr.headSha, manifestVersion: r.manifestVersion });
 		} catch (e) {

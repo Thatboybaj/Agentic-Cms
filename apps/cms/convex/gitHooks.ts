@@ -49,6 +49,7 @@ export const shipContext = internalQuery({
 			assets.push({ slotId: sid, storageId: asset?.storageId ?? null, name: slot.name });
 		}
 		const manifest = await activeManifest(ctx, siteId);
+		const langDirs = (site.languages ?? []).filter((l) => l.enabled).map((l) => l.contentDir);
 		const kw = (await ctx.db.get(post.keywordId))?.term ?? post.title;
 		const checks = await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", postId)).take(100);
 		const author = post.authorId ? await ctx.db.get(post.authorId) : null;
@@ -59,7 +60,7 @@ export const shipContext = internalQuery({
 			repo: conn.repo,
 			base: conn.baseBranch,
 			branch: conn.branchPattern.replace("{slug}", post.slug),
-			scope: { contentDir: conn.contentDir, assetDir: conn.assetDir, ...(conn.indexFiles ? { indexFiles: conn.indexFiles } : {}) },
+			scope: { contentDir: conn.contentDir, assetDir: conn.assetDir, ...(conn.indexFiles ? { indexFiles: conn.indexFiles } : {}), ...(langDirs.length ? { extraDirs: langDirs } : {}) },
 			title: `content: add ${post.title}`,
 			message: `content(blog): ${post.currentVersion > 1 ? "update" : "add"} ${post.slug}`,
 			body: prDescription({ keyword: kw, intent: post.intent, checks, overrides, autopost, contentDir: conn.contentDir, assetDir: conn.assetDir, baseBranch: conn.baseBranch, manifestVersion: manifest?.version, metaDescription: post.metaDescription, ...(author ? { author: { name: author.name, source: post.authorSource ?? "default", ...(rubric ? { rubric: rubric.name } : {}), ...(reviewer ? { reviewer: reviewer.name } : {}) } } : {}) }),

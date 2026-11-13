@@ -33,6 +33,8 @@ export interface IStructure {
 	date: Element | null;
 	author: Element | null;
 	tags: Element[];
+	/** A meta-row value labelled as the category (dt "Category"/"التصنيف"), when there is no tag link. */
+	category: Element | null;
 	readTime: Element | null;
 	schema: Element[];
 	/** Direct children of the region/body the parser can't classify (developer maps them once). */
@@ -104,7 +106,23 @@ function proto(sel: string, body: Element | null, region: Element | null, pick?:
 	return choose(direct) ?? choose(any) ?? null;
 }
 
-const READ_TIME = /^\s*\d+\s*(min|mins|minute|minutes)\s+read\s*$/i;
+const READ_TIME = /^\s*\d+\s*(min|mins|minute|minutes)\s+read\s*$|^\s*[\d٠-٩]+\s*(دقيقة|دقائق|دقيقتان|د)\s*(قراءة|للقراءة)?\s*$/i;
+
+// Meta rows written as <dt>label</dt><dd>value</dd> (any language): the value is found by its label.
+const LABELS = {
+	author: /^(author|by|written by|writer|الكاتب|الكاتبة|بقلم|كتبه|المؤلف)$/i,
+	category: /^(category|topic|section|التصنيف|الفئة|القسم|الموضوع)$/i,
+	readTime: /^(read|reading|reading time|read time|القراءة|مدة القراءة|وقت القراءة)$/i,
+};
+function labelled(scope: ParentNode, re: RegExp): Element | null {
+	for (const dt of all(scope, "dt")) {
+		if (!re.test((dt.textContent ?? "").replace(/[:：]\s*$/, "").trim())) continue;
+		let n = dt.nextElementSibling;
+		while (n && tagOf(n) !== "dd") n = n.nextElementSibling;
+		if (n) return n;
+	}
+	return null;
+}
 
 export function analyze(doc: Document): IStructure {
 	const region = findRegion(doc);
@@ -124,9 +142,13 @@ export function analyze(doc: Document): IStructure {
 	const authorEl =
 		doc.querySelector("[itemprop=author]") ??
 		all(metaScope, "[rel=author], [class]").find((el) => el.getAttribute("rel") === "author" || classesOf(el).some((c) => /author$/i.test(c) && !/card|bio|box/i.test(c))) ??
+		labelled(metaScope, LABELS.author) ??
 		null;
-	const tags = region ? all(region, "a[rel=tag], a[class*=tag], a[class*=category]") : [];
-	const readTime = all(metaScope, "span, p, div, small").find((el) => el.children.length === 0 && READ_TIME.test(el.textContent ?? "")) ?? null;
+	const tagLinks = region ? all(region, "a[rel=tag], a[class*=tag], a[class*=category]") : [];
+	// A tag list without per-link classes: <div class="tags"><a>…</a><a>…</a></div>.
+	const tags = tagLinks.length || !region ? tagLinks : all(region, '[class~="tags"] a, [class*="tag-list"] a, [class*="post-tags"] a');
+	const readTime = all(metaScope, "span, p, div, small, dd").find((el) => el.children.length === 0 && READ_TIME.test(el.textContent ?? "")) ?? labelled(metaScope, LABELS.readTime);
+	const category = labelled(metaScope, LABELS.category);
 	const date = (region && region.querySelector("time[datetime]")) || doc.querySelector("time[datetime]");
 
 	const known = new Set<Element>([body, metaHeader, leadFigure].filter(Boolean) as Element[]);
@@ -168,6 +190,7 @@ export function analyze(doc: Document): IStructure {
 		date,
 		author: authorEl,
 		tags,
+		category,
 		readTime,
 		schema: all(doc, 'script[type="application/ld+json"]'),
 		unclassified,
