@@ -10,6 +10,7 @@ import { gatewayChat } from "../../src/lib/gateway";
 import { internal } from "../_generated/api";
 import type { Id } from "../_generated/dataModel";
 import { internalAction } from "../_generated/server";
+import { cleanTitle } from "../../src/render/inline";
 import { costMicroUsd } from "./pricing";
 import { modelOf } from "./provider";
 import { blockProblem, blocksPrompt, chunkBlocks, headerPrompt, headerProblem, type IHeaderOut, type ISourceBlock, linkedPaths, localizeLinks, parseJson, sourceHash, systemPrompt } from "./translateCore";
@@ -83,6 +84,7 @@ export const ensure = internalAction({
 			const runId = start.runId as Id<"runs">;
 			let agent: TAgent = lang.agent;
 			const usage = { inputTokens: 0, outputTokens: 0, micro: 0, model: "" };
+			const used = new Set<TAgent>();
 			const ask = async (system: string, user: string, maxTokens: number) => {
 				let r: ICall;
 				try {
@@ -96,7 +98,8 @@ export const ensure = internalAction({
 				usage.inputTokens += r.inputTokens;
 				usage.outputTokens += r.outputTokens;
 				usage.micro += r.micro;
-				usage.model = r.model;
+				if (!usage.model || r.agent === "fanar") usage.model = r.model;
+				used.add(r.agent);
 				return r.text;
 			};
 			try {
@@ -149,10 +152,10 @@ export const ensure = internalAction({
 				const alts = inp.post.alts.map((a) => ({ slotId: a.slotId, alt: head!.alts?.find((x) => x.id === a.slotId)?.text?.trim() || a.alt }));
 				await ctx.runMutation(internal.translations.save, {
 					postId,
-					translation: { lang: lang.lang, title: head!.title!.trim(), seoTitle: (head!.seoTitle?.trim() || head!.title!.trim()).slice(0, 80), ...(head!.metaDescription?.trim() ? { metaDescription: head!.metaDescription.trim().slice(0, 180) } : {}), ...(head!.pillarName?.trim() ? { pillarName: head!.pillarName.trim() } : {}), blocks, alts, sourceHash: hash, agent, model: usage.model, at: Date.now() },
+					translation: { lang: lang.lang, title: cleanTitle(head!.title!), seoTitle: cleanTitle(head!.seoTitle?.trim() || head!.title!).slice(0, 80), ...(head!.metaDescription?.trim() ? { metaDescription: head!.metaDescription.trim().slice(0, 180) } : {}), ...(head!.pillarName?.trim() ? { pillarName: head!.pillarName.trim() } : {}), blocks, alts, sourceHash: hash, agent: used.has("fanar") ? "fanar" : "gateway", model: usage.model, at: Date.now() },
 				});
 				await ctx.runMutation(internal.spend.recordUsage, { runId, model: usage.model || agent, tier: "workhorse", escalated: false, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, costMicroUsd: usage.micro });
-				await ctx.runMutation(internal.translations.finish, { runId, ok: true, output: `${lang.lang} version ready · ${chunks.flat().length} blocks · ${agent === "fanar" ? "Fanar" : "Qwen via AI Gateway"}` });
+				await ctx.runMutation(internal.translations.finish, { runId, ok: true, output: `${lang.lang} version ready · ${chunks.flat().length} blocks · ${used.has("fanar") ? (used.has("gateway") ? "Fanar, Qwen for the blocks it got wrong" : "Fanar") : "Qwen via AI Gateway"}` });
 				result.done.push(lang.lang);
 			} catch (e) {
 				const reason = (e as Error).message.slice(0, 400);
