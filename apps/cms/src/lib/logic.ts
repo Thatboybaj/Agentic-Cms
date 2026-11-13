@@ -91,7 +91,7 @@ export const TRANSITIONS: Record<TPostState, TPostState[]> = {
 	"needs-assets": ["in-review", "drafting"],
 	"in-review": ["mr-open", "drafting", "needs-assets"],
 	"mr-open": ["live", "in-review"],
-	live: ["decaying"],
+	live: ["decaying", "in-review"], // in-review: "Update live post" re-ships the current content (fixes, byline changes)
 	decaying: ["drafting"],
 };
 

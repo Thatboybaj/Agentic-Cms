@@ -331,3 +331,31 @@ export async function releaseWaiting(ctx: MutationCtx, siteId: Id<"sites">): Pro
 	if (waiting.length) await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: { system: AUTOPOST_ACTOR }, action: "readiness gate passed", target: site.domain, detail: `${started} post${started === 1 ? "" : "s"} drafting now · ${waiting.length - started} on the publish schedule` });
 	return started;
 }
+
+/**
+ * Update live post (every site): re-publish a live post's current content through the normal ship flow (render →
+ * PR → CI → merge), e.g. after renderer fixes or an author change (prd-rubrics-and-authors RA3: manual, never
+ * automatic). Snapshots the content as a new version; a hard gate block stops it. Auto-merge follows the site's setting.
+ */
+export const republishLive = siteMutation({
+	permission: "post.approve",
+	args: { postId: v.id("posts"), reason: v.string() },
+	handler: async (ctx, { siteId, postId, reason }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const post = await loadPostInSite(ctx, siteId, postId);
+		if (post.state !== "live") return fail("Only a live post can be updated this way");
+		if (post.workflowId) return fail("This post is already being worked on");
+		const why = reason.trim().slice(0, 200);
+		if (why.length < 3) return fail("Say what this update changes");
+		const inputs = await gateInputs(ctx, site, post);
+		const gate = evaluateGate(inputs.post, inputs.slots, inputs.manifest);
+		if (gate.hard.length) return fail(`Can't re-publish: ${gate.hard.join(" · ")}`);
+		const n = post.currentVersion + 1;
+		await ctx.db.insert("postVersions", { siteId, postId, n, origin: "human-edit", actor: user.name, at: Date.now(), words: post.words, blocks: post.blocks, seoTitle: post.seoTitle });
+		const t = await transitionPost(ctx, post, "in-review", { extra: { currentVersion: n, approvedVersion: n, progress: { label: "Rendering into the template", value: 85 } } });
+		if (!t.ok) return fail(t.reason);
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "updated live post", target: post.title, detail: `v${n} · ${why}` });
+		const workflowId = await workflow.start(ctx, internal.workflows.shipPost.shipPost, { siteId, postId, version: n, autopost: site.publishing.autopost, overrides: [] }, { startAsync: true });
+		return { ok: true, id: workflowId };
+	},
+});

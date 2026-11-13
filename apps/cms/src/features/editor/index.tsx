@@ -41,6 +41,7 @@ import { ago, findPost, latestVersion, sectionOf } from "./util";
 import { VersionsSheet } from "./versions-sheet";
 import { DiscoveryEvidenceCard } from "@/features/discovery/parts";
 import { AuthorChip } from "@/features/authors/parts";
+import { UpdateLiveButton } from "./update-live";
 import { sitePath } from "@/lib/routes";
 
 const EDITABLE_STATES: IPost["state"][] = ["needs-assets", "in-review"];
@@ -488,6 +489,7 @@ export function PostEditor({ id, versions }: IPostEditorProps) {
 					<span className="max-xl:hidden">
 						<AuthorChip post={post} editable />
 					</span>
+					<UpdateLiveButton post={post} />
 					{cur && (
 						<Link href={`${base}/versions`} aria-label={`Version ${cur.n}, ${ORIGIN_LABEL[cur.origin]}, ${ago(cur.at)} · open versions`} className="press flex h-11 shrink-0 items-center gap-2 whitespace-nowrap rounded-pill bg-surface px-4 font-display text-md hover:bg-sunken">
 							<Icon name="ClockCounterClockwise" size={16} />v{cur.n}
