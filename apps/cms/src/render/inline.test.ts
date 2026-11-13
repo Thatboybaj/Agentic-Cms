@@ -1,7 +1,7 @@
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
 import { cleanText, toDraft } from "../../convex/agents/writerCore";
-import { extractNotes, fillInline, inlinePlain, normalizeInline, safeHref } from "./inline";
+import { cleanTitle, extractNotes, fillInline, inlinePlain, normalizeInline, publicPillarName, safeHref } from "./inline";
 
 const doc = () => new DOMParser().parseFromString("<p></p>", "text/html") as unknown as Document;
 
@@ -34,6 +34,14 @@ describe("inline links (every site)", () => {
 		);
 		expect(d.blocks.map((b) => b.text)).toEqual(["Intro.", "Costs vary."]);
 		expect(d.unsourcedClaims).toEqual([{ blockId: "b1", claim: "final word count should be checked by a person before publishing" }, { blockId: "b2", claim: "A claim in this block needs a source" }]);
+	});
+
+	it("cleans titles and pillar labels for the page", () => {
+		expect(cleanTitle("AI Automation for Businesses in Qatar: A Practical Guide | |")).toBe("AI Automation for Businesses in Qatar: A Practical Guide");
+		expect(cleanTitle("أتمتة الذكاء الاصطناعي في قطر: دليل عملي | بينور", "BAYNOR AI بينور BAYNOR AI | ")).toBe("أتمتة الذكاء الاصطناعي في قطر: دليل عملي");
+		expect(cleanTitle("Pros - Cons of AI", "BAYNOR AI")).toBe("Pros - Cons of AI");
+		expect(publicPillarName("AI Business Automation in Qatar (core/brand)")).toBe("AI Business Automation in Qatar");
+		expect(publicPillarName("Sales & CRM Automation")).toBe("Sales & CRM Automation");
 	});
 
 	it("keeps headings link-free and plain text for meta", () => {

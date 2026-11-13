@@ -4,7 +4,9 @@
 // refresh all carry their language pages; an unchanged post is never translated twice (sourceHash).
 import { v } from "convex/values";
 import { checkCap, estimateRun } from "../src/lib/logic";
-import { internalMutation, internalQuery } from "./_generated/server";
+import { publicPillarName } from "../src/render/inline";
+import type { Doc } from "./_generated/dataModel";
+import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
 import { capSite } from "./lib/budget";
 import { siteMutation, siteQuery } from "./lib/functions";
@@ -55,6 +57,13 @@ export const setLanguage = siteMutation({
 	},
 });
 
+/** The content a language version is made from (one definition for the agent and the renderer's freshness check). */
+export async function translationSource(ctx: QueryCtx, post: Doc<"posts">) {
+	const pillar = await ctx.db.get(post.pillarId);
+	const slots = (await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", post._id)).take(50)).filter((s) => s.status === "selected");
+	return { title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), ...(pillar && pillar.siteId === post.siteId ? { pillarName: publicPillarName(pillar.name) } : {}), blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), alts: slots.map((s) => ({ slotId: s._id as string, alt: s.alt })) };
+}
+
 /** What the translation agent needs for one post. */
 export const input = internalQuery({
 	args: { siteId: v.id("sites"), postId: v.id("posts") },
@@ -64,12 +73,10 @@ export const input = internalQuery({
 		if (!site || !post || post.siteId !== siteId) return null;
 		const languages = (site.languages ?? []).filter((l) => l.enabled);
 		if (!languages.length) return null;
-		const pillar = await ctx.db.get(post.pillarId);
-		const slots = (await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50)).filter((s) => s.status === "selected");
 		return {
 			site: { name: site.name, domain: site.domain },
 			languages,
-			post: { title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), ...(pillar && pillar.siteId === siteId ? { pillarName: pillar.name } : {}), blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), alts: slots.map((s) => ({ slotId: s._id as string, alt: s.alt })) },
+			post: await translationSource(ctx, post),
 			have: (post.translations ?? []).map((t) => ({ lang: t.lang, sourceHash: t.sourceHash })),
 		};
 	},
@@ -84,7 +91,14 @@ export const startRun = internalMutation({
 		const estimate = estimateRun("translation", capSite(site));
 		const cap = checkCap(capSite(site), "translation", estimate);
 		if (cap.status === "refused") return { ok: false as const, reason: cap.message };
-		const runId = await createRun(ctx, { site, kind: "translation", trigger: "workflow", estimate, postId, idempotencyKey: `run:${postId}:translation:${lang}:${hash}`, output: `Writing the ${lang} version · ${agent === "fanar" ? "Fanar" : "Qwen via AI Gateway"}` });
+		// A retry after a failed run gets a run of its own (the failed one stays in the log as it was).
+		let key = `run:${postId}:translation:${lang}:${hash}`;
+		for (let n = 1; n < 20; n++) {
+			const prev = await ctx.db.query("runs").withIndex("by_idempotency", (q) => q.eq("idempotencyKey", key)).unique();
+			if (!prev || (prev.status !== "failed" && prev.status !== "cancelled" && prev.status !== "refused-over-cap")) break;
+			key = `run:${postId}:translation:${lang}:${hash}:retry${n}`;
+		}
+		const runId = await createRun(ctx, { site, kind: "translation", trigger: "workflow", estimate, postId, idempotencyKey: key, output:`Writing the ${lang} version · ${agent === "fanar" ? "Fanar" : "Qwen via AI Gateway"}` });
 		const run = await ctx.db.get(runId);
 		return { ok: true as const, runId, done: run?.status === "succeeded" };
 	},

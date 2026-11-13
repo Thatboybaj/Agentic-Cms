@@ -132,6 +132,15 @@ export const ensure = internalAction({
 					for (const c of chunkBlocks(again)) await runChunk(c, Object.fromEntries(c.map((b) => [b.id, bad[b.id]!])));
 					bad = check();
 				}
+				// Still failing on Fanar: Qwen (AI Gateway) gets just those blocks, once, with the problems named.
+				if (Object.keys(bad).length && agent === "fanar" && process.env.AI_GATEWAY_API_KEY?.trim()) {
+					const prev = agent;
+					agent = "gateway";
+					const again = chunks.flat().filter((b) => bad[b.id]);
+					for (const c of chunkBlocks(again)) await runChunk(c, Object.fromEntries(c.map((b) => [b.id, bad[b.id]!])));
+					agent = prev;
+					bad = check();
+				}
 				const left = Object.entries(bad);
 				if (left.length) throw new Error(`${left.length} block${left.length === 1 ? "" : "s"} failed the checks (${left.slice(0, 3).map(([id, p]) => `${id}: ${p}`).join("; ")})`);
 				// Internal links move to the language's pages where those exist.

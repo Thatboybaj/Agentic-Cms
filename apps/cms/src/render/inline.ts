@@ -89,3 +89,21 @@ export function fillInline(el: Element, text: string, siteHost?: string) {
 
 /** Plain text of block text (for word counts, meta descriptions, alt text): links reduced to their anchor. */
 export const inlinePlain = (text: string) => normalizeInline(text).replace(LINK, "$1");
+
+/** A pillar's public name: planning labels ("… (core/brand)", "(pillar)") are for the plan, not the page (every site). */
+export const publicPillarName = (name: string) => name.replace(/\s*[([](?:core|brand|core\s*\/\s*brand|pillar|hub|main|primary|secondary|cluster)[^)\]]*[)\]]\s*$/i, "").trim() || name.trim();
+
+/** A title without dangling separators ("Guide | |") and, when given, without a trailing segment that repeats the
+ * page chrome (" | بينور" when the template's title already carries the brand). */
+export function cleanTitle(title: string, chrome = ""): string {
+	let t = title.trim();
+	const c = chrome.toLowerCase();
+	for (;;) {
+		const m = /\s*[·|–—]\s*([^·|–—]*)$/.exec(t) ?? /\s+-\s+([^-]*)$/.exec(t);
+		if (!m) break;
+		const seg = m[1]!.trim();
+		if (seg && !(c && c.includes(seg.toLowerCase()))) break;
+		t = t.slice(0, m.index).trim();
+	}
+	return t || title.trim();
+}

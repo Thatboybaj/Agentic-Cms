@@ -4,7 +4,7 @@
 // the harness already states (no invented numbers or sources; [VERIFY] for unsourced claims; no image files).
 import { SKILLS } from "@studio/seo-harness";
 import { z } from "zod/v4";
-import { extractNotes, inlinePlain, normalizeInline } from "../../src/render/inline";
+import { cleanTitle, extractNotes, inlinePlain, normalizeInline } from "../../src/render/inline";
 
 /** Block text in the canonical form: plain text, links as [anchor](url), no HTML (every site). Headings: no links. */
 export const cleanText = (kind: string, t: string) => (kind === "h2" || kind === "h3" ? inlinePlain(t) : normalizeInline(t)).trim();
@@ -146,7 +146,7 @@ export function toDraft(out: TWriterOutput, opts: { disclaimer?: string }) {
 		.filter((c) => c.claim.trim())
 		.map((c) => ({ blockId: blocks[Math.max(0, Math.min(blocks.length - 1, c.blockIndex))]?.id ?? "b1", claim: c.claim.trim() }))
 		.concat(inline.map((c) => ({ blockId: blocks[c.index]?.id ?? "b1", claim: c.claim })));
-	return { seoTitle: out.seoTitle.trim().slice(0, 70), ...(out.metaDescription.trim() ? { metaDescription: out.metaDescription.trim().slice(0, 170) } : {}), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
+	return { seoTitle: cleanTitle(out.seoTitle).slice(0, 70), ...(out.metaDescription.trim() ? { metaDescription: out.metaDescription.trim().slice(0, 170) } : {}), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
 }
 
 // ─── Revise (reviewer's send-back note) ───────────────────────────────────────
@@ -184,5 +184,5 @@ export function toRevision(out: TReviseOutput, before: { id: string }[]) {
 			seen.add(id);
 			return { id, kind: b.kind, text: cleanText(b.kind, b.text) };
 		});
-	return { blocks, seoTitle: out.seoTitle.trim().slice(0, 70) };
+	return { blocks, seoTitle: cleanTitle(out.seoTitle).slice(0, 70) };
 }

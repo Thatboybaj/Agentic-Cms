@@ -5,6 +5,7 @@ import { internalQuery } from "./_generated/server";
 import { gateInputs } from "./lib/gateInputs";
 import { authorProfileFor } from "./authors";
 import { sourceHash } from "./agents/translateCore";
+import { translationSource } from "./translations";
 
 export const forPost = internalQuery({
 	args: { siteId: v.id("sites"), postId: v.id("posts"), manifestId: v.optional(v.id("templateManifests")) },
@@ -23,14 +24,14 @@ export const forPost = internalQuery({
 		const author = profile?.name ?? (post.assigneeId ? (await ctx.db.get(post.assigneeId))?.name : undefined);
 		// Language versions: each enabled language with a saved version, flagged current when it was made from this
 		// exact content (a stale one isn't re-committed; the repo keeps the last good file).
-		const selected = (await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50)).filter((x) => x.status === "selected");
-		const src = { title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), ...(pillar && pillar.siteId === siteId ? { pillarName: pillar.name } : {}), blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), alts: selected.map((x) => ({ slotId: x._id as string, alt: x.alt })) };
+		const src = await translationSource(ctx, post);
 		const conn = inputs.repoDoc;
 		const languages = (site.languages ?? [])
 			.filter((l) => l.enabled)
 			.map((l) => {
 				const t = (post.translations ?? []).find((x) => x.lang === l.lang);
-				return { ...l, translation: t ?? null, current: !!t && t.sourceHash === sourceHash(src, l.lang, l.styleGuide ?? "") };
+				const hash = sourceHash(src, l.lang, l.styleGuide ?? "");
+				return { ...l, translation: t ?? null, hash, current: !!t && t.sourceHash === hash };
 			});
 		return {
 			languages,

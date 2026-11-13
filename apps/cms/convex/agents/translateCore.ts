@@ -22,9 +22,10 @@ export interface ISourcePost {
 	alts: { slotId: string; alt: string }[];
 }
 
-/** FNV-1a over the content a translation depends on: same content → same hash → no second translation. */
+/** FNV-1a over the content a translation depends on: same content → same hash → no second translation. Arrays
+ * only, never objects: Convex may return an object's keys in another order. */
 export function sourceHash(p: ISourcePost, lang: string, guide = ""): string {
-	const s = JSON.stringify([lang, guide, p.title, p.seoTitle, p.metaDescription ?? "", p.pillarName ?? "", p.blocks.filter((b) => b.kind !== "image").map((b) => [b.id, b.kind, b.text]), p.alts]);
+	const s = JSON.stringify([lang, guide, p.title, p.seoTitle, p.metaDescription ?? "", p.pillarName ?? "", p.blocks.filter((b) => b.kind !== "image").map((b) => [b.id, b.kind, b.text]), p.alts.map((a) => [a.slotId, a.alt])]);
 	let h = 0x811c9dc5;
 	for (let i = 0; i < s.length; i++) {
 		h ^= s.charCodeAt(i);
@@ -124,7 +125,7 @@ export function blockProblem(src: ISourceBlock, text: string, lang: string): str
 	if (su.join(" ") !== tu.join(" ")) return `the links changed: the source links to ${su.join(", ") || "nothing"}, the translation to ${tu.join(", ") || "nothing"}`;
 	const sn = numbersOf(src.text);
 	const tn = numbersOf(t);
-	if (sn.join(" ") !== tn.join(" ")) return `the numbers changed: the source has ${sn.join(", ") || "none"}, the translation ${tn.join(", ") || "none"}`;
+	if (sn.join(" ") !== tn.join(" ")) return `the numbers changed: the source has ${sn.join(", ") || "none"}, the translation ${tn.join(", ") || "none"}. Write each of ${sn.join(", ") || "no number"} in Western digits, times included (الساعة 3 صباحاً, not الثالثة), and add no other number`;
 	if (src.kind === "ul" || src.kind === "faq") {
 		const sl = src.text.split("\n").filter((l) => l.trim()).length;
 		const tl = t.split("\n").filter((l) => l.trim()).length;

@@ -24,6 +24,7 @@ describe("translation agent checks (every site)", () => {
 	it("chunks body blocks, skips images, and hashes content", () => {
 		expect(chunkBlocks(src.blocks).flat().map((b) => b.id)).toEqual(["b1", "b2"]);
 		expect(sourceHash(src, "ar")).toBe(sourceHash({ ...src }, "ar"));
+		expect(sourceHash(src, "ar")).toBe(sourceHash({ ...src, alts: [{ alt: "A team", slotId: "s1" }] }, "ar")); // key order doesn't matter
 		expect(sourceHash(src, "ar")).not.toBe(sourceHash({ ...src, title: "Other" }, "ar"));
 		expect(systemPrompt({ lang: "ar", siteName: "S", domain: "s.qa", styleGuide: "Brand: بينور" })).toContain("<style_guide>");
 	});

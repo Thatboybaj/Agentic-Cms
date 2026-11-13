@@ -5,7 +5,7 @@ import type { IImageSlot, IPost, IPostBlock, ISite, ITemplateMapping } from "@/l
 import { analyze, srcsetPattern, tagOf, type IStructure, type TParseHtml } from "./structure";
 import { placeholderSvg } from "./placeholder";
 import { authorCards, fillAuthorCard, fillByline, personJsonLd, type IAuthorProfile } from "./author";
-import { fillInline, inlinePlain } from "./inline";
+import { cleanTitle, fillInline, inlinePlain, publicPillarName } from "./inline";
 
 export interface IRenderHeld {
 	reason: string;
@@ -226,11 +226,12 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		for (const k of ["h2", "h3", "p", "ul", "ol", "quote", "table", "faq"] as const) if (!s[k] && f[k]) s[k] = borrow(f[k]!);
 	}
 	const url = postUrlFromTemplate(s.canonical?.getAttribute("href"), site.domain, post.slug);
-	const title = post.seoTitle || post.title;
 	const sampleTitle = (s.h1?.textContent ?? "").trim();
 	const rich = { host: site.domain };
 	// The sample's headline without trailing punctuation: "…AI strategy." in the h1 is "…AI strategy" in <title>.
 	const sampleCore = sampleTitle.replace(/\s+/g, " ").replace(/[.!?…]+$/, "").trim();
+	// The post title, without dangling separators or a trailing brand segment the template title already carries.
+	const title = cleanTitle(post.seoTitle || post.title, `${site.name} ${(s.title?.textContent ?? "").replace(sampleCore, "")}`);
 	// The sample's hero photo, also used as decoration elsewhere (a blurred backdrop): swapped for the post's hero.
 	const heroImgEl = s.leadFigure ? (tagOf(s.leadFigure) === "img" ? s.leadFigure : s.leadFigure.querySelector("img")) : s.figure ? (tagOf(s.figure) === "img" ? s.figure : s.figure.querySelector("img")) : null;
 	const sampleHeroSrc = heroImgEl?.getAttribute("src") ?? null;
@@ -513,11 +514,12 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		const mapped = (input.mappings ?? []).filter((m) => m.label === "Author bio" && m.status !== "needs-you").map((m) => m.selector);
 		for (const card of authorCards(doc, mapped)) if (fillAuthorCard(card, input.authorProfile).missingPhoto) warnings.push("Author card shows no photo: the author has none yet");
 	}
-	if (input.pillarName && s.category && !s.tags.some((t) => s.category!.contains(t))) setText(s.category, input.pillarName);
-	if (input.pillarName && s.tags[0]) {
-		setText(s.tags[0], input.pillarName);
+	const pillarName = input.pillarName ? publicPillarName(input.pillarName) : undefined;
+	if (pillarName && s.category && !s.tags.some((t) => s.category!.contains(t))) setText(s.category, pillarName);
+	if (pillarName && s.tags[0]) {
+		setText(s.tags[0], pillarName);
 		const href = s.tags[0].getAttribute("href");
-		const pillarSlug = input.pillarName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+		const pillarSlug = pillarName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 		// Only a typed tag link's last segment names the tag; a plain link in a tag list (Arabic "/ar/blog") stays.
 		if (href && pillarSlug && s.tags[0].matches("a[rel=tag], a[class*=tag], a[class*=category]") && hasPathSegment(href)) s.tags[0].setAttribute("href", href.replace(/[^/]+\/?$/, (seg) => `${input.pillarName!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}${seg.endsWith("/") ? "/" : ""}`));
 		for (const extra of s.tags.slice(1)) extra.remove();
