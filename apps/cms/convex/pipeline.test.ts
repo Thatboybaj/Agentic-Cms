@@ -87,7 +87,7 @@ async function connect(t: T, siteId: Id<"sites">, opts: { repo?: boolean; manife
 		if (opts.repo !== false)
 			await ctx.db.insert("repoConnections", { workspaceId: site.workspaceId, siteId, host: "github", repo: "lumen/lumendental.co", baseBranch: "main", contentDir: "content/blog", assetDir: "public/images/blog", branchPattern: "content/{slug}", installedAs: "agentic-cms", installationId: "1", status: "active", connectedBy: owner._id, connectedAt: 0 });
 		if (opts.manifest !== false)
-			await ctx.db.insert("templateManifests", { siteId, version: 3, source: "lumen-site.zip", kind: "zip", output: "mdx", status: "confirmed", mappings: [{ id: "m1", selector: "article", role: "content-region", status: "mapped", detail: "" }], bundleFiles: 1, bundleBytes: 1, uploadedBy: owner._id, uploadedAt: 0 });
+			await ctx.db.insert("templateManifests", { siteId, version: 3, source: "lumen-site.zip", kind: "zip", output: "mdx", status: "confirmed", mappings: [{ id: "m1", selector: "article", role: "content-region", status: "mapped", detail: "" }, { id: "m2", selector: "figure > img", role: "image", status: "mapped", detail: "" }], bundleFiles: 1, bundleBytes: 1, uploadedBy: owner._id, uploadedAt: 0 });
 	});
 }
 

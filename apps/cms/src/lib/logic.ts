@@ -87,7 +87,7 @@ export function stateTone(state: TPostState, hasHumanOnlySlot = false): TTone {
 export const TRANSITIONS: Record<TPostState, TPostState[]> = {
 	idea: ["briefed"],
 	briefed: ["drafting", "idea"],
-	drafting: ["needs-assets", "in-review"],
+	drafting: ["needs-assets", "in-review", "briefed"], // briefed: a first draft that failed before writing anything
 	"needs-assets": ["in-review", "drafting"],
 	"in-review": ["mr-open", "drafting", "needs-assets"],
 	"mr-open": ["live", "in-review"],

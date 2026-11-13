@@ -47,6 +47,13 @@ export function fillByline(el: Element, p: IAuthorProfile) {
 		if (p.url) link.setAttribute("href", p.url);
 		else link.removeAttribute("href");
 	}
+	// The byline's avatar (Baynor: <span class="avatar"><img></span> beside the name) shows the credited person's photo.
+	const avatar = el.parentElement?.querySelector('[class*="avatar"] img, img[class*="avatar"]');
+	if (avatar && p.image) {
+		avatar.setAttribute("src", p.image.src);
+		avatar.setAttribute("alt", "");
+		avatar.removeAttribute("srcset");
+	}
 }
 
 function pick(card: Element, sel: string): Element | null {

@@ -53,7 +53,7 @@ describe("qwen client", () => {
 			if (b.enable_thinking) return new Response(JSON.stringify({ error: { message: "enable_thinking is not supported with response_format" } }), { status: 400 });
 			return new Response(sseBody([{ choices: [{ delta: { content: "{}" }, finish_reason: "stop" }] }]), { status: 200 });
 		});
-		await qwenChat("k", { model: "m", system: [], user: "u", jsonSchema: {}, maxTokens: 8000, effort: "high" });
+		await qwenChat("k", { model: "m", system: [], user: "u", maxTokens: 8000, effort: "high" });
 		expect(bodies.map((b) => b.enable_thinking)).toEqual([true, false]);
 	});
 

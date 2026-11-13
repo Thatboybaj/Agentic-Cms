@@ -58,6 +58,25 @@ type TJson = Record<string, unknown>;
 
 // ---- helpers ------------------------------------------------------------------
 
+/** For comparing links: no protocol, www, query, hash or trailing slash. */
+const normalizeHref = (h: string) =>
+	h
+		.trim()
+		.replace(/^https?:\/\//i, "")
+		.replace(/^www\./i, "")
+		.replace(/[?#].*$/, "")
+		.replace(/\/+$/, "")
+		.toLowerCase();
+
+/** A link whose path has a last segment to swap (not a bare domain like "https://blog.example.com/"). */
+function hasPathSegment(href: string): boolean {
+	try {
+		return new URL(href, "https://x.invalid/").pathname.replace(/\/+$/, "").length > 0;
+	} catch {
+		return false;
+	}
+}
+
 function clone<T extends Element>(el: T): T {
 	return el.cloneNode(true) as T;
 }
@@ -186,6 +205,12 @@ export function renderPost(input: IRenderInput): IRenderResult {
 	const url = postUrlFromTemplate(s.canonical?.getAttribute("href"), site.domain, post.slug);
 	const title = post.seoTitle || post.title;
 	const sampleTitle = (s.h1?.textContent ?? "").trim();
+	// The sample's headline without trailing punctuation: "…AI strategy." in the h1 is "…AI strategy" in <title>.
+	const sampleCore = sampleTitle.replace(/\s+/g, " ").replace(/[.!?…]+$/, "").trim();
+	// The sample's hero photo, also used as decoration elsewhere (a blurred backdrop): swapped for the post's hero.
+	const heroImgEl = s.leadFigure ? (tagOf(s.leadFigure) === "img" ? s.leadFigure : s.leadFigure.querySelector("img")) : s.figure ? (tagOf(s.figure) === "img" ? s.figure : s.figure.querySelector("img")) : null;
+	const sampleHeroSrc = heroImgEl?.getAttribute("src") ?? null;
+	const sampleCanonical = s.canonical?.getAttribute("href") ?? null;
 	const labelOf = (el: Element) =>
 		input.mappings?.find((m) => {
 			if (m.status === "needs-you" || !m.label) return false;
@@ -435,7 +460,8 @@ export function renderPost(input: IRenderInput): IRenderResult {
 		const t = s.title.textContent ?? "";
 		const sep = /\s[·|–—-]\s(?!.*\s[·|–—-]\s)/.exec(t);
 		// "<post title> · Site" keeps the site suffix; otherwise swap the sample's title wherever it appears.
-		s.title.textContent = sep ? `${title}${t.slice(sep.index)}` : sampleTitle && t.includes(sampleTitle) ? t.replace(sampleTitle, title) : title;
+		// The sample's own title wins: "BAYNOR AI | <sample>" keeps the site prefix. Only then guess "<title> · Site".
+		s.title.textContent = sampleCore.length > 3 && t.includes(sampleCore) ? t.replace(sampleCore, title) : sep ? `${title}${t.slice(sep.index)}` : title;
 	}
 	if (s.description) s.description.setAttribute("content", description);
 	if (s.canonical) s.canonical.setAttribute("href", url);
@@ -462,10 +488,37 @@ export function renderPost(input: IRenderInput): IRenderResult {
 	if (input.pillarName && s.tags[0]) {
 		setText(s.tags[0], input.pillarName);
 		const href = s.tags[0].getAttribute("href");
-		if (href) s.tags[0].setAttribute("href", href.replace(/[^/]+\/?$/, (seg) => `${input.pillarName!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}${seg.endsWith("/") ? "/" : ""}`));
+		if (href && hasPathSegment(href)) s.tags[0].setAttribute("href", href.replace(/[^/]+\/?$/, (seg) => `${input.pillarName!.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}${seg.endsWith("/") ? "/" : ""}`));
 		for (const extra of s.tags.slice(1)) extra.remove();
 	}
 	if (s.readTime) s.readTime.textContent = (s.readTime.textContent ?? "").replace(/\d+/, String(Math.max(1, Math.round(post.words / WORDS_PER_MIN))));
+	// "Keep reading" cards that point at the sample post itself are the sample's, not this post's: drop them, and a
+	// related section left with no links (Baynor's template linked its own sample article, since deleted). A card is
+	// the sample's when it links to the sample's URL or carries the sample's headline.
+	const sampleHref = sampleCanonical ? normalizeHref(sampleCanonical) : null;
+	for (const a of Array.from(doc.querySelectorAll("a[href]"))) {
+		if (s.region.contains(a)) continue;
+		const h = normalizeHref(a.getAttribute("href") ?? "");
+		const text = (a.textContent ?? "").replace(/\s+/g, " ").trim();
+		const self = (!!sampleHref && h === sampleHref) || (sampleCore.length > 15 && text.includes(sampleCore));
+		if (!self) continue;
+		const card = a.closest('[class*="card"], li, article') ?? a;
+		const section = card.parentElement?.closest("section, aside") ?? card.parentElement?.closest('[class*="related"]') ?? null;
+		card.remove();
+		if (section && !section.querySelector("a[href]")) section.remove();
+	}
+	// The sample's hero photo used as decoration (backdrop, social card): the post's hero, or removed without one.
+	if (sampleHeroSrc) {
+		const heroSlot = heroBlock ? slotOf(heroBlock.text) : undefined;
+		const heroSrc = heroSlot ? imageFor(heroSlot).src : null;
+		for (const img of Array.from(doc.querySelectorAll("img"))) {
+			if (img.getAttribute("src") !== sampleHeroSrc) continue;
+			if (heroSrc) {
+				img.setAttribute("src", heroSrc);
+				img.removeAttribute("srcset");
+			} else if (img.getAttribute("alt") === "" || img.closest("[aria-hidden=true]")) img.remove();
+		}
+	}
 	// Sample title repeated in page chrome (breadcrumb current item, etc.).
 	if (sampleTitle) {
 		for (const el of Array.from(doc.body?.querySelectorAll("*") ?? [])) {

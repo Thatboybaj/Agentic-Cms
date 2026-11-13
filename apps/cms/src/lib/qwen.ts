@@ -122,7 +122,8 @@ const thinkingRejected = (e: unknown) => e instanceof QwenHttpError && e.status 
 
 /** One call. Web search goes to the native endpoint (sources); everything else to Chat Completions. */
 export async function qwenChat(apiKey: string, req: IQwenRequest, opts: { signal?: AbortSignal; env?: Record<string, string | undefined> } = {}): Promise<IQwenResult> {
-	const budget = thinkingBudget(req.effort, req.maxTokens);
+	// Structured output runs without thinking (see reasoningFor in gateway.ts: thinking can eat the whole allowance).
+	const budget = req.jsonSchema ? 0 : thinkingBudget(req.effort, req.maxTokens);
 	try {
 		return await (req.webSearch ? nativeSearch(apiKey, req, budget, opts) : compat(apiKey, req, budget, opts));
 	} catch (e) {
@@ -136,7 +137,8 @@ async function compat(apiKey: string, req: IQwenRequest, budget: number, opts: {
 	const body = {
 		model: req.model,
 		messages: messagesOf(req),
-		max_tokens: req.maxTokens,
+		// Qwen counts thinking against max_tokens: the answer keeps its full allowance (the spend hold covers both).
+		max_tokens: req.maxTokens + budget,
 		stream: true,
 		stream_options: { include_usage: true },
 		enable_thinking: budget > 0,
@@ -179,7 +181,7 @@ async function nativeSearch(apiKey: string, req: IQwenRequest, budget: number, o
 		parameters: {
 			result_format: "message",
 			incremental_output: true,
-			max_tokens: req.maxTokens,
+			max_tokens: req.maxTokens + budget,
 			enable_thinking: budget > 0,
 			...(budget > 0 ? { thinking_budget: budget } : {}),
 			enable_search: true,

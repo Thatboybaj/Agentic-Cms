@@ -10,7 +10,8 @@ import { internalMutation, type MutationCtx } from "../_generated/server";
 import { audit } from "../lib/audit";
 import { notify, siteAudience } from "../lib/notify";
 import { finishRun } from "../lib/runs";
-import { mustTransition } from "../lib/transition";
+import { mustTransition, transitionPost } from "../lib/transition";
+import { placeImageBlocks } from "../lib/imageBlocks";
 import { agentsLive, refreshOnPage } from "../lib/onpage";
 import { internal } from "../_generated/api";
 import { workflow } from "../workflows/manager";
@@ -83,6 +84,7 @@ export const saveDraft = internalMutation({
 		// Re-drafts replace the previous image sheet.
 		for (const s of await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50)) await ctx.db.delete(s._id);
 		const toFill: { slotId: Id<"imageSlots">; provider: string }[] = [];
+		const placed: { id: string; type: string; placement: string; afterBlockId?: string }[] = [];
 		let order = 0;
 		for (const s of draft.imageSheet) {
 			const provider = s.type === "chart" ? "inline-svg" : s.type === "hero" ? site.routing.hero : site.routing[s.type];
@@ -108,9 +110,12 @@ export const saveDraft = internalMutation({
 				order: order++,
 			});
 			if (!humanOnly) toFill.push({ slotId, provider });
+			placed.push({ id: slotId, type: s.type, placement: s.placement, ...(s.afterBlockId ? { afterBlockId: s.afterBlockId } : {}) });
 		}
+		// Each slot gets an image block where the writer put it, or the renderer has nowhere to place the image.
+		const blocks = placeImageBlocks<Doc<"posts">["blocks"][number]>(draft.blocks, placed, (slotId) => ({ id: `img-${slotId}`, kind: "image" as const, text: slotId }));
 		await mustTransition(ctx, post, "needs-assets", {
-			extra: { blocks: draft.blocks, words: draft.words, seoTitle: draft.seoTitle, ...(draft.metaDescription ? { metaDescription: draft.metaDescription } : {}), currentVersion: n, progress: { label: `Image sheet · ${draft.imageSheet.length} slots`, value: 60 } },
+			extra: { blocks, words: draft.words, seoTitle: draft.seoTitle, ...(draft.metaDescription ? { metaDescription: draft.metaDescription } : {}), currentVersion: n, progress: { label: `Image sheet · ${draft.imageSheet.length} slots`, value: 60 } },
 		});
 		// On-page audit of the new draft (the optimizer's checks; live only, stub drafts keep stub rows).
 		if (agentsLive()) await refreshOnPage(ctx, (await ctx.db.get(postId))!);
@@ -180,11 +185,27 @@ export const pipelineDone = internalMutation({
 		if (post && post.workflowId === workflowId) await ctx.db.patch(post._id, { workflowId: undefined, ...(result.kind === "success" ? {} : { progress: undefined }) });
 		if (result.kind === "success") return;
 		const message = result.kind === "failed" ? result.error : "Cancelled";
+		// A first draft that failed before writing anything returns to Briefed, so Generate now can run it again.
+		if (post && post.state === "drafting" && post.blocks.length === 0) await transitionPost(ctx, post, "briefed");
 		await finishRun(ctx, context.runId, { status: result.kind === "canceled" ? "cancelled" : "failed", output: result.kind === "canceled" ? "Cancelled" : "Generation failed", error: message });
 		const site = await ctx.db.get(context.siteId);
 		if (site && post) {
 			await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, postId: post._id, actor: { system: WRITER }, action: result.kind === "canceled" ? "cancelled run" : "run failed", target: post.title, detail: message.slice(0, 200) });
 			if (result.kind === "failed") await notify(ctx, { workspaceId: site.workspaceId, siteId: site._id, userIds: await siteAudience(ctx, site), tone: "block", title: "Post generation failed", body: `${post.title} · ${message.slice(0, 140)}`, href: "/runs", dedupeKey: `genfail:${post._id}` });
 		}
+	},
+});
+
+/** Repair: give a post's existing slots their image blocks (posts drafted before image blocks were inserted). */
+export const attachImageBlocks = internalMutation({
+	args: { postId: v.id("posts") },
+	handler: async (ctx, { postId }) => {
+		const post = await ctx.db.get(postId);
+		if (!post) return { ok: false as const, reason: "Post not found" };
+		const slots = (await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", postId)).take(50)).sort((a, b) => a.order - b.order);
+		const blocks = placeImageBlocks(post.blocks, slots.map((x) => ({ id: x._id, type: x.type, placement: x.placement })), (slotId) => ({ id: `img-${slotId}`, kind: "image" as const, text: slotId }));
+		const added = blocks.length - post.blocks.length;
+		if (added) await ctx.db.patch(postId, { blocks, updatedAt: Date.now() });
+		return { ok: true as const, added };
 	},
 });

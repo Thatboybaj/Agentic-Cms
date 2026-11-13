@@ -47,6 +47,8 @@ const vSlotOut = v.object({
 	height: v.number(),
 	alt: v.string(),
 	prompt: v.string(),
+	/** The block the image goes after (from the writer's sheet); the hero goes at the top. */
+	afterBlockId: v.optional(v.string()),
 });
 
 export const vDraftOutput = v.object({

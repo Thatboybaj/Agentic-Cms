@@ -28,7 +28,7 @@ describe("Vercel AI Gateway client", () => {
 			return new Response(sseBody([{ id: "g1", choices: [{ delta: { content: '{"capital":"Doha"}' }, finish_reason: "stop" }] }, { choices: [], usage: { prompt_tokens: 50, completion_tokens: 8, prompt_tokens_details: { cached_tokens: 10 } } }]), { status: 200 });
 		});
 		const r = await gatewayChat("k", { model: "qwen3.8-flash", system: ["s"], user: "u", jsonSchema: { type: "object" }, maxTokens: 200, effort: "low" });
-		expect(sent).toMatchObject({ model: "alibaba/qwen3.8-flash", stream: true, response_format: { type: "json_schema" }, providerOptions: { alibaba: { enableThinking: false } } });
+		expect(sent).toMatchObject({ model: "alibaba/qwen3.8-flash", stream: true, response_format: { type: "json_schema" }, reasoning: { enabled: false } });
 		expect(r).toMatchObject({ text: '{"capital":"Doha"}', stopReason: "end_turn", usage: { inputTokens: 40, cacheReadTokens: 10, outputTokens: 8 } });
 	});
 
@@ -72,5 +72,14 @@ describe("Vercel AI Gateway client", () => {
 			return new Response(JSON.stringify({ data: [{ b64_json: "AAA" }] }), { status: 200 });
 		});
 		expect(await gatewayImages("k", { model: "gpt-image-2", prompt: "p", n: 1, size: "1024x1024" })).toEqual(["data:image/png;base64,AAA"]);
+	});
+});
+
+describe("thinking per call", () => {
+	it("structured output never thinks; free text thinks within its cap", async () => {
+		const { reasoningFor } = await import("./gateway");
+		expect(reasoningFor({ jsonSchema: { type: "object" }, effort: "high", maxTokens: 8000 })).toEqual({ budget: 0, reasoning: { enabled: false } });
+		expect(reasoningFor({ effort: "low", maxTokens: 8000 })).toEqual({ budget: 0, reasoning: { enabled: false } });
+		expect(reasoningFor({ effort: "medium", maxTokens: 8000 })).toEqual({ budget: 2000, reasoning: { max_tokens: 2000 } });
 	});
 });

@@ -71,6 +71,7 @@ import type * as lib_defaults from "../lib/defaults.js";
 import type * as lib_functions from "../lib/functions.js";
 import type * as lib_gateInputs from "../lib/gateInputs.js";
 import type * as lib_github from "../lib/github.js";
+import type * as lib_imageBlocks from "../lib/imageBlocks.js";
 import type * as lib_notify from "../lib/notify.js";
 import type * as lib_onpage from "../lib/onpage.js";
 import type * as lib_pathScope from "../lib/pathScope.js";
@@ -181,6 +182,7 @@ declare const fullApi: ApiFromModules<{
   "lib/functions": typeof lib_functions;
   "lib/gateInputs": typeof lib_gateInputs;
   "lib/github": typeof lib_github;
+  "lib/imageBlocks": typeof lib_imageBlocks;
   "lib/notify": typeof lib_notify;
   "lib/onpage": typeof lib_onpage;
   "lib/pathScope": typeof lib_pathScope;

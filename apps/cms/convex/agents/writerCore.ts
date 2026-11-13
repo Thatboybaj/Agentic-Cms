@@ -123,7 +123,8 @@ export function toDraft(out: TWriterOutput, opts: { disclaimer?: string }) {
 		while (used.has(suffix)) suffix = `${suffix}-${i + 1}`;
 		used.add(suffix);
 		const h = s.afterBlock < 0 ? null : headingBefore(s.afterBlock);
-		return { name: s.name.trim() || `Image ${i + 1}`, type: s.type, placement: s.afterBlock < 0 || s.type === "hero" ? "Top of post" : h ? `In "${h}"` : "After the opening answer", filenameSuffix: suffix, format: d.format, width: d.width, height: d.height, alt: s.alt.trim(), prompt: s.prompt.trim() };
+		const after = s.type !== "hero" && s.afterBlock >= 0 ? blocks[Math.min(s.afterBlock, blocks.length - 1)]?.id : undefined;
+		return { name: s.name.trim() || `Image ${i + 1}`, type: s.type, placement: s.afterBlock < 0 || s.type === "hero" ? "Top of post" : h ? `In "${h}"` : "After the opening answer", filenameSuffix: suffix, format: d.format, width: d.width, height: d.height, alt: s.alt.trim(), prompt: s.prompt.trim(), ...(after ? { afterBlockId: after } : {}) };
 	});
 	const claims = out.unsourcedClaims
 		.filter((c) => c.claim.trim())

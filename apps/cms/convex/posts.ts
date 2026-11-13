@@ -136,7 +136,14 @@ export async function startGeneration(ctx: MutationCtx, site: Doc<"sites">, post
 	const est = estimateRun("post-generation", capSite(site), { strongModel: strong });
 	const cap = checkCap(capSite(site), "post-generation", est);
 	const actor = by.user ?? { system: AUTOPOST_ACTOR };
-	const idempotencyKey = `run:${site._id}:post-generation:${post._id}:${post.currentVersion}`;
+	// Same key = same run (no double start). After a failed, cancelled or refused run, a retry gets its own key.
+	const baseKey = `run:${site._id}:post-generation:${post._id}:${post.currentVersion}`;
+	let idempotencyKey = baseKey;
+	for (let n = 1; n < 20; n++) {
+		const prev = await ctx.db.query("runs").withIndex("by_idempotency", (q) => q.eq("idempotencyKey", idempotencyKey)).unique();
+		if (!prev || (prev.status !== "failed" && prev.status !== "cancelled" && prev.status !== "refused-over-cap")) break;
+		idempotencyKey = `${baseKey}:retry${n}`;
+	}
 	const base = { site, kind: "post-generation" as const, trigger: by.trigger, estimate: est, idempotencyKey, postId: post._id, output: "Reading brief and brand pack", ...(by.user ? { triggeredBy: by.user._id } : {}) };
 	if (cap.status === "refused") {
 		await refuseRun(ctx, base, cap, actor);
@@ -220,8 +227,12 @@ export const generateNow = siteMutation({
 		const post = await loadPostInSite(ctx, siteId, postId);
 		if (post.state === "idea") return fail("Approve the idea first · only an approved idea becomes a brief");
 		const allowed: TPostState[] = ["briefed", "decaying"];
-		if (!allowed.includes(post.state)) return fail(`Generate now works on Briefed or Decaying posts, not ${post.state.replace("-", " ")}`);
-		return startGeneration(ctx, site, post, { user, trigger: "manual" });
+		// A first draft that failed before writing anything (Drafting, nothing running, no blocks) goes back to Briefed.
+		const stuck = post.state === "drafting" && !post.workflowId && post.blocks.length === 0;
+		if (!allowed.includes(post.state) && !stuck) return fail(`Generate now works on Briefed or Decaying posts, not ${post.state.replace("-", " ")}`);
+		const ready = stuck ? await transitionPost(ctx, post, "briefed") : null;
+		if (ready && !ready.ok) return fail(ready.reason);
+		return startGeneration(ctx, site, ready?.ok ? ready.post : post, { user, trigger: "manual" });
 	},
 });
 

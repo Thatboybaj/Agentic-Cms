@@ -84,20 +84,33 @@ async function researchWithSearch(apiKey: string, req: IQwenRequest, search: TSe
 	return { ...notes, usage: { ...add(plan.usage, notes.usage), webSearches: ran }, ...(results.length ? { sources: results.map((x) => x.url) } : {}) };
 }
 
-/** One call through the gateway. Thinking: low effort turns it off; medium/high give Qwen a capped budget. */
+/**
+ * Thinking for one call (checked live 2026-11-13, qwen3.8-max via the gateway):
+ *   - Structured output (drafts, extracts, keywords, ideas) runs with thinking OFF. With thinking on, a 2,500-word
+ *     draft spent its whole allowance thinking and returned nothing (three failed runs); off, the same draft came back
+ *     complete in 33 s for $0.03. A capped budget returned a 103-word stub.
+ *   - Free-text calls (research notes, judge prose) may think, capped by effort.
+ * Only the standard `reasoning` field works on every tier: Alibaba's enableThinking:false is ignored by qwen3.8-max.
+ */
+export function reasoningFor(req: Pick<IQwenRequest, "jsonSchema" | "effort" | "maxTokens">): { budget: number; reasoning: { enabled: false } | { max_tokens: number } } {
+	const budget = req.jsonSchema ? 0 : thinkingBudget(req.effort, req.maxTokens);
+	return { budget, reasoning: budget > 0 ? { max_tokens: budget } : { enabled: false } };
+}
+
+/** One call through the gateway (thinking per reasoningFor). */
 export async function gatewayChat(apiKey: string, req: IQwenRequest, opts: { signal?: AbortSignal; search?: TSearch } = {}): Promise<IQwenResult> {
 	if (req.webSearch && opts.search) return researchWithSearch(apiKey, req, opts.search, { ...(opts.signal ? { signal: opts.signal } : {}) });
-	const budget = thinkingBudget(req.effort, req.maxTokens);
+	const { budget, reasoning } = reasoningFor(req.webSearch ? { ...req, jsonSchema: undefined } : req);
 	const body = {
 		model: gatewayModel(req.model),
 		messages: messagesOf(req.webSearch ? { ...req, jsonSchema: undefined } : req),
-		max_tokens: req.maxTokens,
+		// Qwen counts thinking against max_tokens: the answer keeps its full allowance (the spend hold covers both).
+		max_tokens: req.maxTokens + budget,
 		stream: true,
 		stream_options: { include_usage: true },
 		...(req.jsonSchema && !req.webSearch ? { response_format: { type: "json_schema", json_schema: { name: "output", schema: req.jsonSchema, strict: false } } } : {}),
 		...(req.webSearch ? { tools: [{ type: "vercel:perplexity_search", config: { max_results: Math.min(10, Math.max(3, req.webSearch.maxUses * 2)), ...(req.webSearch.allowedDomains?.length ? { search_domain_filter: req.webSearch.allowedDomains } : {}) } }] } : {}),
-		// Alibaba provider options (camelCase, checked live 2026-11-12): Qwen3.x hybrid models think by default, uncapped.
-		providerOptions: { alibaba: { enableThinking: budget > 0, ...(budget > 0 ? { thinkingBudget: budget } : {}) } },
+		reasoning,
 	};
 	const res = await fetch(`${GATEWAY_BASE}/chat/completions`, { method: "POST", headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify(body), ...(opts.signal ? { signal: opts.signal } : {}) });
 	if (!res.ok) await fail(res);
