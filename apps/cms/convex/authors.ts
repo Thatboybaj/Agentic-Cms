@@ -7,6 +7,7 @@ import { internalMutation, type MutationCtx, type QueryCtx } from "./_generated/
 import { audit } from "./lib/audit";
 import { clusterKey, type IAuthorProfile, resolveAuthor, slugify } from "./lib/authorsCore";
 import { siteMutation, siteQuery } from "./lib/functions";
+import { uniqueAuthorSlug } from "./lib/authorSlug";
 
 type TResult = { ok: true; [k: string]: unknown } | { ok: false; reason: string };
 const fail = (reason: string) => ({ ok: false as const, reason });
@@ -97,7 +98,9 @@ export const saveAuthor = siteMutation({
 		if (id) {
 			const a = await ctx.db.get(id);
 			if (!a || a.workspaceId !== site.workspaceId) return fail("Author not found");
-			await ctx.db.patch(id, fields);
+			// A rename carries everywhere: the slug (photo files, links) and the photo's alt text follow the new name.
+			const renamed = a.name !== name ? { slug: await uniqueAuthorSlug(ctx, site.workspaceId, name, a._id), ...(a.photo ? { photo: { ...a.photo, alt: `Photo of ${name}` } } : {}) } : {};
+			await ctx.db.patch(id, { ...fields, ...renamed });
 		} else {
 			let slug = slugify(name) || "author";
 			for (let i = 2; await ctx.db.query("authors").withIndex("by_workspace_slug", (q) => q.eq("workspaceId", site.workspaceId).eq("slug", slug)).first(); i++) slug = `${slugify(name)}-${i}`;
@@ -332,7 +335,7 @@ export async function authorProfileFor(ctx: QueryCtx, post: Doc<"posts">): Promi
 		...(bio ? { bio } : {}),
 		...(a.sameAs.length ? { sameAs: a.sameAs } : {}),
 		...(a.credentials.length ? { credentials: a.credentials } : {}),
-		...(a.photo ? { photo: { ...(a.photo.s96 ? { s96: a.photo.s96 } : {}), ...(a.photo.s192 ? { s192: a.photo.s192 } : {}), ...(a.photo.s400 ? { s400: a.photo.s400 } : {}), alt: a.photo.alt } } : {}),
+		...(a.photo ? { photo: { ...(a.photo.s96 ? { s96: a.photo.s96 } : {}), ...(a.photo.s192 ? { s192: a.photo.s192 } : {}), ...(a.photo.s400 ? { s400: a.photo.s400 } : {}), alt: `Photo of ${a.name}` } } : {}),
 	};
 }
 
@@ -347,5 +350,21 @@ export const backfillPostAuthors = internalMutation({
 			n++;
 		}
 		return n;
+	},
+});
+
+/** Ops: bring every author's slug and photo alt text in line with their current name (all workspaces). */
+export const resyncAuthorNames = internalMutation({
+	args: {},
+	handler: async (ctx) => {
+		const fixed: string[] = [];
+		for (const a of await ctx.db.query("authors").take(2000)) {
+			const slug = await uniqueAuthorSlug(ctx, a.workspaceId, a.name, a._id);
+			const alt = `Photo of ${a.name}`;
+			if (slug === a.slug && (!a.photo || a.photo.alt === alt)) continue;
+			await ctx.db.patch(a._id, { slug, ...(a.photo ? { photo: { ...a.photo, alt } } : {}), updatedAt: Date.now() });
+			fixed.push(`${a.slug} → ${slug}`);
+		}
+		return fixed;
 	},
 });

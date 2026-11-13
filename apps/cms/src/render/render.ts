@@ -5,6 +5,7 @@ import type { IImageSlot, IPost, IPostBlock, ISite, ITemplateMapping } from "@/l
 import { analyze, srcsetPattern, tagOf, type IStructure, type TParseHtml } from "./structure";
 import { placeholderSvg } from "./placeholder";
 import { authorCards, fillAuthorCard, fillByline, personJsonLd, type IAuthorProfile } from "./author";
+import { fillInline, inlinePlain } from "./inline";
 
 export interface IRenderHeld {
 	reason: string;
@@ -82,20 +83,22 @@ function clone<T extends Element>(el: T): T {
 }
 
 /** Sets the text of a cloned prototype, keeping its wrappers: writes into the deepest first element chain. */
-function setText(el: Element, text: string) {
+function setText(el: Element, text: string, rich?: { host: string }) {
 	let target: Element = el;
 	while (target.children.length === 1 && !["img", "br"].includes(tagOf(target.children[0]!))) target = target.children[0]!;
 	if (target.children.length > 1) {
 		// e.g. <blockquote><p>…</p><cite>…</cite></blockquote>: fill the first text-bearing child, drop the rest.
 		const first = Array.from(target.children).find((c) => (c.textContent ?? "").trim()) ?? target.children[0]!;
 		for (const c of Array.from(target.children)) if (c !== first) c.remove();
-		setText(first, text);
+		setText(first, text, rich);
 		return;
 	}
-	target.textContent = text;
+	// Body text: [anchor](url) becomes a real link and raw HTML is never printed (every site).
+	if (rich) fillInline(target, text, rich.host);
+	else target.textContent = text;
 }
 
-function fillList(proto: Element, items: string[]): Element {
+function fillList(proto: Element, items: string[], host: string): Element {
 	const list = clone(proto);
 	const li = list.querySelector("li");
 	const indent = indentOf(list);
@@ -104,7 +107,7 @@ function fillList(proto: Element, items: string[]): Element {
 		list,
 		items.map((item) => {
 			const node = li ? clone(li) : list.ownerDocument.createElement("li");
-			setText(node, item);
+			setText(node, item, { host });
 			return node;
 		}),
 		indent,
@@ -205,6 +208,7 @@ export function renderPost(input: IRenderInput): IRenderResult {
 	const url = postUrlFromTemplate(s.canonical?.getAttribute("href"), site.domain, post.slug);
 	const title = post.seoTitle || post.title;
 	const sampleTitle = (s.h1?.textContent ?? "").trim();
+	const rich = { host: site.domain };
 	// The sample's headline without trailing punctuation: "…AI strategy." in the h1 is "…AI strategy" in <title>.
 	const sampleCore = sampleTitle.replace(/\s+/g, " ").replace(/[.!?…]+$/, "").trim();
 	// The sample's hero photo, also used as decoration elsewhere (a blurred backdrop): swapped for the post's hero.
@@ -337,19 +341,19 @@ export function renderPost(input: IRenderInput): IRenderResult {
 					break;
 				}
 				const el = clone(p);
-				setText(el, b.text);
+				setText(el, inlinePlain(b.text));
 				out.push({ el, block: b });
 				break;
 			}
 			case "p": {
 				const el = clone(s.p!);
-				setText(el, b.text);
+				setText(el, b.text, rich);
 				out.push({ el, block: b });
 				break;
 			}
 			case "disclaimer": {
 				const el = clone(calloutProto ?? s.p!);
-				setText(el, b.text);
+				setText(el, b.text, rich);
 				out.push({ el, block: b });
 				break;
 			}
@@ -358,7 +362,7 @@ export function renderPost(input: IRenderInput): IRenderResult {
 					hold(b, "Template has no bulleted list");
 					break;
 				}
-				out.push({ el: fillList(s.ul, b.text.split("\n").map((x) => x.trim()).filter(Boolean)), block: b });
+				out.push({ el: fillList(s.ul, b.text.split("\n").map((x) => x.trim()).filter(Boolean), site.domain), block: b });
 				break;
 			}
 			case "quote": {
@@ -367,7 +371,7 @@ export function renderPost(input: IRenderInput): IRenderResult {
 					break;
 				}
 				const el = clone(s.quote);
-				setText(el, b.text);
+				setText(el, b.text, rich);
 				out.push({ el, block: b });
 				break;
 			}
@@ -399,9 +403,9 @@ export function renderPost(input: IRenderInput): IRenderResult {
 						const sum = d.querySelector("summary");
 						const ans = Array.from(d.children).find((c) => tagOf(c) !== "summary");
 						if (!sum) break;
-						setText(sum, q);
+						setText(sum, inlinePlain(q));
 						for (const c of Array.from(d.children)) if (c !== sum && c !== ans) c.remove();
-						if (ans) setText(ans, a);
+						if (ans) setText(ans, a, rich);
 						out.push({ el: d, block: b });
 					}
 				} else if (s.faq && tagOf(s.faq) === "dl") {
@@ -415,9 +419,9 @@ export function renderPost(input: IRenderInput): IRenderResult {
 					for (const c of Array.from(dl.children)) c.remove();
 					for (const { q, a } of pairs) {
 						const t = clone(dt);
-						setText(t, q);
+						setText(t, inlinePlain(q));
 						const d = clone(dd);
-						setText(d, a);
+						setText(d, a, rich);
 						dl.append(t, d);
 					}
 					out.push({ el: dl, block: b });
@@ -425,9 +429,9 @@ export function renderPost(input: IRenderInput): IRenderResult {
 					// The template's own sub-heading + paragraph carry question + answer.
 					for (const { q, a } of pairs) {
 						const t = clone(s.h3);
-						setText(t, q);
+						setText(t, inlinePlain(q));
 						const d = clone(s.p);
-						setText(d, a);
+						setText(d, a, rich);
 						out.push({ el: t, block: b }, { el: d, block: b });
 					}
 				} else hold(b, "Template has no FAQ pattern");
@@ -453,7 +457,7 @@ export function renderPost(input: IRenderInput): IRenderResult {
 	);
 
 	// ---- metadata bindings
-	const intro = post.blocks.find((b) => b.kind === "p")?.text ?? "";
+	const intro = inlinePlain(post.blocks.find((b) => b.kind === "p")?.text ?? "");
 	const description = trimTo(intro, 155);
 	if (s.h1) setText(s.h1, title);
 	if (s.title) {
