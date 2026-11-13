@@ -76,11 +76,11 @@ export function systemPrompt(o: { lang: string; siteName: string; domain: string
 		.join("\n");
 }
 
-export function headerPrompt(p: ISourcePost): string {
+export function headerPrompt(p: ISourcePost, lang = "ar"): string {
 	const src = { title: p.title, seoTitle: p.seoTitle, metaDescription: p.metaDescription ?? "", pillarName: p.pillarName ?? "", alts: p.alts.map((a) => ({ id: a.slotId, text: a.alt })) };
 	return [
 		"Translate the post's title, SEO title (keep it under 65 characters), meta description (under 160 characters), category name and image descriptions (alt text).",
-		'Return {"title": "...", "seoTitle": "...", "metaDescription": "...", "pillarName": "...", "alts": [{"id": "...", "text": "..."}]} with the same ids.',
+		`Write every value in ${langName(lang)} (brand names stay in Latin script). Return only one JSON object, no headings or lists: {"title": "...", "seoTitle": "...", "metaDescription": "...", "pillarName": "...", "alts": [{"id": "...", "text": "..."}]} with the same ids.`,
 		`<source>${JSON.stringify(src)}</source>`,
 	].join("\n");
 }
@@ -113,7 +113,9 @@ const LINK = /\[([^\]\n]+)\]\(([^)\s]+)\)/g;
 const urlsOf = (t: string) => [...t.matchAll(LINK)].map((m) => m[2]!).sort();
 const AR_DIGITS = "٠١٢٣٤٥٦٧٨٩";
 export const westernDigits = (t: string) => t.replace(/[٠-٩]/g, (d) => String(AR_DIGITS.indexOf(d))).replace(/٬/g, ",").replace(/٫/g, ".");
-const numbersOf = (t: string) => (westernDigits(t.replace(LINK, "$1")).match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, "")).sort();
+// "24/7" is an expression ("around the clock", على مدار الساعة), not two figures: a translation may say it in words.
+const IDIOMS = /\b24\s*[/x×]\s*7\b|\b24\s*[/x×]\s*365\b/gi;
+const numbersOf = (t: string) => (westernDigits(t.replace(LINK, "$1")).replace(IDIOMS, " ").match(/\d+(?:[.,]\d+)*/g) ?? []).map((n) => n.replace(/,/g, "")).sort();
 const SCRIPT: Record<string, RegExp> = { ar: /[؀-ۿ]/g, ur: /[؀-ۿ]/g };
 
 /** Free checks on one translated block. Returns the problem in words, or null. */

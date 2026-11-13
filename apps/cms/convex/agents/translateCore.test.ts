@@ -13,6 +13,8 @@ describe("translation agent checks (every site)", () => {
 		expect(blockProblem(b, "Book a [free call](/contact) in 30 minutes.", "ar")).toMatch(/not written in Modern Standard Arabic/);
 		expect(blockProblem(b, "احجز [مكالمة](/contact) خلال 30 دقيقة. [ملاحظة: تحقق]", "ar")).toMatch(/bracketed note/);
 		expect(blockProblem(src.blocks[2]!, "واحد", "ar")).toMatch(/1 lines; the source has 2/);
+		expect(blockProblem({ id: "x", kind: "p", text: "Answers 24/7, in 2 languages." }, "إجابات على مدار الساعة بلغتين.", "ar")).toBeNull(); // idiom and the dual
+		expect(blockProblem({ id: "x", kind: "p", text: "Answers 24/7 within 15 minutes." }, "إجابات على مدار الساعة خلال دقائق.", "ar")).toMatch(/numbers changed/);
 	});
 
 	it("checks the header and parses fenced JSON", () => {

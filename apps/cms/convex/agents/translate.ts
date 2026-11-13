@@ -105,13 +105,21 @@ export const ensure = internalAction({
 			try {
 				const system = systemPrompt({ lang: lang.lang, siteName: inp.site.name, domain: inp.site.domain, ...(lang.styleGuide ? { styleGuide: lang.styleGuide } : {}) });
 				// Title, meta, category and image alt text.
-				let head = parseJson<IHeaderOut>(await ask(system, headerPrompt(inp.post), 1500));
+				const hPrompt = headerPrompt(inp.post, lang.lang);
+				let head = parseJson<IHeaderOut>(await ask(system, hPrompt, 1500));
 				let hp = headerProblem(inp.post, head, lang.lang);
 				if (hp) {
-					head = parseJson<IHeaderOut>(await ask(system, `${headerPrompt(inp.post)}\nYour last answer broke the rules: ${hp}. Fix exactly that.`, 1500));
+					head = parseJson<IHeaderOut>(await ask(system, `${hPrompt}\nYour last answer broke the rules: ${hp}. Fix exactly that.`, 1500));
 					hp = headerProblem(inp.post, head, lang.lang);
-					if (hp) throw new Error(`Title and meta: ${hp}`);
 				}
+				// Still wrong on Fanar (it once answered in English, as a list): Qwen (AI Gateway) writes the title and meta once.
+				if (hp && agent === "fanar" && process.env.AI_GATEWAY_API_KEY?.trim()) {
+					agent = "gateway";
+					head = parseJson<IHeaderOut>(await ask(system, `${hPrompt}\nThe last answer broke the rules: ${hp}.`, 1500));
+					agent = "fanar";
+					hp = headerProblem(inp.post, head, lang.lang);
+				}
+				if (hp) throw new Error(`Title and meta: ${hp}`);
 				// Body, in chunks, a few at a time (Fanar allows 50 requests a minute).
 				const chunks = chunkBlocks(inp.post.blocks);
 				const got = new Map<string, string>();
