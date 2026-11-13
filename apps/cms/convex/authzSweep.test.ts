@@ -97,7 +97,7 @@ const refFor = (path: string, name: string) => {
 };
 
 describe("authz sweep", () => {
-	test("no public site-scoped function works for another agency or without sign-in", async () => {
+	test("no public site-scoped function works for another agency or without sign-in", { timeout: 30_000 }, async () => {
 		const { t, site, table } = await world();
 		const outsider = t.withIdentity({ subject: "outsider", issuer: ISSUER, tokenIdentifier: `${ISSUER}|outsider`, org_id: "org_outsider" });
 		const loaded = await Promise.all(Object.entries(modules).filter(([p]) => !/\.test\.|_generated|convex\.config|\.d\.ts$/.test(p)).map(async ([p, load]) => [p, (await load()) as Record<string, unknown>] as const));

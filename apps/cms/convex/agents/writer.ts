@@ -24,6 +24,12 @@ async function recordFailure(ctx: ActionCtx, runId: Id<"runs">, e: unknown) {
 	}
 }
 
+/**
+ * Output budget sized to the post: ~1.6 tokens per body word plus the JSON blocks, FAQ and claims list. A flat 32k
+ * let a slow model run past Convex's 10-minute action limit (Qwen at ~60–125 tokens/s, measured 2026-11-12).
+ */
+export const writerMaxTokens = (wordTarget: number) => Math.max(4_000, Math.min(16_000, Math.round(wordTarget * 1.6) + 2_500));
+
 export const draft = internalAction({
 	args: { input: vDraftInput, runId: v.id("runs") },
 	returns: vDraftOutput,
@@ -39,7 +45,7 @@ export const draft = internalAction({
 					system: [WRITER_SKILL.text, CMS_CONTRACT],
 					user: writerUserPrompt(input),
 					schema: WriterOutput,
-					maxTokens: 32_000,
+					maxTokens: writerMaxTokens(input.wordTarget),
 					effort: "high",
 				},
 				formatFor,
@@ -65,7 +71,7 @@ export const revise = internalAction({
 				modelTransport(),
 				`agent:${a.runId}:revise`,
 				choice,
-				{ system: [WRITER_SKILL.text, REVISE_CONTRACT], user: reviseUserPrompt(a), schema: ReviseOutput, maxTokens: 32_000, effort: "medium" },
+				{ system: [WRITER_SKILL.text, REVISE_CONTRACT], user: reviseUserPrompt(a), schema: ReviseOutput, maxTokens: 12_000, effort: "medium" },
 				formatFor,
 			);
 			await record(ctx, a.runId, r);

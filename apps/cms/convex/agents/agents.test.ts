@@ -45,7 +45,7 @@ describe("gateway", () => {
 		expect(classify({ status: 429, message: "slow down" })).toMatchObject({ kind: "rate-limited", retryable: true });
 		expect(classify({ status: 529 })).toMatchObject({ kind: "rate-limited", retryable: true });
 		expect(classify({ status: 503 })).toMatchObject({ kind: "server", retryable: true });
-		expect(classify({ name: "APIConnectionTimeoutError", message: "timed out" })).toMatchObject({ kind: "timeout", retryable: true });
+		expect(classify({ name: "APIConnectionTimeoutError", message: "timed out" })).toMatchObject({ kind: "timeout", retryable: false });
 		expect(classify({ status: 400, message: "bad" })).toMatchObject({ kind: "bad-request", retryable: false });
 		expect(classify({ status: 401 })).toMatchObject({ kind: "auth", retryable: false });
 		expect(classify(new TypeError("fetch failed"))).toMatchObject({ kind: "network", retryable: true });

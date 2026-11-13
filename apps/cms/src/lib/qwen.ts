@@ -60,8 +60,9 @@ export class QwenHttpError extends Error {
  * Low (extraction, structuring) skips thinking entirely: Qwen3.x hybrid models think by default otherwise.
  */
 export function thinkingBudget(effort: TEffort | undefined, maxTokens: number): number {
-	if (effort === "high") return Math.min(16_384, Math.max(1_024, Math.floor(maxTokens * 0.5)));
-	if (effort === "medium") return Math.min(4_096, Math.max(1_024, Math.floor(maxTokens * 0.25)));
+	// Capped so a long write still fits the 10-minute action limit (thinking streams before the answer).
+	if (effort === "high") return Math.min(4_096, Math.max(1_024, Math.floor(maxTokens * 0.5)));
+	if (effort === "medium") return Math.min(2_048, Math.max(1_024, Math.floor(maxTokens * 0.25)));
 	return 0;
 }
 

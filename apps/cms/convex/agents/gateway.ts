@@ -53,7 +53,9 @@ export class InferenceError extends Error {
 		this.name = "InferenceError";
 	}
 	get retryable() {
-		return this.kind === "rate-limited" || this.kind === "server" || this.kind === "timeout" || this.kind === "network";
+		// A timeout isn't retried: the call already used most of the action's time, and a second attempt would be cut off
+		// by Convex's 10-minute limit mid-stream (billed, with nothing to show for it).
+		return this.kind === "rate-limited" || this.kind === "server" || this.kind === "network";
 	}
 }
 
