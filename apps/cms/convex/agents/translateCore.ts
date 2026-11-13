@@ -20,12 +20,14 @@ export interface ISourcePost {
 	pillarName?: string;
 	blocks: ISourceBlock[];
 	alts: { slotId: string; alt: string }[];
+	/** Diagram/chart SVG files of the post (their text is translated into a copy per language). */
+	svgs?: { slotId: string; storageId: string }[];
 }
 
 /** FNV-1a over the content a translation depends on: same content → same hash → no second translation. Arrays
  * only, never objects: Convex may return an object's keys in another order. */
 export function sourceHash(p: ISourcePost, lang: string, guide = ""): string {
-	const s = JSON.stringify([lang, guide, p.title, p.seoTitle, p.metaDescription ?? "", p.pillarName ?? "", p.blocks.filter((b) => b.kind !== "image").map((b) => [b.id, b.kind, b.text]), p.alts.map((a) => [a.slotId, a.alt])]);
+	const s = JSON.stringify([lang, guide, p.title, p.seoTitle, p.metaDescription ?? "", p.pillarName ?? "", p.blocks.filter((b) => b.kind !== "image").map((b) => [b.id, b.kind, b.text]), p.alts.map((a) => [a.slotId, a.alt]), (p.svgs ?? []).map((x) => [x.slotId, x.storageId])]);
 	let h = 0x811c9dc5;
 	for (let i = 0; i < s.length; i++) {
 		h ^= s.charCodeAt(i);
@@ -197,4 +199,47 @@ export function linkedPaths(blocks: { text: string }[], domain: string): string[
 		if (p !== null) out.add(p);
 	}
 	return [...out];
+}
+
+// ─── Text inside SVG images (diagrams, charts) ───────────────────────────────
+// A diagram's words live in <text>/<tspan> (and <title>/<desc> for screen readers). The language version gets its
+// own copy of the file with those words translated; shapes, numbers-only labels and positions stay as they are.
+
+const SVG_TEXT = /(<(text|tspan|title|desc)\b[^>]*>)([^<]*)/gi;
+const decodeXml = (s: string) => s.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&#39;/g, "'").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+const encodeXml = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+
+/** The translatable strings of an SVG, in document order (ids s1, s2…). Strings without letters are skipped. */
+export function svgStrings(svg: string): { id: string; text: string }[] {
+	const out: { id: string; text: string }[] = [];
+	let n = 0;
+	for (const m of svg.matchAll(SVG_TEXT)) {
+		n++;
+		const t = decodeXml(m[3]!).trim();
+		if (/\p{L}{2,}/u.test(t) && !/\.(jpe?g|png|webp|svg)$/i.test(t)) out.push({ id: `s${n}`, text: t });
+	}
+	return out;
+}
+
+/** The SVG with its strings replaced (same ids as svgStrings), marked with the language. */
+export function applySvgStrings(svg: string, lang: string, strings: Record<string, string>): string {
+	let n = 0;
+	const body = svg.replace(SVG_TEXT, (all, open: string, tag: string, text: string) => {
+		n++;
+		const t = strings[`s${n}`];
+		if (tag.toLowerCase() === "title" && /\.(jpe?g|png|webp|svg)$/i.test(text.trim())) return all; // a file name, not a title
+		if (t === undefined || !t.trim()) return all;
+		const lead = /^\s*/.exec(text)![0];
+		const trail = /\s*$/.exec(text)![0];
+		return `${open}${lead}${encodeXml(t.trim())}${trail}`;
+	});
+	return body.replace(/<svg\b(?![^>]*\bxml:lang=)/i, `<svg xml:lang="${lang}"`);
+}
+
+export function svgPrompt(strings: { id: string; text: string }[]): string {
+	return [
+		"Translate the labels of this diagram. Keep them about as short as the source (they sit in fixed boxes); keep numbers in Western digits.",
+		'Return {"strings": [{"id": "...", "text": "..."}]} with exactly the same ids.',
+		`<source>${JSON.stringify(strings)}</source>`,
+	].join("\n");
 }

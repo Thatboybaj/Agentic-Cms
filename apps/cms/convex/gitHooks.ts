@@ -41,6 +41,12 @@ export const shipContext = internalQuery({
 				if (sids.includes(sid.slice(7))) assets.push({ slotId: sid, storageId: sid.slice(7) as Id<"_storage">, name: `Photo of ${a!.name}` });
 				continue;
 			}
+			// A diagram with its words in a site language (translations.svgs): only files this post's versions hold.
+			if (sid.startsWith("lang:")) {
+				const held = (post.translations ?? []).flatMap((t) => t.svgs ?? []).find((f) => (f.storageId as string) === sid.slice(5));
+				if (held) assets.push({ slotId: sid, storageId: held.storageId, name: "Translated diagram" });
+				continue;
+			}
 			const slotId = ctx.db.normalizeId("imageSlots", sid);
 			const slot = slotId ? await ctx.db.get(slotId) : null;
 			if (!slot || slot.siteId !== siteId) continue;

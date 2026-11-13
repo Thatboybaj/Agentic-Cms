@@ -121,6 +121,8 @@ export const vPostTranslation = v.object({
 	blocks: v.array(v.object({ id: v.string(), kind: v.string(), text: v.string() })),
 	/** Image alt text in this language, by slot. */
 	alts: v.array(v.object({ slotId: v.string(), alt: v.string() })),
+	/** The post's diagrams/charts with their text in this language (a copy of each SVG, committed beside the original). */
+	svgs: v.optional(v.array(v.object({ slotId: v.string(), storageId: v.id("_storage") }))),
 	/** Hash of the source content it was made from: an unchanged post is never translated twice. */
 	sourceHash: v.string(),
 	agent: v.string(),

@@ -13,7 +13,7 @@ import { internalAction } from "../_generated/server";
 import { cleanTitle } from "../../src/render/inline";
 import { costMicroUsd } from "./pricing";
 import { modelOf } from "./provider";
-import { blockProblem, blocksPrompt, chunkBlocks, headerPrompt, headerProblem, type IHeaderOut, type ISourceBlock, linkedPaths, localizeLinks, parseJson, sourceHash, systemPrompt } from "./translateCore";
+import { applySvgStrings, blockProblem, blocksPrompt, svgPrompt, svgStrings, chunkBlocks, headerPrompt, headerProblem, type IHeaderOut, type ISourceBlock, linkedPaths, localizeLinks, parseJson, sourceHash, systemPrompt } from "./translateCore";
 
 type TAgent = "fanar" | "gateway";
 interface ICall {
@@ -149,10 +149,25 @@ export const ensure = internalAction({
 				// Internal links move to the language's pages where those exist.
 				const have = await existing(inp.site.domain, lang.linkPrefix, linkedPaths(inp.post.blocks, inp.site.domain));
 				const blocks = inp.post.blocks.map((b) => (b.kind === "image" ? b : { ...b, text: localizeLinks(got.get(b.id) ?? b.text, inp.site.domain, lang.linkPrefix, (p) => have.has(p)) }));
+				// Diagrams and charts: a copy of each SVG with its words in the language.
+				const svgs: { slotId: string; storageId: Id<"_storage"> }[] = [];
+				for (const f of inp.post.svgs ?? []) {
+					const blob = await ctx.storage.get(f.storageId as Id<"_storage">);
+					if (!blob) continue;
+					const svg = await blob.text();
+					const strings = svgStrings(svg);
+					if (!strings.length) continue;
+					const out = parseJson<{ strings?: { id?: string; text?: string }[] }>(await ask(system, svgPrompt(strings), 2500));
+					const map: Record<string, string> = {};
+					for (const x of out?.strings ?? []) if (x.id && x.text?.trim() && !/<|>/.test(x.text)) map[x.id] = x.text;
+					if (!strings.some((x) => map[x.id])) throw new Error(`The diagram text couldn't be translated (${f.slotId})`);
+					const storageId = await ctx.storage.store(new Blob([applySvgStrings(svg, lang.lang, map)], { type: "image/svg+xml" }));
+					svgs.push({ slotId: f.slotId, storageId });
+				}
 				const alts = inp.post.alts.map((a) => ({ slotId: a.slotId, alt: head!.alts?.find((x) => x.id === a.slotId)?.text?.trim() || a.alt }));
 				await ctx.runMutation(internal.translations.save, {
 					postId,
-					translation: { lang: lang.lang, title: cleanTitle(head!.title!), seoTitle: cleanTitle(head!.seoTitle?.trim() || head!.title!).slice(0, 80), ...(head!.metaDescription?.trim() ? { metaDescription: head!.metaDescription.trim().slice(0, 180) } : {}), ...(head!.pillarName?.trim() ? { pillarName: head!.pillarName.trim() } : {}), blocks, alts, sourceHash: hash, agent: used.has("fanar") ? "fanar" : "gateway", model: usage.model, at: Date.now() },
+					translation: { lang: lang.lang, title: cleanTitle(head!.title!), seoTitle: cleanTitle(head!.seoTitle?.trim() || head!.title!).slice(0, 80), ...(head!.metaDescription?.trim() ? { metaDescription: head!.metaDescription.trim().slice(0, 180) } : {}), ...(head!.pillarName?.trim() ? { pillarName: head!.pillarName.trim() } : {}), blocks, alts, ...(svgs.length ? { svgs } : {}), sourceHash: hash, agent: used.has("fanar") ? "fanar" : "gateway", model: usage.model, at: Date.now() },
 				});
 				await ctx.runMutation(internal.spend.recordUsage, { runId, model: usage.model || agent, tier: "workhorse", escalated: false, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, costMicroUsd: usage.micro });
 				await ctx.runMutation(internal.translations.finish, { runId, ok: true, output: `${lang.lang} version ready · ${chunks.flat().length} blocks · ${used.has("fanar") ? (used.has("gateway") ? "Fanar, Qwen for the blocks it got wrong" : "Fanar") : "Qwen via AI Gateway"}` });

@@ -61,7 +61,14 @@ export const setLanguage = siteMutation({
 export async function translationSource(ctx: QueryCtx, post: Doc<"posts">) {
 	const pillar = await ctx.db.get(post.pillarId);
 	const slots = (await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", post._id)).take(50)).filter((s) => s.status === "selected");
-	return { title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), ...(pillar && pillar.siteId === post.siteId ? { pillarName: publicPillarName(pillar.name) } : {}), blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), alts: slots.map((s) => ({ slotId: s._id as string, alt: s.alt })) };
+	const svgs: { slotId: string; storageId: string }[] = [];
+	for (const s of slots) {
+		if (s.format !== "svg" || !s.selectedCandidateId) continue;
+		const cand = await ctx.db.get(s.selectedCandidateId);
+		const asset = cand?.assetId ? await ctx.db.get(cand.assetId) : null;
+		if (asset?.storageId) svgs.push({ slotId: s._id as string, storageId: asset.storageId as string });
+	}
+	return { title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), ...(pillar && pillar.siteId === post.siteId ? { pillarName: publicPillarName(pillar.name) } : {}), blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })), alts: slots.map((s) => ({ slotId: s._id as string, alt: s.alt })), ...(svgs.length ? { svgs } : {}) };
 }
 
 /** What the translation agent needs for one post. */
@@ -110,6 +117,9 @@ export const save = internalMutation({
 		const post = await ctx.db.get(postId);
 		if (!post) return;
 		const rest = (post.translations ?? []).filter((t) => t.lang !== translation.lang);
+		// The previous version's translated diagram files go once nothing points at them.
+		const keep = new Set((translation.svgs ?? []).map((x) => x.storageId as string));
+		for (const old of (post.translations ?? []).find((t) => t.lang === translation.lang)?.svgs ?? []) if (!keep.has(old.storageId as string)) await ctx.storage.delete(old.storageId);
 		await ctx.db.patch(postId, { translations: [...rest, translation] });
 	},
 });
@@ -125,5 +135,16 @@ export const finish = internalMutation({
 		if (!site || !post) return;
 		await audit(ctx, { workspaceId: site.workspaceId, siteId: site._id, postId: post._id, actor: { system: "Translation agent" }, action: "language version not shipped", target: post.title, detail: (error ?? output).slice(0, 300) });
 		await notify(ctx, { workspaceId: site.workspaceId, siteId: site._id, userIds: await siteAudience(ctx, site), tone: "block", title: "A language version didn't ship", body: `${post.title}: ${(error ?? output).slice(0, 160)}. The main post ships as usual; the next update tries again.`, href: "/runs", dedupeKey: `translation:${post._id}` });
+	},
+});
+
+/** Review links for a post's translated diagram files (ops and the editor). */
+export const svgUrls = internalQuery({
+	args: { postId: v.id("posts") },
+	handler: async (ctx, { postId }) => {
+		const post = await ctx.db.get(postId);
+		const out: { lang: string; slotId: string; url: string | null }[] = [];
+		for (const t of post?.translations ?? []) for (const f of t.svgs ?? []) out.push({ lang: t.lang, slotId: f.slotId, url: await ctx.storage.getUrl(f.storageId) });
+		return out;
 	},
 });

@@ -75,6 +75,7 @@ export const publish = internalAction({
 		if (d.manifest.output === "component") return { held: ["Component output isn't supported yet · pick HTML, MDX or JSON"], post: { path: "", content: "" }, assets: [], manifestVersion: d.manifest.version, url: r.url };
 		const out = serialize({ output: d.manifest.output, post: { ...d.post, ...(d.metaDescription ? { metaDescription: d.metaDescription } : {}), keyword: d.keyword }, slots: d.slots, html: r.html, assetPath: servedPath(assetDir), publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), url: r.url });
 		const extra: { path: string; content: string }[] = [];
+		const langAssets: { path: string; slotId: string }[] = [];
 		for (const x of langs) {
 			const t = x.l.translation!;
 			if (!x.l.current) {
@@ -86,7 +87,10 @@ export const publish = internalAction({
 				continue;
 			}
 			const tPost = { ...d.post, title: t.title, seoTitle: t.seoTitle, blocks: t.blocks as typeof d.post.blocks };
-			const tSlots = d.slots.map((sl) => ({ ...sl, alt: t.alts.find((a) => a.slotId === sl.id)?.alt ?? sl.alt }));
+			// Diagrams with their words in this language are separate files: "<name>-ar.svg" beside the original.
+			const langFile = (fn: string) => fn.replace(/(\.[a-z0-9]+)$/i, `-${x.l.lang}$1`);
+			const tSvgs = t.svgs ?? [];
+			const tSlots = d.slots.map((sl) => ({ ...sl, alt: t.alts.find((a) => a.slotId === sl.id)?.alt ?? sl.alt, ...(tSvgs.some((f) => f.slotId === sl.id) ? { filename: langFile(sl.filename) } : {}) }));
 			const tProfile = authorProfile?.image && x.l.lang === "ar" ? { ...authorProfile, image: { ...authorProfile.image, alt: `صورة ${authorProfile.name}` } } : authorProfile;
 			const tr = renderPost({ manifestHtml: x.html, fallbackHtml: manifestHtml, lang: x.l.lang, post: tPost, slots: tSlots, site: d.site, ...((x.l.categoryLabel ?? t.pillarName ?? d.pillarName) ? { pillarName: x.l.categoryLabel ?? t.pillarName ?? d.pillarName } : {}), mode: "publish", variants: false, parseHtml: linkedomParse, mappings: d.manifest.mappings, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), ...(tProfile ? { authorProfile: tProfile } : {}), ...(alternates ? { alternates } : {}) });
 			if (tr.held.length) {
@@ -95,11 +99,15 @@ export const publish = internalAction({
 			}
 			const to = serialize({ output: "html", post: { ...tPost, ...(t.metaDescription ? { metaDescription: t.metaDescription } : {}), keyword: d.keyword }, slots: tSlots, html: tr.html, assetPath: servedPath(assetDir), publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), url: tr.url });
 			extra.push({ path: `${trimSlashes(x.l.contentDir)}/${d.post.slug}.${to.ext}`, content: to.content });
+			for (const f of tSvgs) {
+				const sl = d.slotDocs.find((s) => s.id === f.slotId);
+				if (sl) langAssets.push({ path: `${assetDir}/${langFile(sl.filename)}`, slotId: `lang:${f.storageId}` });
+			}
 		}
 		return {
 			held: r.held.map((h) => h.reason),
 			post: { path: `${contentDir}/${d.post.slug}.${out.ext}`, content: out.content },
-			assets: [...d.slotDocs.filter((s) => s.selectedCandidateId).map((s) => ({ path: `${assetDir}/${s.filename}`, slotId: s.id })), ...photoFiles.map((f) => ({ path: f.path, slotId: `author:${f.id}` }))],
+			assets: [...d.slotDocs.filter((s) => s.selectedCandidateId).map((s) => ({ path: `${assetDir}/${s.filename}`, slotId: s.id })), ...photoFiles.map((f) => ({ path: f.path, slotId: `author:${f.id}` })), ...langAssets],
 			manifestVersion: d.manifest.version,
 			url: r.url,
 			...(extra.length ? { extra } : {}),

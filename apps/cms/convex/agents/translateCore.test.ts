@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { blockProblem, chunkBlocks, headerProblem, linkedPaths, localizeLinks, parseJson, sourceHash, systemPrompt } from "./translateCore";
+import { applySvgStrings, blockProblem, svgStrings, chunkBlocks, headerProblem, linkedPaths, localizeLinks, parseJson, sourceHash, systemPrompt } from "./translateCore";
 
 const src = { title: "Start with one workflow", seoTitle: "Start with one workflow", blocks: [{ id: "b1", kind: "p", text: "Book a [free call](/contact) in 30 minutes." }, { id: "i1", kind: "image", text: "slot" }, { id: "b2", kind: "ul", text: "One\nTwo" }], alts: [{ slotId: "s1", alt: "A team" }] };
 
@@ -33,5 +33,12 @@ describe("translation agent checks (every site)", () => {
 		const t = "اقرأ [الخدمات](/services) و[المدونة](https://s.qa/blog/x) و[مصدر](https://example.org/a)";
 		expect(linkedPaths([{ text: t }], "s.qa")).toEqual(["/services", "/blog/x"]);
 		expect(localizeLinks(t, "s.qa", "/ar", (p) => p === "/ar/services")).toBe("اقرأ [الخدمات](/ar/services) و[المدونة](https://s.qa/blog/x) و[مصدر](https://example.org/a)");
+	});
+
+	it("translates a diagram's words and nothing else", () => {
+		const svg = '<svg xmlns="http://www.w3.org/2000/svg"><title id="t">four-areas.jpg</title><desc id="d">4 steps: Teams &amp; tools</desc><text x="180">1</text><text x="236"> Sales follow-ups </text></svg>';
+		expect(svgStrings(svg)).toEqual([{ id: "s2", text: "4 steps: Teams & tools" }, { id: "s4", text: "Sales follow-ups" }]);
+		const out = applySvgStrings(svg, "ar", { s2: "4 خطوات: الفرق والأدوات", s4: "متابعة المبيعات" });
+		expect(out).toBe('<svg xml:lang="ar" xmlns="http://www.w3.org/2000/svg"><title id="t">four-areas.jpg</title><desc id="d">4 خطوات: الفرق والأدوات</desc><text x="180">1</text><text x="236"> متابعة المبيعات </text></svg>');
 	});
 });
