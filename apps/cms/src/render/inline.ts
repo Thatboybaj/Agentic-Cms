@@ -6,9 +6,42 @@
 const ENTITIES: Record<string, string> = { amp: "&", lt: "<", gt: ">", quot: '"', apos: "'", nbsp: " ", "#39": "'" };
 const decode = (s: string) => s.replace(/&(#39|amp|lt|gt|quot|apos|nbsp);/g, (_m, e: string) => ENTITIES[e] ?? _m);
 
+// Editorial notes a model writes into text for a person ("[VERIFY — confirm the launch year]", "[INTERNAL LINK: pricing]",
+// "[SOURCE NEEDED]") are never shown on a page: three of them reached a live Baynor post (13 Nov 2026). The writer step
+// turns VERIFY-type notes into open fact markers (the gate hard-fails on those); everywhere else they are removed.
+const NOTE = /\[\s*(VERIFY|INTERNAL[ _-]?LINK|IMAGE[ _-]?SLOT|SOURCE[ _-]?NEEDED|CITATION[ _-]?NEEDED|FACT[ _-]?CHECK|TODO|TBD|TK|PLACEHOLDER|EDITOR'?S?[ _-]?NOTE|NOTE TO (?:THE )?(?:EDITOR|REVIEWER|WRITER))\b([^\]\n]*)\](?!\()/gi;
+
+export type TNoteKind = "verify" | "internal-link" | "other";
+export interface INote {
+	kind: TNoteKind;
+	body: string;
+}
+
+const kindOf = (k: string): TNoteKind => (/^internal/i.test(k) ? "internal-link" : /^(verify|source|citation|fact)/i.test(k) ? "verify" : "other");
+
+const tidy = (s: string) =>
+	s
+		.split("\n")
+		.map((l) => l.replace(/[ \t]{2,}/g, " ").replace(/[ \t]+([.,;:!?)])/g, "$1").replace(/\(\s*\)/g, "").trim())
+		.filter((l, i, all) => l || all.length === 1)
+		.join("\n")
+		.trim();
+
+/** Removes editorial notes from block text and returns them. An [INTERNAL LINK: topic] keeps its topic as plain text. */
+export function extractNotes(text: string): { text: string; notes: INote[] } {
+	const notes: INote[] = [];
+	const out = text.replace(NOTE, (_m, key: string, rest: string) => {
+		const kind = kindOf(key);
+		const body = rest.replace(/^[\s:\-—–,.]+/, "").trim();
+		notes.push({ kind, body });
+		return kind === "internal-link" ? body : "";
+	});
+	return { text: notes.length ? tidy(out) : text, notes };
+}
+
 /**
  * Block text → the canonical form: <a href="x">t</a> becomes [t](x); bold/italic/span tags and any other tag are
- * dropped (their text kept); markdown emphasis markers are removed. Idempotent.
+ * dropped (their text kept); markdown emphasis markers are removed; editorial notes are removed. Idempotent.
  */
 export function normalizeInline(text: string): string {
 	let s = text.replace(/<a\b[^>]*\bhref\s*=\s*(["'])(.*?)\1[^>]*>([\s\S]*?)<\/a\s*>/gi, (_m, _q, href: string, inner: string) => {
@@ -17,7 +50,7 @@ export function normalizeInline(text: string): string {
 	});
 	s = s.replace(/<br\s*\/?>/gi, " ").replace(/<\/?[a-z][a-z0-9-]*\b[^>]*>/gi, "");
 	s = s.replace(/\*\*([^*\n]+)\*\*/g, "$1").replace(/__([^_\n]+)__/g, "$1");
-	return decode(s).replace(/[ \t]{2,}/g, " ");
+	return extractNotes(decode(s)).text.replace(/[ \t]{2,}/g, " ");
 }
 
 /** A link the page may carry: site-relative ("/services", not "//x") or http(s). Anything else stays text. */

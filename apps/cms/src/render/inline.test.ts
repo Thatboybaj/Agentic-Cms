@@ -1,7 +1,7 @@
 import { DOMParser } from "linkedom";
 import { describe, expect, it } from "vitest";
-import { cleanText } from "../../convex/agents/writerCore";
-import { fillInline, inlinePlain, normalizeInline, safeHref } from "./inline";
+import { cleanText, toDraft } from "../../convex/agents/writerCore";
+import { extractNotes, fillInline, inlinePlain, normalizeInline, safeHref } from "./inline";
 
 const doc = () => new DOMParser().parseFromString("<p></p>", "text/html") as unknown as Document;
 
@@ -20,6 +20,20 @@ describe("inline links (every site)", () => {
 		expect(links).toEqual([["/services", null, "our services"], ["https://example.org/d", "noopener noreferrer", "docs"], ["https://baynor.qa/", null, "home"]]);
 		expect(p.textContent).toBe("See our services, docs, home and bad x");
 		expect(safeHref("//evil.example")).toBeNull();
+	});
+
+	it("never publishes editorial notes; VERIFY notes become fact markers", () => {
+		const live = "A single WhatsApp workflow is a different investment. [VERIFY — no specific cost figures sourced for this post; a person should add pricing context]";
+		expect(extractNotes(live)).toEqual({ text: "A single WhatsApp workflow is a different investment.", notes: [{ kind: "verify", body: "no specific cost figures sourced for this post; a person should add pricing context" }] });
+		expect(normalizeInline("launched by MCIT [VERIFY: confirm the year] — signals support.")).toBe("launched by MCIT — signals support.");
+		expect(normalizeInline("See our [INTERNAL LINK: AI automation services].")).toBe("See our AI automation services.");
+		expect(normalizeInline("[Verify your setup](/guide) and [todo list](/x) are links")).toBe("[Verify your setup](/guide) and [todo list](/x) are links");
+		const d = toDraft(
+			{ seoTitle: "T", metaDescription: "", blocks: [{ kind: "p", text: "Intro." }, { kind: "p", text: "[VERIFY — final word count should be checked by a person before publishing]" }, { kind: "p", text: "Costs vary. [SOURCE NEEDED]" }], unsourcedClaims: [], imageSheet: [], informationGain: "" },
+			{},
+		);
+		expect(d.blocks.map((b) => b.text)).toEqual(["Intro.", "Costs vary."]);
+		expect(d.unsourcedClaims).toEqual([{ blockId: "b1", claim: "final word count should be checked by a person before publishing" }, { blockId: "b2", claim: "A claim in this block needs a source" }]);
 	});
 
 	it("keeps headings link-free and plain text for meta", () => {
