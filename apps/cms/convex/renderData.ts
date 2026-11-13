@@ -6,6 +6,7 @@ import { gateInputs } from "./lib/gateInputs";
 import { authorProfileFor } from "./authors";
 import { sourceHash } from "./agents/translateCore";
 import { translationSource } from "./translations";
+import { categoryLabel } from "./lib/categories";
 
 export const forPost = internalQuery({
 	args: { siteId: v.id("sites"), postId: v.id("posts"), manifestId: v.optional(v.id("templateManifests")) },
@@ -31,7 +32,8 @@ export const forPost = internalQuery({
 			.map((l) => {
 				const t = (post.translations ?? []).find((x) => x.lang === l.lang);
 				const hash = sourceHash(src, l.lang, l.styleGuide ?? "");
-				return { ...l, translation: t ?? null, hash, current: !!t && t.sourceHash === hash };
+				const cat = categoryLabel(site.categories, pillar && pillar.siteId === siteId ? pillar : null, l.lang);
+				return { ...l, translation: t ?? null, hash, current: !!t && t.sourceHash === hash, ...(cat ? { categoryLabel: cat } : {}) };
 			});
 		return {
 			languages,
@@ -45,7 +47,7 @@ export const forPost = internalQuery({
 			site: { domain: site.domain, name: site.name, repo: inputs.repo },
 			keyword: inputs.keyword,
 			metaDescription: post.metaDescription,
-			...(pillar && pillar.siteId === siteId ? { pillarName: pillar.name } : {}),
+			...(pillar && pillar.siteId === siteId ? { pillarName: categoryLabel(site.categories, pillar) ?? pillar.name } : {}),
 			...(author ? { author } : {}),
 			...(profile ? { authorProfile: profile } : {}),
 			publishedAt: new Date(post.liveAt ?? Date.now()).toISOString(),

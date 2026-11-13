@@ -104,6 +104,14 @@ export const vLanguageVersion = v.object({
 	styleGuide: v.optional(v.string()),
 });
 
+/** A blog category the site allows (its listing filters on these). Pillars map onto them; labels per language. */
+export const vSiteCategory = v.object({
+	key: v.string(),
+	label: v.string(),
+	covers: v.optional(v.string()),
+	labels: v.optional(v.array(v.object({ lang: v.string(), label: v.string() }))),
+});
+
 export const vPostTranslation = v.object({
 	lang: v.string(),
 	title: v.string(),
@@ -317,6 +325,8 @@ export default defineSchema({
 		timezone: v.string(), // "Africa/Lagos"; drives cron-local schedules and the spend month
 		discovery: v.optional(vDiscoverySettings),
 		languages: v.optional(v.array(vLanguageVersion)),
+		/** The site's fixed blog categories, when it has them: a post's category is one of these, never a pillar name. */
+		categories: v.optional(v.array(vSiteCategory)),
 	})
 		.index("by_workspace", ["workspaceId"])
 		.index("by_workspace_slug", ["workspaceId", "slug"]),
@@ -361,6 +371,8 @@ export default defineSchema({
 		workspaceId: v.id("workspaces"),
 		siteId: v.id("sites"),
 		name: v.string(),
+		/** The site category this pillar's posts are filed under (sites with fixed categories). */
+		categoryKey: v.optional(v.string()),
 		plannedPosts: v.number(),
 		livePosts: v.number(),
 		kasShare: v.number(),

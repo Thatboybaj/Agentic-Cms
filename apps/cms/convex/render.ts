@@ -88,7 +88,7 @@ export const publish = internalAction({
 			const tPost = { ...d.post, title: t.title, seoTitle: t.seoTitle, blocks: t.blocks as typeof d.post.blocks };
 			const tSlots = d.slots.map((sl) => ({ ...sl, alt: t.alts.find((a) => a.slotId === sl.id)?.alt ?? sl.alt }));
 			const tProfile = authorProfile?.image && x.l.lang === "ar" ? { ...authorProfile, image: { ...authorProfile.image, alt: `صورة ${authorProfile.name}` } } : authorProfile;
-			const tr = renderPost({ manifestHtml: x.html, fallbackHtml: manifestHtml, lang: x.l.lang, post: tPost, slots: tSlots, site: d.site, ...(t.pillarName ?? d.pillarName ? { pillarName: t.pillarName ?? d.pillarName } : {}), mode: "publish", variants: false, parseHtml: linkedomParse, mappings: d.manifest.mappings, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), ...(tProfile ? { authorProfile: tProfile } : {}), ...(alternates ? { alternates } : {}) });
+			const tr = renderPost({ manifestHtml: x.html, fallbackHtml: manifestHtml, lang: x.l.lang, post: tPost, slots: tSlots, site: d.site, ...((x.l.categoryLabel ?? t.pillarName ?? d.pillarName) ? { pillarName: x.l.categoryLabel ?? t.pillarName ?? d.pillarName } : {}), mode: "publish", variants: false, parseHtml: linkedomParse, mappings: d.manifest.mappings, publishedAt: d.publishedAt, ...(d.author ? { author: d.author } : {}), ...(tProfile ? { authorProfile: tProfile } : {}), ...(alternates ? { alternates } : {}) });
 			if (tr.held.length) {
 				langNotes.push(`The ${x.l.lang} template can't render: ${tr.held.map((h) => h.reason).join(", ")}`);
 				continue;
