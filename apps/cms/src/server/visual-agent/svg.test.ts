@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { brandColors, chartSvg, contrast, deterministicDiagrams, enumerations, numberPairs, sanitizeSvg, stepsFor } from "./svg";
+import { brandColors, chartSvg, contrast, deterministicDiagrams, enumerations, labelProblem, numberPairs, sanitizeSvg, stepsFor, usableLabels } from "./svg";
+import { labelSetProblem } from "./diagram";
 import type { IPostExcerpt, TAgentSlot } from "./types";
 
 describe("sanitizeSvg", () => {
@@ -113,5 +114,19 @@ describe("charts from the post's numbers only", () => {
 		const svg = chartSvg({ ...slot, type: "chart", name: "Price chart" }, p, brand)!;
 		expect(svg).toContain("₦1,200,000");
 		expect(svg).toContain("Comprehensive");
+	});
+
+	it("never draws sentence fragments as diagram labels (every site)", () => {
+		// The live Baynor diagram (13 Nov 2026) was cut from this sentence.
+		expect(enumerations("For most teams in Doha, that starts with customer support, sales follow-ups, and back-office finance.")).toEqual([]);
+		expect(labelProblem("That starts with customer support")).toMatch(/piece of a sentence/);
+		expect(labelProblem("Sales and")).toMatch(/piece of a sentence/);
+		expect(labelProblem("Customer support")).toBeNull();
+		expect(labelProblem("Pick one workflow")).toBeNull();
+		expect(usableLabels(["Customer support", "Sales follow-up", "Finance"])).toBe(true);
+		expect(usableLabels(["Customer support", "customer support"])).toBe(false);
+		const post = { title: "T", keyword: "k", headings: [], listItems: [], paragraphs: ["Answer in 50 minutes."] };
+		expect(labelSetProblem(["Reply in 50 minutes", "Hand over"], post)).toBeNull();
+		expect(labelSetProblem(["Reply in 15 minutes", "Hand over"], post)).toMatch(/numbers the post doesn/);
 	});
 });

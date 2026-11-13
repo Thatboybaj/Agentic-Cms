@@ -139,7 +139,8 @@ export const regenerateSlot = siteMutation({
 		if (site.status === "paused") return fail("This site is paused · resume it to run agents");
 		const slot = await slotInSite(ctx, siteId, slotId);
 		if (!slot) return fail("Slot not found");
-		if (slot.provider === "inline-svg") return fail("Charts are rendered from the post's data, never generated");
+		// Charts come from the post's numbers; a diagram (also an inline SVG) can be drawn again.
+		if (slot.type === "chart") return fail("Charts are rendered from the post's data, never generated");
 		if (slot.status === "generating") return fail("Already generating");
 		const routed = site.routing[slot.type];
 		const provider = slot.provider === "human" ? (routed === "human" ? "open-source" : routed) : slot.provider;

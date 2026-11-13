@@ -148,6 +148,26 @@ const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const words = (s: string) => s.toLowerCase().match(/[a-z0-9]+/g) ?? [];
 const STOP = new Set("the a an and or of to in on for with at by from is are be it this that your our every plan includes".split(" "));
 
+// A diagram label reads as a name ("Customer support", "Book a call"), never as a piece of a sentence ("That starts
+// with customer support", "and finance"): a live Baynor diagram showed fragments cut from a sentence (13 Nov 2026).
+const FRAGMENT_START = /^(that|which|who|whose|where|when|while|and|or|but|so|then|to|with|without|for|from|of|by|is|are|was|were|be|been|it|its|this|these|those|there|than|as|if|because|also|even|just|only)\b/i;
+const FRAGMENT_END = /\b(the|a|an|and|or|to|of|for|with|in|on|at|by|from|that|which|is|are)$/i;
+
+/** Why a label isn't a usable diagram label, or null when it is. */
+export function labelProblem(label: string): string | null {
+	const t = label.trim();
+	if (!t) return "empty";
+	const n = t.split(/\s+/).length;
+	if (n > 6 || t.length > 42) return "too long for a diagram label";
+	if (FRAGMENT_START.test(t)) return "starts like a piece of a sentence";
+	if (FRAGMENT_END.test(t)) return "ends like a piece of a sentence";
+	if (/[;:]$|,$/.test(t) || /[.!?]$/.test(t) && n > 1) return "has sentence punctuation";
+	return null;
+}
+
+/** A label set fit for a diagram: 2–7 distinct labels, none a fragment. */
+export const usableLabels = (labels: string[]) => labels.length >= 2 && labels.length <= 7 && new Set(labels.map((l) => l.toLowerCase())).size === labels.length && labels.every((l) => !labelProblem(l));
+
 /** "Every plan includes the scan, the aligners, refinements and retainers." → ["Scan", "Aligners", "Refinements", "Retainers"] */
 export function enumerations(text: string): string[][] {
 	const out: string[][] = [];
@@ -163,7 +183,7 @@ export function enumerations(text: string): string[][] {
 		const leadIdx = first.findIndex((w, i) => i > 0 && /^(includes?|are|is|covers?|has|have|goes|go|follows?)$/i.test(first[i - 1] ?? ""));
 		pieces[0] = leadIdx > 0 ? first.slice(leadIdx).join(" ") : first.slice(-3).join(" ");
 		const items = pieces.map((p) => cap(p.replace(ARTICLE, "").trim()));
-		if (items.every((i) => i.split(/\s+/).length <= 5 && i.length <= 40)) out.push(items);
+		if (items.every((i) => i.split(/\s+/).length <= 5 && i.length <= 40) && usableLabels(items)) out.push(items);
 	}
 	return out;
 }
@@ -282,12 +302,12 @@ export interface IDeterministicDiagram {
 }
 
 /** 1 diagram + 1 variant (SKILL Step 6), or [] when the post has fewer than 2 usable steps. */
-export function deterministicDiagrams(slot: TAgentSlot, post: IPostExcerpt, brand: IAgentBrandPack): IDeterministicDiagram[] {
-	const { steps, from } = stepsFor(slot, post);
+export function deterministicDiagrams(slot: TAgentSlot, post: IPostExcerpt, brand: IAgentBrandPack, given?: { steps: string[]; from: string; title?: string }): IDeterministicDiagram[] {
+	const { steps, from } = given ?? stepsFor(slot, post);
 	if (steps.length < 2) return [];
 	const c = brandColors(brand.palette);
 	// Title from the slot name, not the alt: pre-written alt text can carry numbers the post never states.
-	const title = slot.name;
+	const title = given?.title || slot.name;
 	const w = slot.width || 1200;
 	const h = slot.height || 675;
 	const kind = diagramKind(slot, steps);

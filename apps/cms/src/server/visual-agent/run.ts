@@ -106,7 +106,7 @@ export async function runVisualAgent(input: IRunInput): Promise<IVisualAgentResu
 					})),
 					provider: out.provider,
 					model: out.model,
-					costEstimateUsd: out.provider === "qwen-svg" ? d.estimateUsd : 0,
+					costEstimateUsd: out.provider === "qwen-svg" ? d.estimateUsd : (out.labelCostUsd ?? 0),
 					meta: { provider: "inline-svg", model: out.model },
 					attempts,
 				};
