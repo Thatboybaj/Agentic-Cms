@@ -59,6 +59,16 @@ function Live() {
 	);
 }
 
+/** The site's SEO title limit for counters on screen (60 until loaded, and on the local demo store). */
+export function useTitleMax(): number {
+	const { slug } = useSite();
+	const { isAuthenticated } = useConvexAuth();
+	const resolved = useQuery(api.sites.bySlug, SITE_ON_CONVEX && isAuthenticated ? { slug } : "skip");
+	const siteId = resolved?.status === "ok" ? (resolved.site._id as Id<"sites">) : undefined;
+	const rules = useQuery(api.billing.seoRules, siteId ? { siteId } : "skip");
+	return rules?.titleMax ?? 60;
+}
+
 export function SeoRulesSettings() {
 	if (!SITE_ON_CONVEX) return null;
 	return <Live />;

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTitleMax } from "@/features/settings/seo-rules";
 import Link from "next/link";
 import { clsx } from "clsx";
 import { createContext, Fragment, useContext, useEffect, useRef, useState, type MouseEvent, type ReactNode } from "react";
@@ -91,8 +92,9 @@ export function SeoTitleField({ post, canEdit, compact }: { post: IPost; canEdit
 	const { actions } = useSiteCms();
 	const [val, setVal] = useState(post.seoTitle);
 	useEffect(() => setVal(post.seoTitle), [post.seoTitle]);
+	const max = useTitleMax();
 	const n = val.trim().length;
-	const over = n > 60;
+	const over = n > max;
 	const commit = () => {
 		if (val.trim() && val.trim() !== post.seoTitle) actions.editSeoTitle(post.id, val);
 		else setVal(post.seoTitle);
@@ -101,8 +103,8 @@ export function SeoTitleField({ post, canEdit, compact }: { post: IPost; canEdit
 		<div className="flex flex-col gap-2">
 			<div className="flex items-center gap-2 text-xs text-ink-3">
 				<label htmlFor={`seo-${post.id}`}>SEO title</label>
-				<span aria-live={n >= 55 ? "polite" : "off"} className={clsx("tabular ms-auto font-medium", over ? "text-block-ink" : "text-pass-ink")}>
-					{n} / 60{over ? " · too long" : ""}
+				<span aria-live={n >= max - 5 ? "polite" : "off"} className={clsx("tabular ms-auto font-medium", over ? "text-block-ink" : "text-pass-ink")}>
+					{n} / {max}{over ? " · over the limit" : ""}
 				</span>
 			</div>
 			<textarea
