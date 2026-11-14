@@ -26,7 +26,10 @@ const VOLUME_ORDER: TConnectionProvider[] = ["fal", "replicate", "custom-mcp"];
 const SOURCE_ORDER: TConnectionProvider[] = ["openverse", "wikimedia", "unsplash", "pexels"];
 
 const TEXT_IN_IMAGE = /\b(text|label(?:led|ed|s)?|legible|caption|headline|lettering|words?|typography|annotat\w*)\b/i;
-const REAL_WORLD = /\b(real (?:photo|place|premises|building|product)|landmark|reception|premises|storefront|building|street|city ?scape|historic\w*|museum|artwork)\b/i;
+// A specific real thing the reader could check (the site's own premises, a named landmark, an actual product): a
+// generated picture of it would be a fabrication, so it's sourced. A generic scene ("a modern clinic reception in
+// Doha") is brand imagery and is generated: "reception" alone held a Baynor hero for a person (14 Nov 2026).
+const REAL_WORLD = /\b((?:real|actual|authentic) (?:photos?|place|premises|building|product|office|clinic|team|staff|location)|(?:our|their|the client'?s) (?:premises|office|offices|clinic|building|storefront|shop|showroom|team|staff|location)|photo of (?:our|the actual)|landmark|storefront of|street ?view|historic\w*|museum|artwork)\b/i;
 
 const brandPrefersVolume = (slot: TAgentSlot) => slot.provider === "open-source";
 

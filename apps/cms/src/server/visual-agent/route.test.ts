@@ -37,6 +37,12 @@ describe("chooseRoute — harness routing table", () => {
 		expect(d.label).toMatch(/^Will generate with higgsfield-mcp MCP/);
 	});
 
+	it("generates a generic scene, sources only a specific real place", () => {
+		expect(needOf(slot({ prompt: "A bright, modern medical clinic reception area in Doha, Qatar. A friendly receptionist smiling at a tablet.", alt: "Clinic reception" }))).toBe("brand_imagery");
+		expect(needOf(slot({ prompt: "Photo of our clinic premises in West Bay", alt: "Our clinic" }))).toBe("stock_or_real_world");
+		expect(needOf(slot({ prompt: "The Museum of Islamic Art at dusk", alt: "Landmark" }))).toBe("stock_or_real_world");
+	});
+
 	it("follows the site's OpenAI / Higgsfield switch for brand imagery; the other stays the fallback", () => {
 		const cs = [conn("gateway-images"), conn("higgsfield-mcp")];
 		expect(planRoutes(slot({}), cs, { prefer: "openai" }).map((d) => d.connectionId).slice(0, 2)).toEqual(["c-gateway-images", "c-higgsfield-mcp"]);
