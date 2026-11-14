@@ -2,6 +2,7 @@
 // check ids"). Deterministic on purpose: the skill's checklist is numbers-based ("count it, don't guess"), so the
 // counts come from code, not a model; the model's work is the fixing (agents/editor.ts). Re-run after every content
 // change so a fix is verified by the gate instead of asserted. Ids, labels and sections match the prototype (seed gate12).
+import { titleMaxOf } from "../../src/lib/logic";
 import type { Doc } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 
@@ -61,9 +62,12 @@ export interface IOnPageInput {
 	domain: string;
 	blocks: { kind: string; text: string }[];
 	slots: { alt: string; status: string }[];
+	/** The site's SEO title limit (default 60). */
+	titleMax?: number;
 }
 
 export function auditOnPage(p: IOnPageInput): IOnPageCheck[] {
+	const max = p.titleMax ?? 60;
 	const kw = words(p.keyword);
 	const sig = kw.filter((w) => !STOP.has(w));
 	const body = p.blocks.filter((b) => b.kind !== "disclaimer" && b.kind !== "image");
@@ -104,7 +108,8 @@ export function auditOnPage(p: IOnPageInput): IOnPageCheck[] {
 
 	return [
 		c("title-front", "Title front-loaded", 1, front || !sig.length ? "pass" : "fail", front ? `Keyword at word ${frontIdx + 1}` : "Keyword not near the front"),
-		c("title-length", "Title length", 1, t.length && t.length <= 60 ? "pass" : "fail", `${t.length} / 60`),
+		// Soft: a longer title is a judgement call, so a person may override it with a reason (the limit is per site).
+		{ ...c("title-length", "Title length", 1, t.length && t.length <= max ? "pass" : "fail", `${t.length} / ${max}`), severity: "soft" as const },
 		c("kw-first-100", "Keyword in first 100 words", 2, first !== undefined && first < 100 ? "pass" : "fail", first !== undefined && first < 100 ? `Word ${first + 1}` : "Missing"),
 		c("density", "Density", 2, dStatus, `${density.toFixed(1)}%${dStatus === "warn" ? " · low" : dStatus === "fail" ? " · stuffing" : ""}`),
 		c("headings", "Heading hierarchy", 3, hStatus, !h2.length ? "No H2" : skips ? "H3 before any H2" : `${h2.length} H2${question ? "" : " · no question H2"}${variant ? "" : " · keyword in no H2"}`),
@@ -127,7 +132,7 @@ export async function refreshOnPage(ctx: MutationCtx, post: Doc<"posts">) {
 	if (!site) return;
 	const kw = await ctx.db.get(post.keywordId);
 	const slots = await ctx.db.query("imageSlots").withIndex("by_post", (q) => q.eq("postId", post._id)).take(50);
-	const checks = auditOnPage({ title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), keyword: kw && kw.siteId === post.siteId ? kw.term : post.title, domain: site.domain, blocks: post.blocks, slots });
+	const checks = auditOnPage({ title: post.title, seoTitle: post.seoTitle, ...(post.metaDescription ? { metaDescription: post.metaDescription } : {}), keyword: kw && kw.siteId === post.siteId ? kw.term : post.title, domain: site.domain, blocks: post.blocks, slots, titleMax: titleMaxOf(site) });
 	const rows = await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", post._id)).take(60);
 	const now = Date.now();
 	for (const ch of checks) {

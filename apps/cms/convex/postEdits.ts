@@ -3,7 +3,7 @@
 // refusals are the prototype's (src/lib/store.tsx). Agent proposals are the deterministic ports in
 // pipeline/proposals.ts and cost $0 until 03 makes them model calls; they still go through the cap check.
 import { v } from "convex/values";
-import { RUN_META, checkCap, gateChecks, isHardFail, postUrl, type IEstimate } from "../src/lib/logic";
+import { RUN_META, checkCap, gateChecks, isHardFail, postUrl, type IEstimate, titleMaxOf } from "../src/lib/logic";
 import type { Doc, Id } from "./_generated/dataModel";
 import type { MutationCtx } from "./_generated/server";
 import { loadPostInSite } from "./lib/access";
@@ -82,7 +82,7 @@ export const editSeoTitle = siteMutation({
 		if (!t) return fail("The SEO title can't be empty");
 		await ctx.db.patch(postId, { seoTitle: t, updatedAt: Date.now() });
 		for (const c of await ctx.db.query("gateChecks").withIndex("by_post", (q) => q.eq("postId", postId)).take(60)) {
-			if (c.checkId === "title-length") await ctx.db.patch(c._id, { value: `${t.length} / 60`, status: t.length <= 60 ? "pass" : "fail" });
+			if (c.checkId === "title-length") await ctx.db.patch(c._id, { value: `${t.length} / ${titleMaxOf(site)}`, status: t.length <= titleMaxOf(site) ? "pass" : "fail", severity: "soft" });
 			else if (c.checkId === "title-front") await ctx.db.patch(c._id, { value: `${t.length} ch` });
 		}
 		await audit(ctx, { workspaceId: site.workspaceId, siteId, postId, actor: user, action: "edited SEO title", target: post.title, detail: t });

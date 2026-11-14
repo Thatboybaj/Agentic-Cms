@@ -171,6 +171,26 @@ export const setAutopost = siteMutation({
 	},
 });
 
+export const seoRules = siteQuery({
+	permission: "plan.view",
+	args: {},
+	handler: async (ctx) => ({ titleMax: ctx.access.site.seoRules?.titleMax ?? 60, isDefault: !ctx.access.site.seoRules?.titleMax }),
+});
+
+/** The site's SEO title limit (Settings → Publishing). 40–90 characters; the on-page check follows it. */
+export const setSeoRules = siteMutation({
+	permission: "publishing.set",
+	args: { titleMax: v.number() },
+	handler: async (ctx, { siteId, titleMax }): Promise<TResult> => {
+		const { site, user } = ctx.access;
+		const n = Math.round(titleMax);
+		if (!Number.isFinite(n) || n < 40 || n > 90) return { ok: false, reason: "Use a title limit between 40 and 90 characters" };
+		await ctx.db.patch(siteId, { seoRules: { ...(site.seoRules ?? {}), titleMax: n } });
+		await audit(ctx, { workspaceId: site.workspaceId, siteId, actor: user, action: "changed SEO title limit", target: site.name, detail: `${site.seoRules?.titleMax ?? 60} → ${n} characters` });
+		return { ok: true };
+	},
+});
+
 export const setAutoMerge = siteMutation({
 	permission: "publishing.autoMerge",
 	args: { on: v.boolean() },

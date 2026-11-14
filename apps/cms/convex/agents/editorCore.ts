@@ -49,6 +49,8 @@ export interface IEditPost {
 	metaDescription?: string;
 	blocks: { id: string; kind: string; text: string }[];
 	internalLinks: { title: string; url: string }[];
+	/** The site's SEO title limit (default 60). */
+	titleMax?: number;
 }
 
 export function editUserPrompt(p: IEditPost, tasks: TEditTask[]): string {
@@ -108,7 +110,7 @@ export function guardField(field: "seoTitle" | "metaDescription", next: string, 
 	const known = numbersIn([post.seoTitle, post.metaDescription ?? "", ...post.blocks.map((b) => b.text)].join(" "));
 	const invented = [...numbersIn(next)].filter((n) => !known.has(n));
 	if (invented.length) return `adds numbers not in the draft (${invented.join(", ")})`;
-	if (field === "seoTitle" && (next.length > 60 || !next.trim())) return "title is still over 60 characters";
+	if (field === "seoTitle" && (next.length > (post.titleMax ?? 60) || !next.trim())) return `title is still over ${post.titleMax ?? 60} characters`;
 	if (field === "metaDescription" && (next.length < 120 || next.length > 170)) return "meta description length is off";
 	return null;
 }

@@ -15,7 +15,7 @@ const BLOCK_KINDS = ["h2", "h3", "p", "ul", "faq", "quote"] as const;
 const SLOT_TYPES = ["hero", "diagram", "chart", "lifestyle", "screenshot", "photo"] as const;
 
 export const WriterOutput = z.object({
-	seoTitle: z.string().describe("Meta title, at most 60 characters, keyword near the front"),
+	seoTitle: z.string().describe("Meta title, within the brief's SEO title limit, keyword near the front"),
 	metaDescription: z.string().describe("At most 155 characters"),
 	blocks: z
 		.array(
@@ -66,6 +66,7 @@ export interface IWriterBrief {
 	contentType: string;
 	pillar?: string;
 	wordTarget: number;
+	titleMax?: number;
 	styleKeywords: string[];
 	heroProvider: string;
 	regulated?: string;
@@ -85,6 +86,7 @@ export function writerUserPrompt(b: IWriterBrief): string {
 		b.intent ? `Search intent: ${b.intent}` : "",
 		`Content type: ${b.contentType}`,
 		b.pillar ? `Pillar: ${b.pillar}` : "",
+		`SEO title: at most ${b.titleMax ?? 60} characters, keyword near the front`,
 		`Word target: ${b.wordTarget} words of body text (stay within 10% of it; count before you finish)`,
 		b.styleKeywords.length ? `Image style keywords: ${b.styleKeywords.join(", ")}` : "",
 		`Hero image route: ${b.heroProvider}`,
@@ -146,7 +148,7 @@ export function toDraft(out: TWriterOutput, opts: { disclaimer?: string }) {
 		.filter((c) => c.claim.trim())
 		.map((c) => ({ blockId: blocks[Math.max(0, Math.min(blocks.length - 1, c.blockIndex))]?.id ?? "b1", claim: c.claim.trim() }))
 		.concat(inline.map((c) => ({ blockId: blocks[c.index]?.id ?? "b1", claim: c.claim })));
-	return { seoTitle: cleanTitle(out.seoTitle).slice(0, 70), ...(out.metaDescription.trim() ? { metaDescription: out.metaDescription.trim().slice(0, 170) } : {}), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
+	return { seoTitle: cleanTitle(out.seoTitle).slice(0, 90), ...(out.metaDescription.trim() ? { metaDescription: out.metaDescription.trim().slice(0, 170) } : {}), blocks, words: countWords(blocks), unsourcedClaims: claims, imageSheet: sheet };
 }
 
 // ─── Revise (reviewer's send-back note) ───────────────────────────────────────
@@ -184,5 +186,5 @@ export function toRevision(out: TReviseOutput, before: { id: string }[]) {
 			seen.add(id);
 			return { id, kind: b.kind, text: cleanText(b.kind, b.text) };
 		});
-	return { blocks, seoTitle: cleanTitle(out.seoTitle).slice(0, 70) };
+	return { blocks, seoTitle: cleanTitle(out.seoTitle).slice(0, 90) };
 }

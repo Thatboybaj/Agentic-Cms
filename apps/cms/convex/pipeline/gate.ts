@@ -2,7 +2,7 @@
 // → agent fixes (as AUTOPOST_ACTOR, each audited) → re-evaluate → approve + shipPost, or hold. Never ships around a
 // block: the decision is recomputed on fresh rows right before the fixes, and the gate is re-checked after them.
 import { v } from "convex/values";
-import { AUTOPOST_ACTOR, AUTOPOST_SOFT_REASON, VISUAL_AGENT, autopostDecision, evaluateGate, gateChecks, type IAutopostFix } from "../../src/lib/logic";
+import { AUTOPOST_ACTOR, AUTOPOST_SOFT_REASON, VISUAL_AGENT, autopostDecision, evaluateGate, gateChecks, type IAutopostFix, titleMaxOf } from "../../src/lib/logic";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { approveAndShip, holdPost } from "../lib/approval";
@@ -113,7 +113,7 @@ export const applyAndShip = internalMutation({
 					if (fix.id === "meta-description" && agentEdits.metaDescription) await ctx.db.patch(postId, { metaDescription: agentEdits.metaDescription });
 					words = blocks.reduce((n, b) => n + countWords(b.text), 0);
 				} else {
-					const r = fixCheck(fix.id, blocks, seoTitle, inputs.keyword, row?.value ?? "");
+					const r = fixCheck(fix.id, blocks, seoTitle, inputs.keyword, row?.value ?? "", titleMaxOf(site));
 					blocks = r.blocks;
 					seoTitle = r.seoTitle;
 					words += r.wordsDelta;

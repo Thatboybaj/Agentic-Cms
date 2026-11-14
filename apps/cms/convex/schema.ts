@@ -329,6 +329,8 @@ export default defineSchema({
 		languages: v.optional(v.array(vLanguageVersion)),
 		/** The site's fixed blog categories, when it has them: a post's category is one of these, never a pillar name. */
 		categories: v.optional(v.array(vSiteCategory)),
+		/** The site's own on-page limits (Settings → Publishing). Absent → the harness defaults (title ≤ 60). */
+		seoRules: v.optional(v.object({ titleMax: v.number() })),
 	})
 		.index("by_workspace", ["workspaceId"])
 		.index("by_workspace_slug", ["workspaceId", "slug"]),

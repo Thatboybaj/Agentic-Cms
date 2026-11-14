@@ -204,7 +204,12 @@ export function postKas(post: Pick<IPost, "slug">, keywords: IKeyword[]): number
 
 export const HARD_SECTIONS = 5; // failing items in sections 1–5 are hard blocks
 
-export const isHardFail = (c: IGateCheck) => c.status === "fail" && (c.section <= HARD_SECTIONS || c.severity === "hard");
+/** SEO title limit: the harness default, unless the site sets its own (Settings → Publishing). */
+export const TITLE_MAX_DEFAULT = 60;
+export const titleMaxOf = (site: { seoRules?: { titleMax: number } | null } | null | undefined) => site?.seoRules?.titleMax ?? TITLE_MAX_DEFAULT;
+
+/** A check marked soft (e.g. title length) can always be overridden with a logged reason, whatever its section. */
+export const isHardFail = (c: IGateCheck) => c.status === "fail" && c.severity !== "soft" && (c.section <= HARD_SECTIONS || c.severity === "hard");
 export const isFilled = (s: IImageSlot) => s.status === "selected";
 
 /** Soft checks derived from the post itself when the optimizer hasn't emitted them. */

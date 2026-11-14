@@ -4,7 +4,7 @@
 import { vResultValidator } from "@convex-dev/workpool";
 import { vWorkflowId } from "@convex-dev/workflow";
 import { ConvexError, v } from "convex/values";
-import { AUTOPOST_ACTOR, VISUAL_AGENT } from "../../src/lib/logic";
+import { AUTOPOST_ACTOR, VISUAL_AGENT, titleMaxOf } from "../../src/lib/logic";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { audit } from "../lib/audit";
@@ -54,6 +54,7 @@ export const beginDraft = internalMutation({
 				heroProvider: site.routing.hero,
 				strongModel: post.strongModel || post.contentType === "pillar" || post.contentType === "money-page",
 				wordTarget: post.wordTarget,
+				titleMax: titleMaxOf(site),
 				domain: site.domain,
 				industry: site.industry,
 				voice: site.brandPack.voice,

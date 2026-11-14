@@ -2,7 +2,7 @@
 // the single-site context and write the results (README §3). Every result is a pending suggestion (a diff a person
 // accepts); the autopost path applies its edits in pipeline/gate.applyAndShip instead.
 import { v } from "convex/values";
-import { RUN_META } from "../src/lib/logic";
+import { RUN_META, titleMaxOf } from "../src/lib/logic";
 import type { Doc, Id } from "./_generated/dataModel";
 import { internalMutation, internalQuery, type QueryCtx } from "./_generated/server";
 import { audit } from "./lib/audit";
@@ -32,6 +32,7 @@ export async function editContext(ctx: QueryCtx, siteId: Id<"sites">, post: Doc<
 		...(post.metaDescription ? { metaDescription: post.metaDescription } : {}),
 		blocks: post.blocks.map((b) => ({ id: b.id, kind: b.kind, text: b.text })),
 		internalLinks: linkRows.map((k) => ({ title: k.term, url: k.rankingUrl! })),
+		titleMax: titleMaxOf(site),
 	};
 }
 

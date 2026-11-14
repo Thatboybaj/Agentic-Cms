@@ -22,6 +22,7 @@ export const vDraftInput = v.object({
 	heroProvider: v.string(),
 	strongModel: v.boolean(),
 	wordTarget: v.number(),
+	titleMax: v.optional(v.number()),
 	// Single-site context for the writer (handoff 03 step 4): this site's records only, never secrets.
 	domain: v.optional(v.string()),
 	industry: v.optional(v.string()),

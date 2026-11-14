@@ -21,7 +21,7 @@ export interface ICheckFix {
 }
 
 /** One agent fix for a failing hard on-page check (only AGENT_FIXABLE_CHECKS reach here). */
-export function fixCheck(checkId: string, blocks: IPostBlock[], seoTitle: string, keyword: string, currentValue: string): ICheckFix {
+export function fixCheck(checkId: string, blocks: IPostBlock[], seoTitle: string, keyword: string, currentValue: string, titleMax = 60): ICheckFix {
 	const out = blocks.map((b) => ({ ...b }));
 	if (checkId === "kw-first-100") {
 		const intro = out.find((b) => b.kind === "p");
@@ -34,9 +34,9 @@ export function fixCheck(checkId: string, blocks: IPostBlock[], seoTitle: string
 	}
 	if (checkId === "title-length") {
 		let t = "";
-		for (const w of seoTitle.split(/\s+/)) if (`${t} ${w}`.trim().length <= 60) t = `${t} ${w}`.trim();
-		const next = t || seoTitle.slice(0, 60);
-		return { blocks: out, seoTitle: next, wordsDelta: 0, check: { status: "pass", value: `${next.length} / 60` } };
+		for (const w of seoTitle.split(/\s+/)) if (`${t} ${w}`.trim().length <= titleMax) t = `${t} ${w}`.trim();
+		const next = t || seoTitle.slice(0, titleMax);
+		return { blocks: out, seoTitle: next, wordsDelta: 0, check: { status: "pass", value: `${next.length} / ${titleMax}` } };
 	}
 	return { blocks: out, seoTitle, wordsDelta: 0, check: { status: "pass", value: checkId === "meta-description" ? "148 ch" : currentValue } };
 }

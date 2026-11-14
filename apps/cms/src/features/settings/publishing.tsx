@@ -7,6 +7,7 @@ import { Callout, Card, CardHeader, Chip, Icon, SourceNote, Toggle, type TIconNa
 import { publishingSteps } from "@/lib/logic";
 import { useSiteCms } from "@/features/shared/site-source";
 import { LanguageSettings } from "./languages";
+import { SeoRulesSettings } from "./seo-rules";
 import { LockLine } from "./shared";
 
 const OWNER_META: Record<"human" | "agent" | "developer", { icon: TIconName; label: string; tone: "human" | "agent" | "neutral" }> = {
@@ -82,6 +83,8 @@ export function PublishingSettings() {
 					</Callout>
 				)}
 			</Card>
+
+			<SeoRulesSettings />
 
 			<LanguageSettings />
 

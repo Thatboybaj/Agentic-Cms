@@ -97,7 +97,10 @@ describe("on-page audit (12 checks, counted)", () => {
 	test("missing keyword, long title, no meta, no sources, H3 first: each fails or warns as the gate expects", () => {
 		const bad = auditOnPage({ ...base, seoTitle: "A very long meta title that goes on and on about lots of things in Lagos", metaDescription: undefined, blocks: [{ kind: "h3", text: "Intro" }, { kind: "p", text: "Prices vary a lot. ".repeat(10) }], slots: [{ alt: "", status: "selected" }] });
 		const s = Object.fromEntries(bad.map((c) => [c.checkId, c]));
-		expect(s["title-length"]).toMatchObject({ status: "fail", severity: "hard" });
+		// A long title fails, but softly: a person may override it with a reason (14 Nov 2026); the limit is per site.
+		expect(s["title-length"]).toMatchObject({ status: "fail", severity: "soft", value: "72 / 60" });
+		const t70 = Object.fromEntries(auditOnPage({ ...base, seoTitle: "A very long meta title that goes on and on about lots of things in Lagos", titleMax: 75 }).map((c) => [c.checkId, c]));
+		expect(t70["title-length"]).toMatchObject({ status: "pass", value: "72 / 75" });
 		expect(s["kw-first-100"]).toMatchObject({ status: "fail", value: "Missing" });
 		expect(s["meta-description"]).toMatchObject({ status: "fail", value: "Missing" });
 		expect(s.headings).toMatchObject({ status: "fail", value: "No H2" });
