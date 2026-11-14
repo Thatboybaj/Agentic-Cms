@@ -78,9 +78,9 @@ describe("image slots", () => {
 		expect(out.post!.state).toBe("needs-assets"); // the hero still waits
 	});
 
-	test("regenerate refuses charts and an exhausted image budget; otherwise it queues a run at $0 stub cost", async () => {
+	test("regenerate refuses generating a chart and an exhausted image budget; otherwise it queues a run at $0 stub cost", async () => {
 		const { t, as, site, hero, chart } = await world();
-		expect(await as("tolu").mutation(api.slots.regenerateSlot, { siteId: site, slotId: chart })).toEqual({ ok: false, reason: "Charts are rendered from the post's data, never generated" });
+		expect(await as("tolu").mutation(api.slots.regenerateSlot, { siteId: site, slotId: chart, override: "generate" })).toEqual({ ok: false, reason: "Charts are rendered from the post's data, never generated" });
 		expect(await as("tolu").mutation(api.slots.regenerateSlot, { siteId: site, slotId: hero, prompt: "a brighter smile" })).toEqual({ ok: true });
 		const out = await t.run(async (ctx) => ({ slot: await ctx.db.get(hero), cands: (await ctx.db.query("candidates").withIndex("by_slot", (q) => q.eq("slotId", hero)).collect()).length, runs: await ctx.db.query("runs").collect() }));
 		expect(out.slot).toMatchObject({ status: "generating", prompt: "a brighter smile" });

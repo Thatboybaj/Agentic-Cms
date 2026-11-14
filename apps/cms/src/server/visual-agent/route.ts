@@ -31,6 +31,9 @@ const TEXT_IN_IMAGE = /\b(text|label(?:led|ed|s)?|legible|caption|headline|lette
 // Doha") is brand imagery and is generated: "reception" alone held a Baynor hero for a person (14 Nov 2026).
 const REAL_WORLD = /\b((?:real|actual|authentic) (?:photos?|place|premises|building|product|office|clinic|team|staff|location)|(?:our|their|the client'?s) (?:premises|office|offices|clinic|building|storefront|shop|showroom|team|staff|location)|photo of (?:our|the actual)|landmark|storefront of|street ?view|historic\w*|museum|artwork)\b/i;
 
+const FLOW = /\b(flow ?charts?|flows?|process(?:es)?|workflows?|pipelines?|journeys?|sequences?|steps?|stages?|lifecycle)\b/i;
+const FIGURES = /\b(bar|line|pie|donut|percent(?:age)?s?|growth|trend|revenue|costs?|prices?|rates?|figures|statistics|data points?)\b|%/i;
+
 const brandPrefersVolume = (slot: TAgentSlot) => slot.provider === "open-source";
 
 /** Usable = enabled and not failing its last test (untested is allowed: the seeded Openverse is untested). */
@@ -54,7 +57,9 @@ function pick(connections: IAgentConnection[], order: TConnectionProvider[], use
 /** The routing need for a slot (SKILL Step 1). */
 export function needOf(slot: TAgentSlot): TRoutingNeed {
 	if (slot.humanPinned) return "human_only";
-	if (slot.type === "chart") return "chart";
+	// A "chart" that describes a flow or a process (the writer's sheet sometimes types a flowchart as a chart) is a
+	// diagram: there are no figures to plot, and a bar chart of nothing would be wrong.
+	if (slot.type === "chart") return FLOW.test(`${slot.prompt} ${slot.alt} ${slot.name}`) && !FIGURES.test(`${slot.prompt} ${slot.alt}`) ? "diagram" : "chart";
 	if (slot.type === "diagram") return "diagram";
 	if (slot.type === "photo" || slot.type === "screenshot") return "stock_or_real_world";
 	const brief = `${slot.prompt} ${slot.alt}`;
@@ -202,7 +207,9 @@ export function chooseRoute(slot: TAgentSlot, connections: IAgentConnection[], b
 
 /** Which overrides make sense for this slot given what is connected (for the Select). Charts get none. */
 export function availableOverrides(slot: TAgentSlot, connections: IAgentConnection[]): TRouteOverride[] {
-	if (slot.type === "chart" || slot.humanPinned) return [];
+	if (slot.humanPinned) return [];
+	// A chart is drawn, never generated or sourced: the only choice is a diagram from the post's content.
+	if (slot.type === "chart") return ["diagram"];
 	const out: TRouteOverride[] = [];
 	// Auto never generates a real-world subject (SKILL: a generated "photo" of a real place would be a fabrication),
 	// but a person may choose to: the menu always offers Generate when a generator is connected, flagged for that case.
