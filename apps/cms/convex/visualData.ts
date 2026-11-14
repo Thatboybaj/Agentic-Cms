@@ -26,6 +26,7 @@ export const forSlot = internalQuery({
 			post: inputs.post,
 			keyword: inputs.keyword,
 			brandPack: site.brandPack,
+			prefer: site.routing[slot.type] as string,
 			remainingImageUsd: Math.max(0, site.budgetCaps.imageCapUsd - site.spend.imageMicroUsd / 1e6),
 			autopost: site.publishing.autopost,
 			humanOnlyAssets: !!site.publishing.humanOnlyAssets,

@@ -37,6 +37,13 @@ describe("chooseRoute — harness routing table", () => {
 		expect(d.label).toMatch(/^Will generate with higgsfield-mcp MCP/);
 	});
 
+	it("follows the site's OpenAI / Higgsfield switch for brand imagery; the other stays the fallback", () => {
+		const cs = [conn("gateway-images"), conn("higgsfield-mcp")];
+		expect(planRoutes(slot({}), cs, { prefer: "openai" }).map((d) => d.connectionId).slice(0, 2)).toEqual(["c-gateway-images", "c-higgsfield-mcp"]);
+		expect(planRoutes(slot({}), cs, { prefer: "higgsfield" }).map((d) => d.connectionId).slice(0, 2)).toEqual(["c-higgsfield-mcp", "c-gateway-images"]);
+		expect(planRoutes(slot({ provider: "openai" }), cs)[0]!.connectionId).toBe("c-gateway-images");
+	});
+
 	it("brand imagery falls through MCP → image API → licensed source → hold", () => {
 		expect(chooseRoute(slot({}), [conn("fal"), openverse]).route).toBe("generate-api");
 		expect(chooseRoute(slot({}), [openverse]).route).toBe("source");

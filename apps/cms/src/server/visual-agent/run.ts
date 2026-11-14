@@ -21,6 +21,8 @@ export interface IRunInput {
 	/** Remaining monthly image budget in USD; paid routes estimated above it are refused. */
 	estimateCapUsd?: number;
 	override?: TRouteOverride;
+	/** The site's routing choice for this slot's type ("openai", "higgsfield", …). */
+	prefer?: string;
 }
 
 const MIN_CANDIDATES = 2;
@@ -38,7 +40,7 @@ const errMsg = (e: unknown) => (e instanceof GenerateError || e instanceof Sourc
 export async function runVisualAgent(input: IRunInput): Promise<IVisualAgentResult> {
 	const { siteId, slot, post, brandPack } = input;
 	const connections = await listConnections(siteId);
-	const plan = planRoutes(slot, connections, { override: input.override, brandPack });
+	const plan = planRoutes(slot, connections, { override: input.override, brandPack, ...(input.prefer ? { prefer: input.prefer } : {}) });
 	const attempts: IAttempt[] = [];
 	const record = (d: IRouteDecision, ok: boolean, note: string, t0: number) => {
 		const a: IAttempt = { route: d.route, provider: d.provider, ok, note, ms: Date.now() - t0 };

@@ -110,6 +110,9 @@ const hold = (need: TRoutingNeed, reason: string): IRouteDecision => ({ route: "
 export interface IPlanOptions {
 	override?: TRouteOverride;
 	brandPack?: IAgentBrandPack;
+	/** The site's choice for this image type (Settings → Image providers): "openai" puts the image API before the
+	 * MCP server for brand imagery, "higgsfield" puts Higgsfield first. The other stays connected as the fallback. */
+	prefer?: string;
 }
 
 /**
@@ -125,7 +128,13 @@ export function planRoutes(slot: TAgentSlot, connections: IAgentConnection[], op
 
 	const gens = (list: IAgentConnection[], n = GENERATE_COUNT) => list.map((c) => generateDecision(c, need, n));
 	const sources = (why: string) => pick(connections, SOURCE_ORDER, "stock").map((c) => sourceDecision(c, need, brand, why));
-	const brandGens = () => gens([...pick(connections, MCP_ORDER, "brand_imagery"), ...pick(connections, BRAND_API_ORDER, "brand_imagery")]);
+	const prefer = opts.prefer ?? slot.provider;
+	const apiFirst = prefer === "openai" || prefer === "replicate";
+	const brandGens = () => {
+		const mcp = pick(connections, MCP_ORDER, "brand_imagery");
+		const api = pick(connections, BRAND_API_ORDER, "brand_imagery");
+		return gens(apiFirst ? [...api, ...mcp] : [...mcp, ...api]);
+	};
 
 	let plan: IRouteDecision[];
 	if (opts.override) {

@@ -88,7 +88,7 @@ export const fill = internalAction({
 		const d = await ctx.runQuery(internal.visualData.forSlot, { siteId, slotId });
 		if (!d) return { ok: false, candidates: 0, note: "Slot not found", costUsd: 0 };
 		const deps = await agentDeps(ctx, siteId);
-		const result = await withConnections(siteId, deps, () => runVisualAgent({ siteId, slot: agentSlot(d.slot), post: excerptOf(d.post, d.keyword), brandPack: agentBrandPack(d.brandPack), estimateCapUsd: d.remainingImageUsd, ...(override ? { override: override as TRouteOverride } : {}) }));
+		const result = await withConnections(siteId, deps, () => runVisualAgent({ siteId, slot: agentSlot(d.slot), post: excerptOf(d.post, d.keyword), brandPack: agentBrandPack(d.brandPack), estimateCapUsd: d.remainingImageUsd, ...(d.prefer ? { prefer: d.prefer } : {}), ...(override ? { override: override as TRouteOverride } : {}) }));
 		// Money: providers don't report a price, so the route's estimate is what the site pays (capped by the ledger).
 		const cost = result.held ? 0 : result.costEstimateUsd;
 		if (cost > 0) {
