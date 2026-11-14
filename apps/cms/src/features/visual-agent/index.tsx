@@ -10,7 +10,7 @@ import { useSiteCms } from "@/features/shared/site-source";
 import type { IImageSlot, IPost } from "@/lib/types";
 import { useSiteConnections as useConnections, type IConnection } from "@/features/connections";
 import { SITE_ON_CONVEX } from "@/features/shared/site-source";
-import { availableOverrides, chooseRoute, onlyWebSources } from "@/server/visual-agent/route";
+import { availableOverrides, chooseRoute, onlyWebSources, realWorldSlot } from "@/server/visual-agent/route";
 import type { IRouteDecision } from "@/server/visual-agent/types";
 import { agentBrandPack, agentSlot, excerptOf, remainingImageUsd, runVisualAgentApi, type IVisualAgentResult, type TRouteOverride } from "./api";
 
@@ -157,7 +157,7 @@ export function VisualAgentRow({ slot, primary }: { slot: IImageSlot; primary?: 
 						value={va.overrides[slot.id] ?? "auto"}
 						disabled={busy}
 						onChange={(v) => va.setOverride(slot.id, v === "auto" ? undefined : v)}
-						options={[{ value: "auto", label: "Auto route", hint: "Per the harness routing table" }, ...overrides.map((o) => ({ value: o, label: OVERRIDE_LABEL[o], hint: o === "generate" ? "Connected MCP or image API · costs credits" : o === "diagram" ? "SVG from this post's own content" : "Licensed web image with attribution" }))]}
+						options={[{ value: "auto", label: "Auto route", hint: "Per the harness routing table" }, ...overrides.map((o) => ({ value: o, label: OVERRIDE_LABEL[o], hint: o === "generate" ? (realWorldSlot(agentSlot(slot)) ? "Generated, not a real photo · costs credits" : "Connected MCP or image API · costs credits") : o === "diagram" ? "SVG from this post's own content" : "Licensed web image with attribution" }))]}
 					/>
 				)}
 				{allowed ? (

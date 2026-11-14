@@ -204,13 +204,16 @@ export function chooseRoute(slot: TAgentSlot, connections: IAgentConnection[], b
 export function availableOverrides(slot: TAgentSlot, connections: IAgentConnection[]): TRouteOverride[] {
 	if (slot.type === "chart" || slot.humanPinned) return [];
 	const out: TRouteOverride[] = [];
-	const photoLike = needOf(slot) === "stock_or_real_world";
-	// Never offer to generate a "photo" of a real-world subject (SKILL: that would be a fabrication).
-	if (!photoLike && pick(connections, [...MCP_ORDER, ...BRAND_API_ORDER]).length) out.push("generate");
+	// Auto never generates a real-world subject (SKILL: a generated "photo" of a real place would be a fabrication),
+	// but a person may choose to: the menu always offers Generate when a generator is connected, flagged for that case.
+	if (pick(connections, [...MCP_ORDER, ...BRAND_API_ORDER]).length) out.push("generate");
 	out.push("diagram");
 	if (pick(connections, SOURCE_ORDER).length) out.push("source");
 	return out;
 }
+
+/** True when Auto would source this slot as a real-world subject (the Generate override then says so). */
+export const realWorldSlot = (slot: TAgentSlot) => needOf(slot) === "stock_or_real_world";
 
 /** Harness routing row for a need (for copy/tooltips). */
 export const routingRow = (need: TRoutingNeed) => IMAGE_ROUTING.find((r) => r.route === need);
